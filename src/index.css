@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --app-white: 26 18 8;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: rgb(26 18 8);
+
+  /* ── Background: warm muted gray-beige with soft diffused light ── */
+  background-color: #c8c3bc;
+  background-image:
+    /* Bright zone top-center — simulates soft ceiling/window light */
+    radial-gradient(ellipse 120% 60% at 50% -5%,
+      rgba(242, 237, 228, 0.98) 0%,
+      rgba(228, 221, 210, 0.55) 42%,
+      transparent 68%),
+    /* Warm accent — upper right */
+    radial-gradient(ellipse 55% 65% at 100% 18%,
+      rgba(235, 224, 208, 0.60) 0%,
+      transparent 55%),
+    /* Subtle cool shadow — bottom left */
+    radial-gradient(ellipse 60% 55% at 0%  95%,
+      rgba(185, 180, 172, 0.45) 0%,
+      transparent 58%),
+    /* Very faint warm center fill */
+    radial-gradient(ellipse 80% 80% at 50% 60%,
+      rgba(218, 210, 198, 0.30) 0%,
+      transparent 70%);
+  background-attachment: fixed;
+}
+
+/* ── Glass utilities (defined here so they hot-reload without server restart) ── */
+.glass {
+  background-color: rgba(255, 255, 255, 0.60);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.80);
+}
+
+.glass-strong {
+  background-color: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* Gradient border via pseudo-element */
+.gradient-border {
+  position: relative;
+  isolation: isolate;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.75) 0%,
+    rgba(196, 149, 106, 0.12) 50%,
+    rgba(255, 255, 255, 0.40) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Top-edge inner highlight */
+.glass::after,
+.glass-strong::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.35) 0%,
+    transparent 35%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Hover lift for interactive cards */
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.10),
+    0 0 0 1px rgba(255, 255, 255, 0.60),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* Shimmer on hover */
+.glass-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 70%
+  );
+  transition: left 0.5s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glass-shimmer:hover::before {
+  left: 160%;
+}

@@ -1,0 +1,7 @@
+node_modules
+dist
+.git
+supabase/storage
+*.png
+*.jpg
+*.svg
