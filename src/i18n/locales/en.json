@@ -940,6 +940,18 @@
       "logoMaxHeight": "Max height",
       "logoPosition": "Position"
     },
+    "productionSheet": {
+      "button": "Production Sheet",
+      "title": "Production Sheet",
+      "date": "Prep date",
+      "noTasks": "No prep tasks for this date",
+      "noTasksHint": "Use \"Generate Prep\" to create tasks linked to this menu",
+      "progress": "Progress",
+      "portions": "portions",
+      "unassigned": "Unassigned",
+      "unassignedMember": "Unassigned",
+      "print": "Print"
+    },
     "public": {
       "notFound": "Menu not found",
       "notFoundHint": "This menu may have been deactivated or the link is invalid.",

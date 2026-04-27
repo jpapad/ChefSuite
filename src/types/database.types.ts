@@ -178,6 +178,7 @@ export interface PrepTask {
   title: string
   description: string | null
   recipe_id: UUID | null
+  menu_id: UUID | null
   quantity: number | null
   assignee_id: UUID | null
   workstation_id: UUID | null
@@ -191,7 +192,7 @@ export interface PrepTask {
 
 export type PrepTaskInsert = Pick<
   PrepTask,
-  'title' | 'description' | 'recipe_id' | 'quantity' | 'assignee_id' | 'prep_for' | 'workstation_id' | 'status'
+  'title' | 'description' | 'recipe_id' | 'menu_id' | 'quantity' | 'assignee_id' | 'prep_for' | 'workstation_id' | 'status'
 > & { team_id: UUID; created_by: UUID }
 
 export type PrepTaskUpdate = Partial<
@@ -200,6 +201,7 @@ export type PrepTaskUpdate = Partial<
     | 'title'
     | 'description'
     | 'recipe_id'
+    | 'menu_id'
     | 'quantity'
     | 'assignee_id'
     | 'prep_for'

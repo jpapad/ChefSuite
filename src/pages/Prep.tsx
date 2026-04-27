@@ -459,6 +459,7 @@ export default function Prep() {
         title: item.title,
         description: item.description ?? null,
         recipe_id: item.recipe_id,
+        menu_id: item.menu_id ?? null,
         quantity: item.quantity,
         assignee_id: item.assignee_id,
         workstation_id: item.workstation_id,

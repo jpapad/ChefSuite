@@ -18,12 +18,14 @@ interface PrepFromMenuDrawerProps {
   workstations: Workstation[]
   members: Profile[]
   onGenerate: (items: GeneratedPrepItem[]) => Promise<void>
+  lockedMenuId?: string
 }
 
 export interface GeneratedPrepItem {
   title: string
   description: string | null
   recipe_id: string | null
+  menu_id: string | null
   quantity: number | null
   workstation_id: string | null
   assignee_id: string | null
@@ -50,10 +52,11 @@ export function PrepFromMenuDrawer({
   workstations,
   members,
   onGenerate,
+  lockedMenuId,
 }: PrepFromMenuDrawerProps) {
   const { t } = useTranslation()
   const { menus } = useMenus()
-  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null)
+  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(lockedMenuId ?? null)
   const [date, setDate] = useState(defaultDate)
   const [covers, setCovers] = useState(10)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -67,14 +70,14 @@ export function PrepFromMenuDrawer({
 
   useEffect(() => {
     if (open) {
-      setSelectedMenuId(null)
+      setSelectedMenuId(lockedMenuId ?? null)
       setDate(defaultDate)
       setCovers(10)
       setSelected(new Set())
       setAssignments({})
       setRecipeIngredients([])
     }
-  }, [open, defaultDate])
+  }, [open, defaultDate, lockedMenuId])
 
   // Load shifts whenever date changes
   useEffect(() => {
@@ -205,6 +208,7 @@ export function PrepFromMenuDrawer({
               title: task.title,
               description: task.description,
               recipe_id: recipe.id,
+              menu_id: selectedMenuId,
               quantity: covers,
               workstation_id: matchWorkstation(task.station),
               assignee_id: null,
@@ -220,6 +224,7 @@ export function PrepFromMenuDrawer({
           title: i.name,
           description: null,
           recipe_id: i.recipe_id,
+          menu_id: selectedMenuId,
           quantity: covers,
           workstation_id: assignments[i.id]?.workstation_id ?? null,
           assignee_id: assignments[i.id]?.assignee_id ?? null,
@@ -240,22 +245,24 @@ export function PrepFromMenuDrawer({
       title={t('prep.fromMenu.title')}
     >
       <div className="space-y-5">
-        {/* Menu selector */}
-        <div>
-          <span className="mb-2 block text-sm font-medium text-white/80">{t('prep.fromMenu.selectMenu')}</span>
-          <div className="glass flex items-center rounded-xl px-4 min-h-[48px] focus-within:ring-2 focus-within:ring-brand-orange">
-            <select
-              value={selectedMenuId ?? ''}
-              onChange={(e) => setSelectedMenuId(e.target.value || null)}
-              className="flex-1 bg-transparent outline-none text-sm text-white"
-            >
-              <option value="" className="bg-[#f5ede0]">— {t('prep.fromMenu.chooseMenu')} —</option>
-              {menus.map((m) => (
-                <option key={m.id} value={m.id} className="bg-[#f5ede0]">{m.name}</option>
-              ))}
-            </select>
+        {/* Menu selector — hidden when menu is pre-selected (lockedMenuId) */}
+        {!lockedMenuId && (
+          <div>
+            <span className="mb-2 block text-sm font-medium text-white/80">{t('prep.fromMenu.selectMenu')}</span>
+            <div className="glass flex items-center rounded-xl px-4 min-h-[48px] focus-within:ring-2 focus-within:ring-brand-orange">
+              <select
+                value={selectedMenuId ?? ''}
+                onChange={(e) => setSelectedMenuId(e.target.value || null)}
+                className="flex-1 bg-transparent outline-none text-sm text-white"
+              >
+                <option value="" className="bg-[#f5ede0]">— {t('prep.fromMenu.chooseMenu')} —</option>
+                {menus.map((m) => (
+                  <option key={m.id} value={m.id} className="bg-[#f5ede0]">{m.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Date */}
         <div>

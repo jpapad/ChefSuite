@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
-  Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag,
+  Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -14,10 +14,15 @@ import { Input } from '../components/ui/Input'
 import { MenuCostAnalysis } from '../components/menus/MenuCostAnalysis'
 import { ShoppingListDrawer } from '../components/menus/ShoppingListDrawer'
 import { BuffetLabelsDrawer } from '../components/menus/BuffetLabelsDrawer'
+import { ProductionSheetDrawer } from '../components/menus/ProductionSheetDrawer'
+import { PrepFromMenuDrawer, type GeneratedPrepItem } from '../components/prep/PrepFromMenuDrawer'
 import { useMenuDetail } from '../hooks/useMenus'
 import { useMenuScans } from '../hooks/useMenuScans'
 import { useRecipes } from '../hooks/useRecipes'
+import { useWorkstations } from '../hooks/useWorkstations'
+import { useTeam } from '../hooks/useTeam'
 import { useAuth } from '../contexts/AuthContext'
+import { useInventory } from '../contexts/InventoryContext'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/cn'
 import type { MenuSectionWithItems, MenuItem, MenuItemTag } from '../types/database.types'
@@ -54,16 +59,6 @@ const EMPTY_ITEM: ItemFormValues = {
   price: '', available: true, recipe_id: '', tags: [],
 }
 
-// ── Prep selection ────────────────────────────────────────────────────────────
-interface PrepEntry {
-  sectionName: string
-  itemName: string
-  recipeId: string
-  recipeTitle: string
-  selected: boolean
-  portions: string
-}
-
 export default function MenuDetail() {
   const { id } = useParams<{ id: string }>()
   const { t } = useTranslation()
@@ -73,6 +68,9 @@ export default function MenuDetail() {
     addItem, updateItem, removeItem, moveItemUp, moveItemDown,
   } = useMenuDetail(id ?? null)
   const { recipes } = useRecipes()
+  const { inventory } = useInventory()
+  const { workstations } = useWorkstations()
+  const { members } = useTeam()
 
   // ── Section drawer ─────────────────────────────────────────────────────────
   const [sectionDrawerOpen, setSectionDrawerOpen] = useState(false)
@@ -99,13 +97,11 @@ export default function MenuDetail() {
   // ── Buffet labels ──────────────────────────────────────────────────────────
   const [labelsDrawerOpen, setLabelsDrawerOpen] = useState(false)
 
-  // ── Prep generation drawer ─────────────────────────────────────────────────
+  // ── Prep from menu drawer ──────────────────────────────────────────────────
   const [prepDrawerOpen, setPrepDrawerOpen] = useState(false)
-  const [prepDate, setPrepDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [prepEntries, setPrepEntries] = useState<PrepEntry[]>([])
-  const [creatingPrep, setCreatingPrep] = useState(false)
-  const [prepDone, setPrepDone] = useState(false)
-  const [prepCreatedCount, setPrepCreatedCount] = useState(0)
+
+  // ── Production sheet drawer ────────────────────────────────────────────────
+  const [productionSheetOpen, setProductionSheetOpen] = useState(false)
 
   // ── QR drawer ─────────────────────────────────────────────────────────────
   const [qrDrawerOpen, setQrDrawerOpen] = useState(false)
@@ -203,59 +199,23 @@ export default function MenuDetail() {
   }
 
   // ── Prep generation ────────────────────────────────────────────────────────
-  function openPrepDrawer() {
-    if (!menu) return
-    const entries: PrepEntry[] = []
-    for (const section of menu.sections) {
-      for (const item of section.items) {
-        const recipe = linkedRecipe(item.recipe_id)
-        if (!recipe) continue
-        entries.push({
-          sectionName: section.name,
-          itemName: item.name,
-          recipeId: recipe.id,
-          recipeTitle: recipe.title,
-          selected: true,
-          portions: '1',
-        })
-      }
-    }
-    setPrepEntries(entries)
-    setPrepDone(false)
-    setPrepCreatedCount(0)
-    setPrepDrawerOpen(true)
-  }
-
-  function togglePrepEntry(idx: number) {
-    setPrepEntries((prev) => prev.map((e, i) => i === idx ? { ...e, selected: !e.selected } : e))
-  }
-  function setPrepPortions(idx: number, val: string) {
-    setPrepEntries((prev) => prev.map((e, i) => i === idx ? { ...e, portions: val } : e))
-  }
-
-  async function onCreatePrepTasks() {
+  async function handleGeneratePrep(items: GeneratedPrepItem[]) {
     if (!profile?.team_id || !profile?.id) return
-    setCreatingPrep(true)
-    try {
-      const selected = prepEntries.filter((e) => e.selected && parseInt(e.portions) > 0)
-      let count = 0
-      for (const entry of selected) {
-        const portions = parseFloat(entry.portions) || 1
-        const { error } = await supabase.from('prep_tasks').insert({
-          team_id: profile.team_id,
-          created_by: profile.id,
-          title: `Prep: ${entry.recipeTitle}`,
-          description: `For menu item: ${entry.itemName} (${entry.sectionName})`,
-          recipe_id: entry.recipeId,
-          quantity: portions,
-          prep_for: prepDate,
-          assignee_id: null,
-        })
-        if (!error) count++
-      }
-      setPrepCreatedCount(count)
-      setPrepDone(true)
-    } finally { setCreatingPrep(false) }
+    for (const item of items) {
+      await supabase.from('prep_tasks').insert({
+        team_id: profile.team_id,
+        created_by: profile.id,
+        title: item.title,
+        description: item.description ?? null,
+        recipe_id: item.recipe_id,
+        menu_id: item.menu_id ?? id ?? null,
+        quantity: item.quantity,
+        workstation_id: item.workstation_id,
+        assignee_id: item.assignee_id,
+        status: 'pending' as const,
+        prep_for: item.prep_for,
+      })
+    }
   }
 
   // ── QR code ────────────────────────────────────────────────────────────────
@@ -316,9 +276,14 @@ export default function MenuDetail() {
               {t('menus.detail.printStaff')}
             </Button>
             {allPrepItems.length > 0 && (
-              <Button variant="secondary" leftIcon={<ClipboardList className="h-4 w-4" />} onClick={openPrepDrawer}>
-                {t('menus.detail.generatePrep')}
-              </Button>
+              <>
+                <Button variant="secondary" leftIcon={<ClipboardList className="h-4 w-4" />} onClick={() => setPrepDrawerOpen(true)}>
+                  {t('menus.detail.generatePrep')}
+                </Button>
+                <Button variant="secondary" leftIcon={<FileText className="h-4 w-4" />} onClick={() => setProductionSheetOpen(true)}>
+                  {t('menus.productionSheet.button')}
+                </Button>
+              </>
             )}
             <Button variant="secondary" leftIcon={<QrCode className="h-4 w-4" />} onClick={openQrDrawer}>
               {t('menus.detail.qrCode')}{scanStats.total > 0 && ` · ${scanStats.total}`}
@@ -585,68 +550,30 @@ export default function MenuDetail() {
         </form>
       </Drawer>
 
-      {/* ── Prep generation drawer ── */}
-      <Drawer
+      {/* ── Prep from menu drawer ── */}
+      <PrepFromMenuDrawer
         open={prepDrawerOpen}
-        onClose={() => { if (!creatingPrep) setPrepDrawerOpen(false) }}
-        title={t('menus.detail.prepDrawerTitle')}
-      >
-        <div className="space-y-4">
-          <Input name="prep_date" type="date" label={t('menus.detail.prepDate')}
-            value={prepDate} onChange={(e) => setPrepDate(e.target.value)} />
+        onClose={() => setPrepDrawerOpen(false)}
+        defaultDate={new Date().toISOString().slice(0, 10)}
+        defaultWorkstationId={workstations[0]?.id ?? null}
+        recipes={recipes}
+        inventory={inventory}
+        workstations={workstations}
+        members={members}
+        lockedMenuId={id}
+        onGenerate={handleGeneratePrep}
+      />
 
-          {prepEntries.length === 0 ? (
-            <p className="text-sm text-white/50">{t('menus.detail.prepNoRecipes')}</p>
-          ) : (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white/70">{t('menus.detail.prepSelectItems')}</label>
-              {prepEntries.map((entry, idx) => (
-                <div key={idx} className={cn(
-                  'flex items-center gap-3 rounded-xl border border-glass-border px-3 py-2.5 transition',
-                  !entry.selected && 'opacity-40',
-                )}>
-                  <input type="checkbox" checked={entry.selected} onChange={() => togglePrepEntry(idx)}
-                    className="h-4 w-4 rounded accent-brand-orange cursor-pointer" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{entry.itemName}</p>
-                    <p className="text-xs text-white/50">{entry.sectionName} · {entry.recipeTitle}</p>
-                  </div>
-                  <div className="w-20 shrink-0">
-                    <input
-                      type="number" min="0.5" step="0.5"
-                      value={entry.portions}
-                      onChange={(e) => setPrepPortions(idx, e.target.value)}
-                      disabled={!entry.selected}
-                      placeholder={t('menus.detail.prepPortions')}
-                      className="w-full rounded-lg px-2 py-1 text-sm bg-white/5 border border-glass-border text-white text-center focus:outline-none focus:ring-1 focus:ring-brand-orange/50 disabled:opacity-30"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {prepDone && (
-            <p className="text-sm text-emerald-400 font-medium">
-              ✓ {t('menus.detail.prepSuccess', { count: prepCreatedCount })}
-            </p>
-          )}
-
-          <div className="flex gap-2 pt-2">
-            <Button
-              type="button"
-              disabled={creatingPrep || prepEntries.filter((e) => e.selected).length === 0}
-              onClick={onCreatePrepTasks}
-              className="flex-1"
-            >
-              {creatingPrep ? t('menus.detail.prepCreating') : t('menus.detail.prepCreateTasks')}
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setPrepDrawerOpen(false)} disabled={creatingPrep}>
-              {t('common.cancel')}
-            </Button>
-          </div>
-        </div>
-      </Drawer>
+      {/* ── Production sheet drawer ── */}
+      {menu && (
+        <ProductionSheetDrawer
+          open={productionSheetOpen}
+          onClose={() => setProductionSheetOpen(false)}
+          menu={menu}
+          members={members}
+          recipes={recipes}
+        />
+      )}
 
       {/* ── QR drawer ── */}
       <Drawer
