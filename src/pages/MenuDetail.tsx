@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
-  Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText,
+  Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -15,6 +15,7 @@ import { MenuCostAnalysis } from '../components/menus/MenuCostAnalysis'
 import { ShoppingListDrawer } from '../components/menus/ShoppingListDrawer'
 import { BuffetLabelsDrawer } from '../components/menus/BuffetLabelsDrawer'
 import { ProductionSheetDrawer } from '../components/menus/ProductionSheetDrawer'
+import { ServiceBoardOverlay } from '../components/menus/ServiceBoardOverlay'
 import { PrepFromMenuDrawer, type GeneratedPrepItem } from '../components/prep/PrepFromMenuDrawer'
 import { useMenuDetail } from '../hooks/useMenus'
 import { useMenuScans } from '../hooks/useMenuScans'
@@ -102,6 +103,9 @@ export default function MenuDetail() {
 
   // ── Production sheet drawer ────────────────────────────────────────────────
   const [productionSheetOpen, setProductionSheetOpen] = useState(false)
+
+  // ── Service board (86) ─────────────────────────────────────────────────────
+  const [serviceBoardOpen, setServiceBoardOpen] = useState(false)
 
   // ── QR drawer ─────────────────────────────────────────────────────────────
   const [qrDrawerOpen, setQrDrawerOpen] = useState(false)
@@ -271,6 +275,9 @@ export default function MenuDetail() {
             </Button>
             <Button variant="secondary" leftIcon={<Tag className="h-4 w-4" />} onClick={() => setLabelsDrawerOpen(true)}>
               {t('menus.labels.button')}
+            </Button>
+            <Button variant="secondary" leftIcon={<Radio className="h-4 w-4" />} onClick={() => setServiceBoardOpen(true)}>
+              {t('menus.serviceBoard.button')}
             </Button>
             <Button variant="secondary" leftIcon={<Printer className="h-4 w-4" />} onClick={() => setPrintOverlayOpen(true)}>
               {t('menus.detail.printStaff')}
@@ -646,6 +653,20 @@ export default function MenuDetail() {
           onClose={() => setLabelsDrawerOpen(false)}
           menu={menu}
           recipes={recipes}
+        />
+      )}
+
+      {/* ── Service board (86) ── */}
+      {serviceBoardOpen && menu && (
+        <ServiceBoardOverlay
+          sections={menu.sections}
+          onClose={() => setServiceBoardOpen(false)}
+          onItemToggled={(itemId, available) => {
+            void updateItem(itemId,
+              menu.sections.find((s) => s.items.some((i) => i.id === itemId))?.id ?? '',
+              { available }
+            )
+          }}
         />
       )}
 

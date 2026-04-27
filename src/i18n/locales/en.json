@@ -955,6 +955,28 @@
       "noRecipe": "No recipe",
       "print": "Print"
     },
+    "serviceBoard": {
+      "button": "Service",
+      "title": "Service Board",
+      "hint": "Tap an item to toggle availability. Changes save instantly.",
+      "allAvailable": "All available",
+      "eightySixCount": "{{count}} 86'd",
+      "available": "available"
+    },
+    "aiGenerator": {
+      "button": "AI Generate",
+      "title": "AI Menu Generator",
+      "prompt": "Describe the menu",
+      "promptPlaceholder": "e.g. Mediterranean summer menu for a beach restaurant, focus on seafood and fresh vegetables, mid-range pricing",
+      "menuType": "Menu type",
+      "covers": "Covers",
+      "generate": "Generate menu",
+      "generating": "Generating…",
+      "regenerate": "Regenerate",
+      "createMenu": "Create menu",
+      "sections": "sections",
+      "dishes": "dishes"
+    },
     "public": {
       "notFound": "Menu not found",
       "notFoundHint": "This menu may have been deactivated or the link is invalid.",

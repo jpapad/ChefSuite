@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate } from 'lucide-react'
+import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
+import { AIMenuGeneratorDrawer } from '../components/menus/AIMenuGeneratorDrawer'
 import { useMenus } from '../hooks/useMenus'
 import { cn } from '../lib/cn'
 import type { Menu, MenuType, PrintTemplate } from '../types/database.types'
@@ -58,6 +59,7 @@ export default function Menus() {
   const { t } = useTranslation()
   const { menus, loading, create, update, remove, duplicate } = useMenus()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [aiGeneratorOpen, setAiGeneratorOpen] = useState(false)
   const [editing, setEditing] = useState<Menu | null>(null)
   const [form, setForm] = useState<MenuFormValues>(EMPTY)
   const [saving, setSaving] = useState(false)
@@ -146,9 +148,14 @@ export default function Menus() {
           <h1 className="text-3xl font-semibold">{t('menus.title')}</h1>
           <p className="text-white/60 mt-1">{t('menus.subtitle')}</p>
         </div>
-        <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-          {t('menus.newMenu')}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" leftIcon={<Sparkles className="h-4 w-4" />} onClick={() => setAiGeneratorOpen(true)}>
+            {t('menus.aiGenerator.button')}
+          </Button>
+          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
+            {t('menus.newMenu')}
+          </Button>
+        </div>
       </header>
 
       {loading ? (
@@ -462,6 +469,12 @@ export default function Menus() {
           </div>
         </form>
       </Drawer>
+
+      <AIMenuGeneratorDrawer
+        open={aiGeneratorOpen}
+        onClose={() => setAiGeneratorOpen(false)}
+        onCreated={() => {}}
+      />
     </div>
   )
 }
