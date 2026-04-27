@@ -355,6 +355,8 @@
       "smartBreakdown": "AI Smart Breakdown",
       "smartBreakdownHint": "Gemini breaks each recipe into per-station tasks with exact quantities",
       "smartBreakdownNote": "Tasks will be split by station and assigned to your {{count}} workstation(s).",
+      "steps": "steps",
+      "noSteps": "no steps",
       "smartGenerate": "Smart Breakdown ({{count}} recipe(s))",
       "analyzing": "Analyzing with AI…"
     }

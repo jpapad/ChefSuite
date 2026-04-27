@@ -42,6 +42,14 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function parseSteps(instructions: string | null | undefined): string[] {
+  if (!instructions?.trim()) return []
+  return instructions
+    .split('\n')
+    .map((l) => l.replace(/^\s*\d+[\.\)]\s*/, '').trim())
+    .filter((l) => l.length > 2)
+}
+
 export function PrepFromMenuDrawer({
   open,
   onClose,
@@ -220,16 +228,27 @@ export function PrepFromMenuDrawer({
         if (items.length > 0) { await onGenerate(items); onClose() }
       } else {
         // Standard mode — one task per menu item
-        const items: GeneratedPrepItem[] = selectedItems.map((i) => ({
-          title: i.name,
-          description: null,
-          recipe_id: i.recipe_id,
-          menu_id: selectedMenuId,
-          quantity: covers,
-          workstation_id: assignments[i.id]?.workstation_id ?? null,
-          assignee_id: assignments[i.id]?.assignee_id ?? null,
-          prep_for: date || todayIso(),
-        }))
+        const items: GeneratedPrepItem[] = []
+        const prepDate = date || todayIso()
+        for (const menuItem of selectedItems) {
+          const recipe = menuItem.recipe_id ? recipesById.get(menuItem.recipe_id) : undefined
+          const steps = parseSteps(recipe?.instructions)
+          const base = {
+            recipe_id: menuItem.recipe_id,
+            menu_id: selectedMenuId,
+            quantity: covers,
+            workstation_id: assignments[menuItem.id]?.workstation_id ?? null,
+            assignee_id: assignments[menuItem.id]?.assignee_id ?? null,
+            prep_for: prepDate,
+          }
+          if (steps.length > 0) {
+            for (const step of steps) {
+              items.push({ ...base, title: step, description: null })
+            }
+          } else {
+            items.push({ ...base, title: menuItem.name, description: null })
+          }
+        }
         await onGenerate(items)
         onClose()
       }
@@ -367,7 +386,17 @@ export function PrepFromMenuDrawer({
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-white truncate">{item.name}</p>
-                          {recipe && <p className="text-xs text-white/40 truncate">{recipe.title}</p>}
+                          {recipe && (
+                            <p className="text-xs text-white/40 truncate flex items-center gap-1.5">
+                              {recipe.title}
+                              {(() => {
+                                const steps = parseSteps(recipe.instructions)
+                                return steps.length > 0
+                                  ? <span className="text-brand-orange/70 font-medium">· {steps.length} {t('prep.fromMenu.steps')}</span>
+                                  : <span className="text-white/25">· {t('prep.fromMenu.noSteps')}</span>
+                              })()}
+                            </p>
+                          )}
                         </div>
                       </button>
 

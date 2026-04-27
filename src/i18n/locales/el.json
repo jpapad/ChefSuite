@@ -355,6 +355,8 @@
       "smartBreakdown": "AI Έξυπνη Κατανομή",
       "smartBreakdownHint": "Η Gemini αναλύει κάθε συνταγή σε εργασίες ανά σταθμό με ακριβείς ποσότητες",
       "smartBreakdownNote": "Οι εργασίες θα μοιραστούν ανά σταθμό στους {{count}} σταθμούς σου.",
+      "steps": "βήματα",
+      "noSteps": "χωρίς βήματα",
       "smartGenerate": "Έξυπνη Κατανομή ({{count}} συνταγή/ές)",
       "analyzing": "Ανάλυση με AI…"
     }
