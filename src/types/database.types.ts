@@ -1,7 +1,7 @@
 export type UUID = string
 export type ISODateString = string
 
-export type UserRole = 'owner' | 'head_chef' | 'sous_chef' | 'cook' | 'staff'
+export type UserRole = 'owner' | 'executive_chef' | 'head_chef' | 'sous_chef' | 'cook' | 'staff'
 
 export interface Team {
   id: UUID
@@ -12,11 +12,22 @@ export interface Team {
 export interface Profile {
   id: UUID
   team_id: UUID | null
+  active_team_id: UUID | null
   role: UserRole
   full_name: string | null
   permissions: string[] | null
+  preferred_lang: string | null
   created_at: ISODateString
   updated_at: ISODateString
+}
+
+export interface TeamMembership {
+  id: UUID
+  user_id: UUID
+  team_id: UUID
+  role: UserRole
+  invited_by: UUID | null
+  created_at: ISODateString
 }
 
 export type RecipeCategory =
@@ -40,21 +51,65 @@ export interface Recipe {
   cook_time: number | null
   servings: number | null
   difficulty: RecipeDifficulty | null
+  parent_recipe_id: UUID | null
+  variation_label: string | null
+  calories: number | null
+  protein_g: number | null
+  carbs_g: number | null
+  fat_g: number | null
+  fiber_g: number | null
+  sodium_mg: number | null
   created_at: ISODateString
   updated_at: ISODateString
 }
 
 export type RecipeInsert = Pick<
   Recipe,
-  'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty'
+  'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fiber_g' | 'sodium_mg'
 > & { team_id: UUID }
 
 export type RecipeUpdate = Partial<
   Pick<
     Recipe,
-    'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty'
+    'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fiber_g' | 'sodium_mg'
   >
 >
+
+// ── Recipe Comments ────────────────────────────────────────────────────────────
+export interface RecipeComment {
+  id: UUID
+  team_id: UUID
+  recipe_id: UUID
+  author_id: UUID | null
+  content: string
+  created_at: ISODateString
+}
+
+export interface RecipeCommentWithAuthor extends RecipeComment {
+  author_name: string | null
+}
+
+export type RecipeCommentInsert = Pick<RecipeComment, 'recipe_id' | 'content'> & { team_id: UUID; author_id: UUID | null }
+
+// ── HACCP Reminders ────────────────────────────────────────────────────────────
+export interface HACCPReminder {
+  id: UUID
+  team_id: UUID
+  location: string
+  label: string
+  frequency_h: number
+  next_due: ISODateString
+  assignee_id: UUID | null
+  active: boolean
+  created_at: ISODateString
+}
+
+export interface HACCPReminderWithAssignee extends HACCPReminder {
+  assignee_name: string | null
+}
+
+export type HACCPReminderInsert = Pick<HACCPReminder, 'location' | 'label' | 'frequency_h' | 'next_due' | 'assignee_id' | 'active'> & { team_id: UUID }
+export type HACCPReminderUpdate = Partial<Pick<HACCPReminder, 'location' | 'label' | 'frequency_h' | 'next_due' | 'assignee_id' | 'active'>>
 
 export interface RecipeVersion {
   id: UUID
@@ -108,13 +163,14 @@ export interface InventoryItem {
   cost_per_unit: number | null
   location_id: UUID | null
   supplier_id: UUID | null
+  barcode: string | null
   created_at: ISODateString
   updated_at: ISODateString
 }
 
 export type InventoryInsert = Pick<
   InventoryItem,
-  'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id' | 'supplier_id'
+  'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id' | 'supplier_id' | 'barcode'
 > & { team_id: UUID }
 
 export type InventoryUpdate = Partial<
@@ -281,6 +337,10 @@ export interface HACCPCheck {
 }
 
 export type HACCPCheckInsert = Omit<HACCPCheck, 'id' | 'created_at'>
+
+export interface HACCPCheckWithChecker extends HACCPCheck {
+  checked_by_name: string | null
+}
 
 export interface TeamMessage {
   id: UUID

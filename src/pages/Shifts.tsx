@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
-  Plus, ChevronLeft, ChevronRight, Pencil, Trash2, CalendarDays, Clock, X, Check, Printer,
+  Plus, ChevronLeft, ChevronRight, Pencil, Trash2, CalendarDays, Clock, X, Check, Printer, FileDown,
 } from 'lucide-react'
+import { exportE4 } from '../lib/erganiExport'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
@@ -159,7 +160,23 @@ export default function Shifts() {
           <h1 className="text-3xl font-semibold">{t('shifts.title')}</h1>
           <p className="text-white/60 mt-1">{t('shifts.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            leftIcon={<FileDown className="h-4 w-4" />}
+            onClick={() => exportE4(
+              shifts.map((s) => ({
+                memberName: membersById.get(s.member_id)?.full_name ?? '—',
+                shiftDate: s.shift_date,
+                startTime: s.start_time,
+                endTime: s.end_time,
+                role: s.role,
+              })),
+              weekLabel(weekStart),
+            )}
+          >
+            {t('shifts.erganiExport')}
+          </Button>
           <Button variant="secondary" leftIcon={<Printer className="h-4 w-4" />} onClick={() => setPrintOpen(true)}>
             {t('shifts.print.button')}
           </Button>

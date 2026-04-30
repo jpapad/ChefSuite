@@ -10,6 +10,9 @@ import {
   ShoppingBag,
   Sparkles,
   Loader2,
+  CalendarClock,
+  AlertTriangle,
+  Mail,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -19,6 +22,7 @@ import { useFoodCost } from '../hooks/useFoodCost'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
+import { EmailReportsDrawer } from '../components/reports/EmailReportsDrawer'
 
 interface DayStats {
   date: string
@@ -190,6 +194,46 @@ export default function Analytics() {
   const revenueToday = salesDays.at(-1)?.revenue ?? 0
   const maxRevenue = Math.max(...salesDays.map((d) => d.revenue), 1)
 
+  // Inventory Forecast
+  const [forecastData, setForecastData] = useState<Array<{
+    id: string; name: string; unit: string; current: number; dailyUsage: number; daysLeft: number | null
+  }>>([])
+  const [forecastLoading, setForecastLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile?.team_id || items.length === 0) return
+    async function loadForecast() {
+      setForecastLoading(true)
+      const thirtyAgo = new Date(Date.now() - 30 * 86400000).toISOString()
+      const { data } = await supabase
+        .from('inventory_movements')
+        .select('item_id, delta')
+        .eq('team_id', profile!.team_id)
+        .lt('delta', 0)
+        .gte('created_at', thirtyAgo)
+
+      const usageMap = new Map<string, number>()
+      for (const row of (data ?? []) as { item_id: string; delta: number }[]) {
+        usageMap.set(row.item_id, (usageMap.get(row.item_id) ?? 0) + Math.abs(row.delta))
+      }
+
+      const forecast = items
+        .filter((i) => usageMap.has(i.id))
+        .map((i) => {
+          const totalUsed = usageMap.get(i.id) ?? 0
+          const dailyUsage = totalUsed / 30
+          const daysLeft = dailyUsage > 0 ? Math.floor(i.quantity / dailyUsage) : null
+          return { id: i.id, name: i.name, unit: i.unit, current: i.quantity, dailyUsage, daysLeft }
+        })
+        .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999))
+        .slice(0, 10)
+
+      setForecastData(forecast)
+      setForecastLoading(false)
+    }
+    void loadForecast()
+  }, [profile?.team_id, items])
+
   // Profitability AI
   const [aiSuggestions, setAiSuggestions] = useState<Array<{title:string;current_price:number;suggested_price:number;suggested_food_cost_pct:number;reasoning:string}>>([])
   const [aiLoading, setAiLoading] = useState(false)
@@ -221,6 +265,8 @@ export default function Analytics() {
     }
   }
 
+  const [reportsOpen, setReportsOpen] = useState(false)
+
   const maxTotal = Math.max(...prepStats.map((d) => d.total), 1)
   const totalTasks7d = prepStats.reduce((s, d) => s + d.total, 0)
   const doneTasks7d = prepStats.reduce((s, d) => s + d.done, 0)
@@ -235,9 +281,19 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold">{t('analytics.title')}</h1>
-        <p className="text-white/60 mt-1">{t('analytics.subtitle')}</p>
+      <header className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-semibold">{t('analytics.title')}</h1>
+          <p className="text-white/60 mt-1">{t('analytics.subtitle')}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setReportsOpen(true)}
+          className="flex items-center gap-2 rounded-xl border border-glass-border px-3 py-2 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition"
+        >
+          <Mail className="h-4 w-4" />
+          {t('reports.emailReport')}
+        </button>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -638,6 +694,39 @@ export default function Analytics() {
         </div>
       </div>
 
+      {/* Inventory Forecast */}
+      <GlassCard>
+        <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
+          <CalendarClock className="h-5 w-5 text-purple-400" />
+          {t('analytics.inventoryForecast')}
+        </h2>
+        <p className="text-xs text-white/40 mb-4">{t('analytics.inventoryForecastHint')}</p>
+        {forecastLoading ? (
+          <p className="text-white/50 text-sm">{t('common.loading')}</p>
+        ) : forecastData.length === 0 ? (
+          <p className="text-white/50 text-sm">{t('analytics.forecastNoData')}</p>
+        ) : (
+          <div className="space-y-2">
+            {forecastData.map((row) => {
+              const urgent = row.daysLeft !== null && row.daysLeft <= 3
+              const warning = row.daysLeft !== null && row.daysLeft <= 7 && !urgent
+              return (
+                <div key={row.id} className={cn('flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm', urgent ? 'border-red-500/30 bg-red-500/5' : warning ? 'border-amber-500/30 bg-amber-500/5' : 'border-glass-border')}>
+                  {urgent && <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />}
+                  {warning && <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />}
+                  {!urgent && !warning && <Package className="h-4 w-4 text-white/20 shrink-0" />}
+                  <span className="flex-1 truncate text-white/80">{row.name}</span>
+                  <span className="text-white/40 text-xs shrink-0">{row.current.toFixed(1)} {row.unit}</span>
+                  <span className={cn('shrink-0 font-medium tabular-nums', urgent ? 'text-red-400' : warning ? 'text-amber-400' : 'text-white/60')}>
+                    {row.daysLeft !== null ? t('analytics.daysLeft', { count: row.daysLeft }) : '—'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </GlassCard>
+
       {/* Profitability AI */}
       <GlassCard>
         <div className="flex items-center justify-between mb-1 flex-wrap gap-3">
@@ -688,6 +777,8 @@ export default function Analytics() {
           <p className="text-sm text-white/40">{t('analytics.aiClickToAnalyse')}</p>
         )}
       </GlassCard>
+
+      <EmailReportsDrawer open={reportsOpen} onClose={() => setReportsOpen(false)} />
     </div>
   )
 }

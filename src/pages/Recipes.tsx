@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../components/ui/Input'
@@ -13,6 +13,7 @@ import {
   type RecipeFormValues,
 } from '../components/recipes/RecipeForm'
 import { ImportRecipeDrawer } from '../components/recipes/ImportRecipeDrawer'
+import { ScanRecipeDrawer } from '../components/recipes/ScanRecipeDrawer'
 import { RecipeVersionHistory } from '../components/recipes/RecipeVersionHistory'
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../hooks/useInventory'
@@ -33,6 +34,7 @@ export default function Recipes() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
+  const [scanDrawerOpen, setScanDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Recipe | null>(null)
   const [viewing, setViewing] = useState<Recipe | null>(null)
   const [saving, setSaving] = useState(false)
@@ -162,6 +164,13 @@ export default function Recipes() {
           >
             {t('recipes.importWithAI')}
           </Button>
+          <Button
+            variant="secondary"
+            leftIcon={<ScanLine className="h-5 w-5" />}
+            onClick={() => setScanDrawerOpen(true)}
+          >
+            {t('recipes.scan.button')}
+          </Button>
           <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
             {t('recipes.newRecipe')}
           </Button>
@@ -284,6 +293,12 @@ export default function Recipes() {
       <ImportRecipeDrawer
         open={importDrawerOpen}
         onClose={() => setImportDrawerOpen(false)}
+        onImported={onImported}
+      />
+
+      <ScanRecipeDrawer
+        open={scanDrawerOpen}
+        onClose={() => setScanDrawerOpen(false)}
         onImported={onImported}
       />
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Printer, Zap, Clock } from 'lucide-react'
+import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Printer, Zap, Clock, ScanLine, PackagePlus } from 'lucide-react'
+import { ReceivingScanner } from '../components/inventory/ReceivingScanner'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -46,6 +47,7 @@ export default function Inventory() {
   const [orderCopied, setOrderCopied] = useState(false)
   const [creatingOrder, setCreatingOrder] = useState<string | null>(null)
   const [forecast, setForecast] = useState<ForecastItem[]>([])
+  const [scanMode, setScanMode] = useState<'check' | 'receive' | null>(null)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -158,6 +160,19 @@ export default function Inventory() {
     }
   }
 
+  async function receiveItem(item: InventoryItem, qty: number) {
+    await update(item.id, { quantity: item.quantity + qty }, 'receiving')
+  }
+
+  function onBarcodeNotFound(barcode: string) {
+    setScanMode(null)
+    setEditing(null)
+    setDrawerOpen(true)
+    // Pre-fill barcode in form via a small trick — store it in state
+    // InventoryForm will pick it up via its own scanner flow
+    // Just open the drawer; user will re-scan inside the form to fill
+  }
+
   async function onDelete(item: InventoryItem) {
     const ok = window.confirm(t('inventory.deleteConfirm', { name: item.name }))
     if (!ok) return
@@ -233,7 +248,7 @@ export default function Inventory() {
           <h1 className="text-3xl font-semibold">{t('inventory.title')}</h1>
           <p className="text-white/60 mt-1">{t('inventory.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {lowStockItems.length > 0 && (
             <Button
               variant={showReorder ? 'primary' : 'secondary'}
@@ -243,6 +258,22 @@ export default function Inventory() {
               {t('inventory.reorder.button', { count: lowStockItems.length })}
             </Button>
           )}
+          <Button
+            variant="secondary"
+            leftIcon={<ScanLine className="h-4 w-4" />}
+            onClick={() => setScanMode('check')}
+            title={t('inventory.scanCheck')}
+          >
+            {t('inventory.scanCheck')}
+          </Button>
+          <Button
+            variant="secondary"
+            leftIcon={<PackagePlus className="h-4 w-4" />}
+            onClick={() => setScanMode('receive')}
+            title={t('inventory.scanReceive')}
+          >
+            {t('inventory.scanReceive')}
+          </Button>
           <Button
             variant="secondary"
             leftIcon={<Settings2 className="h-5 w-5" />}
@@ -444,6 +475,36 @@ export default function Inventory() {
           onPrint={printLabel}
         />
       )}
+
+      {/* Scan — Check stock */}
+      <Drawer
+        open={scanMode === 'check'}
+        onClose={() => setScanMode(null)}
+        title={t('inventory.scanCheck')}
+      >
+        <ReceivingScanner
+          mode="check"
+          items={items}
+          onReceive={receiveItem}
+          onNotFound={onBarcodeNotFound}
+          onClose={() => setScanMode(null)}
+        />
+      </Drawer>
+
+      {/* Scan — Receive delivery */}
+      <Drawer
+        open={scanMode === 'receive'}
+        onClose={() => setScanMode(null)}
+        title={t('inventory.scanReceive')}
+      >
+        <ReceivingScanner
+          mode="receive"
+          items={items}
+          onReceive={receiveItem}
+          onNotFound={onBarcodeNotFound}
+          onClose={() => setScanMode(null)}
+        />
+      </Drawer>
 
       <Drawer
         open={drawerOpen}

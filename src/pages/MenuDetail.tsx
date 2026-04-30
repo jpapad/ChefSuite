@@ -26,6 +26,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useInventory } from '../contexts/InventoryContext'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/cn'
+import { AllergenBadge, AllergenDot } from '../components/ui/AllergenIcon'
 import type { MenuSectionWithItems, MenuItem, MenuItemTag } from '../types/database.types'
 
 // ── Tag config ──────────────────────────────────────────────────────────────
@@ -370,8 +371,9 @@ export default function MenuDetail() {
                           </span>
                         ))}
                         {recipe && recipe.allergens.length > 0 && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-400/80 border border-amber-400/20">
-                            {recipe.allergens.slice(0, 3).join(', ')}{recipe.allergens.length > 3 ? '…' : ''}
+                          <span className="flex items-center gap-0.5">
+                            {recipe.allergens.slice(0, 3).map((a) => <AllergenDot key={a} allergen={a} />)}
+                            {recipe.allergens.length > 3 && <span className="text-[10px] text-white/40 ml-0.5">+{recipe.allergens.length - 3}</span>}
                           </span>
                         )}
                       </div>
@@ -530,7 +532,7 @@ export default function MenuDetail() {
                 <label className="text-sm font-medium text-white/70">{t('menus.detail.allergens')}</label>
                 <div className="flex flex-wrap gap-1.5">
                   {r.allergens.map((a) => (
-                    <span key={a} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/15 text-amber-400">{a}</span>
+                    <AllergenBadge key={a} allergen={a} size="sm" />
                   ))}
                 </div>
               </div>
@@ -735,7 +737,10 @@ export default function MenuDetail() {
                             <span>{t('menus.detail.recipe')}: <strong className="text-gray-700">{recipe.title}</strong></span>
                           )}
                           {recipe && recipe.allergens.length > 0 && (
-                            <span>{t('menus.detail.allergens')}: <strong className="text-gray-700">{recipe.allergens.join(', ')}</strong></span>
+                            <span className="flex items-center gap-1 flex-wrap">
+                              <span className="text-gray-500">{t('menus.detail.allergens')}:</span>
+                              {recipe.allergens.map((a) => <AllergenBadge key={a} allergen={a} size="sm" className="!bg-amber-100 !text-amber-800" />)}
+                            </span>
                           )}
                           {recipe?.cost_per_portion != null && (
                             <span>{t('menus.detail.costPerPortion')}: <strong className="text-gray-700">€{recipe.cost_per_portion.toFixed(2)}</strong></span>

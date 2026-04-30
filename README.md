@@ -10,6 +10,9 @@ A full-featured restaurant management platform built for modern kitchens. ChefSu
 - **Recipe library** — create and manage recipes with ingredients, allergens, tags, cost analysis, and photo uploads
 - **Recipe versioning** — full history of every change with diff view
 - **AI recipe import** — paste text or describe a dish; Gemini AI structures it automatically
+- **Recipe variations** — link recipes as variations of a base recipe (e.g. vegetarian/gluten-free versions)
+- **Nutrition info** — per-recipe macro breakdown (calories, protein, carbs, fat, fibre, sodium); AI-estimated from ingredients via Gemini
+- **Recipe comments** — team members can leave notes on any recipe
 - **Menu builder** — multi-section menus with items linked to recipes, drag-and-drop ordering
 - **Buffet label printing** — generate print-ready labels (small/medium/large/custom mm) with logo, allergens, dietary tags, price, and bilingual (EN/EL) support
 - **Public menu page** — shareable QR-code menu link, no login required
@@ -22,11 +25,13 @@ A full-featured restaurant management platform built for modern kitchens. ChefSu
 - **Kitchen Pulse** — live status board for active workstations
 - **Waste log** — record and report food waste by item and reason
 - **HACCP log** — temperature checks, corrective actions, compliance records
+- **HACCP reminders** — scheduled alerts (every 1–24 h) with overdue badge and one-tap mark-checked
 - **Chef's Journal** — personal notes and kitchen diary
 
 ### Inventory & Suppliers
 - **Inventory management** — multi-location stock with unit tracking
 - **Inventory movements** — in/out history with reason codes
+- **Inventory forecast** — days-until-depletion per item based on last-30-day usage rate, colour-coded (red/amber)
 - **QR-code inventory** — scan items with mobile for quick updates
 - **Suppliers** — supplier directory with contact info and logo
 - **Purchase orders** — create and track POs per supplier
@@ -42,6 +47,8 @@ A full-featured restaurant management platform built for modern kitchens. ChefSu
 
 ### Business Intelligence
 - **Analytics dashboard** — sales, covers, and operational KPIs
+- **Email reports** — one-click or scheduled weekly HTML report (food cost, waste, prep rate, low stock, HACCP) delivered via Resend
+- **Chef Copilot** — conversational AI assistant with full kitchen context (recipes, inventory, waste); powered by Gemini
 - **Reservations** — table booking management with public booking page
 - **Online orders** — incoming order tracking
 - **Notifications** — in-app alerts for expiry, low stock, and task deadlines
@@ -55,7 +62,8 @@ A full-featured restaurant management platform built for modern kitchens. ChefSu
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS |
 | Backend | Supabase (Postgres, Auth, Realtime, Storage) |
 | Edge Functions | Deno (Supabase Functions) |
-| AI | Google Gemini API |
+| AI | Google Gemini API (`gemini-2.0-flash`) |
+| Email | Resend API |
 | i18n | i18next (English / Greek) |
 | PWA | vite-plugin-pwa |
 
@@ -68,6 +76,7 @@ A full-featured restaurant management platform built for modern kitchens. ChefSu
 - Node.js 18+
 - A [Supabase](https://supabase.com) project
 - A [Google Gemini](https://aistudio.google.com) API key (optional — for AI features)
+- A [Resend](https://resend.com) API key (optional — for email reports)
 
 ### 1. Clone & install
 
@@ -100,17 +109,24 @@ supabase link --project-ref your-project-ref
 supabase db push
 ```
 
-All 39 migrations are in `supabase/migrations/`.
+All 45 migrations are in `supabase/migrations/`. If you prefer to apply them manually, run the SQL files in order through the Supabase SQL editor.
 
-### 4. Deploy Edge Functions (optional)
+### 4. Deploy Edge Functions
 
 ```bash
-supabase functions deploy create-team-member
-supabase functions deploy parse-invoice
-supabase functions deploy profitability-ai
+supabase functions deploy create-team-member --project-ref your-project-ref
+supabase functions deploy parse-invoice       --project-ref your-project-ref
+supabase functions deploy profitability-ai    --project-ref your-project-ref
+supabase functions deploy weekly-report       --project-ref your-project-ref
 ```
 
-### 5. Run the dev server
+### 5. Set Edge Function secrets
+
+```bash
+supabase secrets set RESEND_API_KEY=your-resend-api-key --project-ref your-project-ref
+```
+
+### 6. Run the dev server
 
 ```bash
 npm run dev
@@ -124,34 +140,67 @@ Open [http://localhost:5173](http://localhost:5173).
 
 ```
 src/
-├── components/       # Reusable UI components
+├── components/
 │   ├── ui/           # Base components (Button, Drawer, Input…)
 │   ├── layout/       # AppShell, Sidebar, TopBar
-│   ├── recipes/      # Recipe-specific components
+│   ├── recipes/      # RecipeDetail, RecipeForm, RecipeCard…
 │   ├── menus/        # Menu builder, label printing
 │   ├── inventory/    # Inventory forms and lists
-│   └── …
+│   ├── haccp/        # HACCPRemindersDrawer
+│   └── reports/      # EmailReportsDrawer
 ├── pages/            # Route-level page components
 ├── hooks/            # Data hooks (one per domain, wraps Supabase)
 ├── contexts/         # Auth, Recipes, Inventory contexts
-├── lib/              # Supabase client, print utilities, AI helpers
-├── i18n/             # Translation files (en, el)
-└── types/            # Generated Supabase database types
+├── lib/              # Supabase client, print utilities, Gemini helpers
+├── i18n/             # Translation files (en.json, el.json)
+└── types/            # TypeScript database types
 
 supabase/
-├── migrations/       # 39 incremental SQL migrations
-└── functions/        # Deno edge functions
+├── migrations/       # 45 incremental SQL migrations
+└── functions/
+    ├── create-team-member/
+    ├── parse-invoice/
+    ├── profitability-ai/
+    └── weekly-report/   # Sends HTML email report via Resend
 ```
 
 ---
 
 ## Environment Variables
 
+### Frontend (`.env.local`)
+
 | Variable | Required | Description |
 |---|---|---|
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key |
-| `VITE_GEMINI_API_KEY` | No | Enables AI recipe import and profitability analysis |
+| `VITE_GEMINI_API_KEY` | No | Enables AI recipe import, nutrition estimation, Chef Copilot |
+
+### Edge Function secrets (set via Supabase CLI)
+
+| Secret | Required | Description |
+|---|---|---|
+| `RESEND_API_KEY` | For email reports | API key from [resend.com](https://resend.com) |
+
+---
+
+## Automated Weekly Reports (optional)
+
+To send reports automatically every Monday at 08:00, add this cron job in the Supabase dashboard under **Database → Extensions → pg_cron**:
+
+```sql
+select cron.schedule(
+  'weekly-report',
+  '0 8 * * 1',
+  $$
+  select net.http_post(
+    url := 'https://your-project-ref.supabase.co/functions/v1/weekly-report',
+    headers := '{"Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb,
+    body := '{}'::jsonb
+  )
+  $$
+);
+```
 
 ---
 

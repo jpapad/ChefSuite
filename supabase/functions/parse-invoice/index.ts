@@ -1,5 +1,3 @@
-import Anthropic from 'npm:@anthropic-ai/sdk'
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -54,40 +52,55 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY secret not set')
 
-    const client = new Anthropic({ apiKey })
-
     const isPdf = media_type === 'application/pdf'
 
-    type ContentBlock =
-      | { type: 'document'; source: { type: 'base64'; media_type: 'application/pdf'; data: string } }
-      | { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'; data: string } }
-      | { type: 'text'; text: string }
+    type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
 
-    const content: ContentBlock[] = isPdf
-      ? [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: file_base64 } },
-          { type: 'text', text: PROMPT },
-        ]
-      : [
-          { type: 'image', source: { type: 'base64', media_type: media_type as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: file_base64 } },
-          { type: 'text', text: PROMPT },
-        ]
+    const contentSource = isPdf
+      ? { type: 'base64' as const, media_type: 'application/pdf' as const, data: file_base64 }
+      : { type: 'base64' as const, media_type: (media_type || 'image/jpeg') as ImageMediaType, data: file_base64 }
 
-    const response = await client.messages.create({
+    const contentBlock = isPdf
+      ? { type: 'document', source: contentSource }
+      : { type: 'image', source: contentSource }
+
+    const body = {
       model: 'claude-opus-4-7',
       max_tokens: 2048,
-      messages: [{ role: 'user', content }],
+      messages: [
+        {
+          role: 'user',
+          content: [contentBlock, { type: 'text', text: PROMPT }],
+        },
+      ],
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
     })
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`Anthropic API error ${response.status}: ${errText}`)
+    }
 
-    // Extract JSON from response (handles cases where Claude adds extra text)
+    const result = await response.json() as {
+      content: Array<{ type: string; text?: string }>
+    }
+
+    const text = result.content?.[0]?.type === 'text' ? (result.content[0].text ?? '') : ''
+
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('No JSON found in Claude response')
 
     const data = JSON.parse(jsonMatch[0]) as InvoiceData
 
-    // Validate basic structure
     if (!Array.isArray(data.items)) data.items = []
     data.items = data.items.filter((i) => i.name && i.quantity > 0)
 
@@ -96,6 +109,7 @@ Deno.serve(async (req) => {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    console.error('[parse-invoice] error:', message)
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   showTags: true,
   showPrice: true,
   language: 'en',
+  allergenLang: 'both',
+  showAllergenLegend: false,
 })
 
 export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
@@ -158,14 +160,23 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   const languages: { value: LabelSettings['language']; label: string }[] = [
     { value: 'en',   label: t('menus.labels.langEn') },
     { value: 'el',   label: t('menus.labels.langEl') },
+    { value: 'bg',   label: t('menus.labels.langBg') },
+    { value: 'both', label: t('menus.labels.langBoth') },
+  ]
+
+  const allergenLangs: { value: LabelSettings['allergenLang']; label: string }[] = [
+    { value: 'en',   label: t('menus.labels.langEn') },
+    { value: 'el',   label: t('menus.labels.langEl') },
+    { value: 'bg',   label: t('menus.labels.langBg') },
     { value: 'both', label: t('menus.labels.langBoth') },
   ]
 
   const toggles: { key: keyof LabelSettings; label: string }[] = [
-    { key: 'showDescription', label: t('menus.labels.showDescription') },
-    { key: 'showAllergens',   label: t('menus.labels.showAllergens') },
-    { key: 'showTags',        label: t('menus.labels.showTags') },
-    { key: 'showPrice',       label: t('menus.labels.showPrice') },
+    { key: 'showDescription',   label: t('menus.labels.showDescription') },
+    { key: 'showAllergens',     label: t('menus.labels.showAllergens') },
+    { key: 'showTags',          label: t('menus.labels.showTags') },
+    { key: 'showPrice',         label: t('menus.labels.showPrice') },
+    { key: 'showAllergenLegend', label: t('menus.labels.showAllergenLegend') },
   ]
 
   const alignOptions: { value: LabelSettings['logoAlign']; Icon: typeof AlignLeft }[] = [
@@ -370,6 +381,26 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                     className={cn(
                       'rounded-xl border px-3 py-2 text-xs font-medium transition text-center',
                       settings.language === value
+                        ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                        : 'border-glass-border text-white/50 hover:text-white hover:bg-white/5',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Allergen label language ── */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">{t('menus.labels.allergenLang')}</label>
+              <p className="text-xs text-white/40">{t('menus.labels.allergenLangHint')}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {allergenLangs.map(({ value, label }) => (
+                  <button key={value} type="button" onClick={() => set('allergenLang', value)}
+                    className={cn(
+                      'rounded-xl border px-3 py-2 text-xs font-medium transition text-center',
+                      settings.allergenLang === value
                         ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
                         : 'border-glass-border text-white/50 hover:text-white hover:bg-white/5',
                     )}

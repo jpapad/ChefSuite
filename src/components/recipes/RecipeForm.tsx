@@ -6,6 +6,7 @@ import { Button } from '../ui/Button'
 import { ImageUpload } from '../ui/ImageUpload'
 import { AllergenChips } from './AllergenChips'
 import { IngredientsEditor } from './IngredientsEditor'
+import { useRecipes } from '../../hooks/useRecipes'
 import type {
   InventoryItem,
   Recipe,
@@ -35,6 +36,8 @@ export interface RecipeFormValues {
   cook_time: number | null
   servings: number | null
   difficulty: RecipeDifficulty | null
+  parent_recipe_id: string | null
+  variation_label: string | null
 }
 
 interface RecipeFormProps {
@@ -66,6 +69,8 @@ function blank(
     cook_time: initial?.cook_time ?? prefill?.cook_time ?? null,
     servings: initial?.servings ?? prefill?.servings ?? null,
     difficulty: initial?.difficulty ?? prefill?.difficulty ?? null,
+    parent_recipe_id: initial?.parent_recipe_id ?? prefill?.parent_recipe_id ?? null,
+    variation_label: initial?.variation_label ?? prefill?.variation_label ?? null,
   }
 }
 
@@ -79,6 +84,8 @@ export function RecipeForm({
   onCancel,
 }: RecipeFormProps) {
   const { t } = useTranslation()
+  const { recipes: allRecipes } = useRecipes()
+  const otherRecipes = allRecipes.filter((r) => r.id !== initial?.id)
   const [values, setValues] = useState<RecipeFormValues>(() =>
     blank(initial, initialIngredients, prefill),
   )
@@ -264,6 +271,34 @@ export function RecipeForm({
         value={values.allergens}
         onChange={(next) => setValues((v) => ({ ...v, allergens: next }))}
       />
+
+      {/* Variation of another recipe */}
+      {otherRecipes.length > 0 && (
+        <div>
+          <span className="mb-2 block text-sm font-medium text-white/80">{t('recipes.form.variationOf')}</span>
+          <div className="flex gap-2">
+            <select
+              value={values.parent_recipe_id ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, parent_recipe_id: e.target.value || null }))}
+              className="flex-1 rounded-xl border border-glass-border bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-brand-orange"
+            >
+              <option value="">{t('recipes.form.variationNone')}</option>
+              {otherRecipes.map((r) => (
+                <option key={r.id} value={r.id} className="bg-chef-dark">{r.title}</option>
+              ))}
+            </select>
+            {values.parent_recipe_id && (
+              <Input
+                name="variation_label"
+                placeholder={t('recipes.form.variationLabelPlaceholder')}
+                value={values.variation_label ?? ''}
+                onChange={(e) => setValues((v) => ({ ...v, variation_label: e.target.value || null }))}
+                className="w-36"
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="glass rounded-xl px-4 py-3 text-sm text-red-300 border border-red-500/40">

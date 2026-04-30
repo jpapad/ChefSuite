@@ -304,3 +304,228 @@ export async function importRecipeFromText(text: string): Promise<ImportedRecipe
     extractedIngredients,
   }
 }
+
+// ── Nutrition Estimator ────────────────────────────────────────────────────────
+
+export interface NutritionInfo {
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  fiber_g: number
+  sodium_mg: number
+}
+
+export async function estimateNutrition(
+  recipeTitle: string,
+  ingredients: Array<{ name: string; quantity: number; unit: string }>,
+  servings: number,
+): Promise<NutritionInfo> {
+  const ingBlock = ingredients.length > 0
+    ? ingredients.map((i) => `- ${i.quantity} ${i.unit} ${i.name}`).join('\n')
+    : '(no ingredient data)'
+
+  const prompt = `You are a professional nutritionist. Estimate the nutritional values per serving for this recipe.
+
+RECIPE: ${recipeTitle}
+SERVINGS: ${servings}
+INGREDIENTS (total for all servings):
+${ingBlock}
+
+Return ONLY a valid JSON object with these fields (all numbers, per serving):
+{
+  "calories": number,
+  "protein_g": number,
+  "carbs_g": number,
+  "fat_g": number,
+  "fiber_g": number,
+  "sodium_mg": number
+}
+
+Rules:
+- All values are per serving (divide totals by ${servings})
+- Round to 1 decimal place
+- Estimate based on typical preparation methods
+- Do NOT include markdown, explanation, or any text outside the JSON`
+
+  const raw = await callGemini(prompt)
+  let parsed: unknown
+  try { parsed = JSON.parse(raw) } catch {
+    throw new Error('Could not parse nutrition data from AI response.')
+  }
+  const o = parsed as Record<string, unknown>
+  return {
+    calories:   typeof o.calories   === 'number' ? o.calories   : 0,
+    protein_g:  typeof o.protein_g  === 'number' ? o.protein_g  : 0,
+    carbs_g:    typeof o.carbs_g    === 'number' ? o.carbs_g    : 0,
+    fat_g:      typeof o.fat_g      === 'number' ? o.fat_g      : 0,
+    fiber_g:    typeof o.fiber_g    === 'number' ? o.fiber_g    : 0,
+    sodium_mg:  typeof o.sodium_mg  === 'number' ? o.sodium_mg  : 0,
+  }
+}
+
+// ── Chef Copilot ───────────────────────────────────────────────────────────────
+
+export interface CopilotMessage {
+  role: 'user' | 'model'
+  text: string
+}
+
+export async function chatWithCopilot(
+  messages: CopilotMessage[],
+  context: string,
+): Promise<string> {
+  if (!API_KEY) throw new Error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env.local file.')
+
+  const systemTurn = {
+    role: 'user',
+    parts: [{ text: `You are Chef Copilot, an expert culinary AI assistant embedded in ChefSuite — a professional kitchen management app.
+
+Current kitchen data:
+${context}
+
+Answer questions about recipes, ingredients, costs, prep tasks, menu planning, and general culinary advice. Be concise and professional. When citing specific data from the kitchen, refer to it naturally (e.g. "your Beef Bourguignon recipe").` }],
+  }
+
+  const historyTurns = messages.slice(0, -1).flatMap((m) => ({
+    role: m.role,
+    parts: [{ text: m.text }],
+  }))
+
+  const lastMsg = messages[messages.length - 1]
+
+  const body = {
+    system_instruction: systemTurn,
+    contents: [
+      ...historyTurns,
+      { role: 'user', parts: [{ text: lastMsg.text }] },
+    ],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+  }
+
+  const res = await fetch(`${ENDPOINT}?key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const json = (await res.json()) as GeminiResponse
+  if (json.error) throw new Error(json.error.message)
+  return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+}
+
+// ── URL import helpers ─────────────────────────────────────────────────────────
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+function extractSchemaRecipe(html: string): Record<string, unknown> | null {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    try {
+      const data = JSON.parse(m[1]) as unknown
+      const items: unknown[] = Array.isArray((data as Record<string, unknown>)['@graph'])
+        ? ((data as Record<string, unknown>)['@graph'] as unknown[])
+        : [data]
+      for (const item of items) {
+        if (typeof item !== 'object' || item === null) continue
+        const type = (item as Record<string, unknown>)['@type']
+        if (type === 'Recipe' || (Array.isArray(type) && (type as string[]).includes('Recipe'))) {
+          return item as Record<string, unknown>
+        }
+      }
+    } catch { /* malformed JSON-LD — skip */ }
+  }
+  return null
+}
+
+function schemaToImportedRecipe(schema: Record<string, unknown>): ImportedRecipe {
+  const title = typeof schema.name === 'string' ? schema.name : ''
+  const description = typeof schema.description === 'string' ? schema.description : null
+
+  let instructions = ''
+  if (typeof schema.recipeInstructions === 'string') {
+    instructions = schema.recipeInstructions
+  } else if (Array.isArray(schema.recipeInstructions)) {
+    instructions = (schema.recipeInstructions as unknown[])
+      .map((step, i) => {
+        const text = typeof step === 'string' ? step
+          : (typeof step === 'object' && step !== null && typeof (step as Record<string, unknown>).text === 'string')
+            ? (step as Record<string, unknown>).text as string
+            : ''
+        return text ? `${i + 1}. ${text}` : ''
+      })
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  const rawIngredients = Array.isArray(schema.recipeIngredient)
+    ? (schema.recipeIngredient as unknown[]).filter((s): s is string => typeof s === 'string')
+    : []
+
+  const extractedIngredients: ExtractedIngredient[] = rawIngredients.map((line) => {
+    const parsed = parseIngredientsList(line)
+    return parsed.length > 0 ? parsed[0] : { name: line, quantity: 0, unit: 'pcs' }
+  })
+
+  return {
+    title,
+    description,
+    instructions: instructions || null,
+    allergens: [],
+    cost_per_portion: null,
+    ingredients: [],
+    extractedIngredients,
+  }
+}
+
+async function fetchHtmlViaProxy(url: string): Promise<string> {
+  const encoded = encodeURIComponent(url)
+  const timeout = 12000
+
+  // Primary: corsproxy.io — returns raw HTML with CORS headers
+  try {
+    const res = await fetch(`https://corsproxy.io/?${encoded}`, {
+      signal: AbortSignal.timeout(timeout),
+    })
+    if (res.ok) {
+      const html = await res.text()
+      if (html.trim()) return html
+    }
+  } catch { /* fall through to next proxy */ }
+
+  // Fallback: allorigins.win — wraps response in JSON
+  try {
+    const res = await fetch(`https://api.allorigins.win/get?url=${encoded}`, {
+      signal: AbortSignal.timeout(timeout),
+    })
+    if (res.ok) {
+      const json = (await res.json()) as { contents?: string }
+      const html = json.contents ?? ''
+      if (html.trim()) return html
+    }
+  } catch { /* fall through */ }
+
+  throw new Error('Could not fetch the URL. The site may block scrapers — try copying the recipe text instead.')
+}
+
+export async function importRecipeFromUrl(url: string): Promise<ImportedRecipe> {
+  const html = await fetchHtmlViaProxy(url)
+
+  // Prefer structured JSON-LD data (no AI tokens needed)
+  const schema = extractSchemaRecipe(html)
+  if (schema) return schemaToImportedRecipe(schema)
+
+  // Fall back: strip tags → Gemini
+  const text = htmlToText(html).slice(0, 8000)
+  if (!text.trim()) throw new Error('Could not extract readable text from the page.')
+  return importRecipeFromText(text)
+}

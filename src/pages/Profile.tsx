@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { UserCircle2, Mail, Shield, KeyRound, Save, Bell, BellOff } from 'lucide-react'
+import { UserCircle2, Mail, Shield, KeyRound, Save, Bell, BellOff, BellRing, Languages } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
@@ -8,6 +8,9 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { UserRole } from '../types/database.types'
 import { useNotifications } from '../hooks/useNotifications'
+import { usePushSubscription } from '../hooks/usePushSubscription'
+import i18n from '../i18n'
+import { cn } from '../lib/cn'
 
 function roleLabel(role: UserRole): string {
   return role
@@ -20,11 +23,23 @@ export default function Profile() {
   const { t } = useTranslation()
   const { user, profile, refreshProfile } = useAuth()
   const { supported: notifSupported, permission: notifPermission, request: requestNotif } = useNotifications()
+  const { status: pushStatus, busy: pushBusy, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushSubscription()
 
   const [fullName, setFullName] = useState(profile?.full_name ?? '')
   const [savingName, setSavingName] = useState(false)
   const [nameSuccess, setNameSuccess] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
+
+  const [savingLang, setSavingLang] = useState(false)
+
+  async function onSelectLang(lang: string) {
+    setSavingLang(true)
+    void i18n.changeLanguage(lang)
+    localStorage.setItem('chefsuite_lang', lang)
+    await supabase.from('profiles').update({ preferred_lang: lang }).eq('id', user!.id)
+    await refreshProfile()
+    setSavingLang(false)
+  }
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -208,21 +223,42 @@ export default function Profile() {
         </form>
       </GlassCard>
 
+      {/* ── Language ── */}
+      <GlassCard>
+        <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
+          <Languages className="h-5 w-5 text-brand-orange" />
+          {t('profile.language')}
+        </h2>
+        <p className="text-xs text-white/45 mb-4">{t('profile.languageHint')}</p>
+        <div className="flex gap-2 flex-wrap">
+          {(['en', 'el', 'bg'] as const).map((lang) => {
+            const labels: Record<string, string> = { en: 'English', el: 'Ελληνικά', bg: 'Български' }
+            const active = i18n.language === lang
+            return (
+              <button
+                key={lang}
+                type="button"
+                disabled={savingLang}
+                onClick={() => void onSelectLang(lang)}
+                className={cn(
+                  'px-4 py-2 rounded-xl border text-sm font-medium transition',
+                  active
+                    ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                    : 'border-white/15 text-white/60 hover:border-white/30 hover:text-white/90 hover:bg-white/5',
+                )}
+              >
+                {labels[lang]}
+              </button>
+            )
+          })}
+        </div>
+      </GlassCard>
+
       {/* ── Notifications ── */}
       <GlassCard>
         <h2 className="text-lg font-semibold mb-4">{t('profile.notifications.title')}</h2>
         {!notifSupported ? (
           <p className="text-sm text-white/50">{t('profile.notifications.unsupported')}</p>
-        ) : notifPermission === 'granted' ? (
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-              <Bell className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-emerald-300">{t('profile.notifications.enabled')}</p>
-              <p className="text-xs text-white/50 mt-0.5">{t('profile.notifications.enabledHint')}</p>
-            </div>
-          </div>
         ) : notifPermission === 'denied' ? (
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
@@ -233,7 +269,7 @@ export default function Profile() {
               <p className="text-xs text-white/50 mt-0.5">{t('profile.notifications.deniedHint')}</p>
             </div>
           </div>
-        ) : (
+        ) : notifPermission !== 'granted' ? (
           <div className="space-y-3">
             <p className="text-sm text-white/60">{t('profile.notifications.description')}</p>
             <Button
@@ -242,6 +278,65 @@ export default function Profile() {
             >
               {t('profile.notifications.enable')}
             </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Browser in-app notifications — granted */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-emerald-300">{t('profile.notifications.enabled')}</p>
+                <p className="text-xs text-white/50 mt-0.5">{t('profile.notifications.enabledHint')}</p>
+              </div>
+            </div>
+
+            {/* Push notifications toggle */}
+            <div className="border-t border-white/8 pt-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition',
+                    pushStatus === 'subscribed'
+                      ? 'bg-brand-orange/15 text-brand-orange'
+                      : 'bg-white/8 text-white/40',
+                  )}>
+                    <BellRing className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white/90">{t('profile.notifications.pushTitle')}</p>
+                    <p className="text-xs text-white/45 mt-0.5">
+                      {pushStatus === 'subscribed'
+                        ? t('profile.notifications.pushActiveHint')
+                        : pushStatus === 'unsupported'
+                        ? t('profile.notifications.pushUnsupported')
+                        : t('profile.notifications.pushDescription')}
+                    </p>
+                  </div>
+                </div>
+
+                {pushStatus !== 'unsupported' && pushStatus !== 'loading' && (
+                  <button
+                    type="button"
+                    disabled={pushBusy}
+                    onClick={() => void (pushStatus === 'subscribed' ? pushUnsubscribe() : pushSubscribe())}
+                    className={cn(
+                      'shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none',
+                      pushBusy && 'opacity-50 cursor-not-allowed',
+                      pushStatus === 'subscribed' ? 'bg-brand-orange' : 'bg-white/15',
+                    )}
+                    role="switch"
+                    aria-checked={pushStatus === 'subscribed'}
+                  >
+                    <span className={cn(
+                      'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+                      pushStatus === 'subscribed' ? 'translate-x-6' : 'translate-x-1',
+                    )} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </GlassCard>

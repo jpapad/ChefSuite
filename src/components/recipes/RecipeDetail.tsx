@@ -1,4 +1,5 @@
-import { AlertTriangle, Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, Mic, MicOff, ChevronLeft, ChevronRight, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus } from 'lucide-react'
+import { Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, Mic, MicOff, ChevronLeft, ChevronRight, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus, MessageSquare, Trash2, Sparkles, Loader2, Activity, GitBranch } from 'lucide-react'
+import { AllergenBadge } from '../ui/AllergenIcon'
 import { useEffect, useRef, useState } from 'react'
 import { printRecipe } from '../../lib/printRecipe'
 import { supabase } from '../../lib/supabase'
@@ -6,6 +7,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useTeam } from '../../hooks/useTeam'
 import type { Profile } from '../../types/database.types'
 import { useAutoTranslate, useAutoTranslateMany } from '../../hooks/useAutoTranslate'
+import { useRecipeComments } from '../../hooks/useRecipeComments'
+import { useRecipes } from '../../hooks/useRecipes'
+import { estimateNutrition } from '../../lib/gemini'
 
 interface SRResult { readonly [i: number]: { transcript: string }; readonly length: number }
 interface SRResultList { readonly [i: number]: SRResult; readonly length: number }
@@ -166,6 +170,7 @@ export function RecipeDetail({
   const { t } = useTranslation()
   const { profile: myProfile } = useAuth()
   const { members } = useTeam()
+  const { recipes: allRecipes, update: updateRecipe } = useRecipes()
   const [consuming, setConsuming] = useState(false)
   const [consumeError, setConsumeError] = useState<string | null>(null)
   const [handsFree, setHandsFree] = useState(false)
@@ -175,7 +180,55 @@ export function RecipeDetail({
   const [sentTo, setSentTo] = useState<string | null>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
 
+  // Comments
+  const { comments, addComment, deleteComment } = useRecipeComments(recipe?.id ?? null)
+  const [commentDraft, setCommentDraft] = useState('')
+  const [submittingComment, setSubmittingComment] = useState(false)
+
+  // Nutrition
+  const [nutritionLoading, setNutritionLoading] = useState(false)
+  const [nutritionError, setNutritionError] = useState<string | null>(null)
+
   const otherMembers = members.filter((m) => m.id !== myProfile?.id)
+
+  // Recipe variations: other recipes that share the same parent OR have this recipe as parent
+  const variations = recipe
+    ? allRecipes.filter((r) => r.id !== recipe.id && (
+        (recipe.parent_recipe_id && r.parent_recipe_id === recipe.parent_recipe_id) ||
+        r.parent_recipe_id === recipe.id ||
+        (recipe.parent_recipe_id === null && r.parent_recipe_id === recipe.id)
+      ))
+    : []
+
+  async function handleAnalyzeNutrition() {
+    if (!recipe) return
+    setNutritionLoading(true)
+    setNutritionError(null)
+    try {
+      const ingList = ingredients.map((ing) => {
+        const item = inventory.find((i) => i.id === ing.inventory_item_id)
+        return { name: item?.name ?? 'ingredient', quantity: ing.quantity, unit: item?.unit ?? '' }
+      })
+      const nutrition = await estimateNutrition(recipe.title, ingList, recipe.servings ?? 1)
+      await updateRecipe(recipe.id, nutrition)
+    } catch (err) {
+      setNutritionError(err instanceof Error ? err.message : 'Failed to analyze nutrition.')
+    } finally {
+      setNutritionLoading(false)
+    }
+  }
+
+  async function handleAddComment(e: React.FormEvent) {
+    e.preventDefault()
+    if (!commentDraft.trim()) return
+    setSubmittingComment(true)
+    try {
+      await addComment(commentDraft.trim())
+      setCommentDraft('')
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
 
   useEffect(() => {
     if (!showMemberPicker) return
@@ -454,10 +507,11 @@ export function RecipeDetail({
                 </span>
               )}
               {recipe.allergens.length > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm border border-amber-500/40 bg-amber-500/10 text-amber-300">
-                  <AlertTriangle className="h-4 w-4" />
-                  {recipe.allergens.join(', ')}
-                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {recipe.allergens.map((a) => (
+                    <AllergenBadge key={a} allergen={a} size="md" />
+                  ))}
+                </div>
               )}
             </div>
 
@@ -545,6 +599,124 @@ export function RecipeDetail({
                 </ol>
               </section>
             )}
+
+            {/* Nutrition info */}
+            {(recipe.calories != null || recipe.protein_g != null) ? (
+              <section>
+                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  {t('recipes.detail.nutrition')}
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {[
+                    { label: t('recipes.detail.nutrients.calories'), value: recipe.calories, unit: 'kcal' },
+                    { label: t('recipes.detail.nutrients.protein'),  value: recipe.protein_g, unit: 'g' },
+                    { label: t('recipes.detail.nutrients.carbs'),    value: recipe.carbs_g,   unit: 'g' },
+                    { label: t('recipes.detail.nutrients.fat'),      value: recipe.fat_g,     unit: 'g' },
+                    { label: t('recipes.detail.nutrients.fiber'),    value: recipe.fiber_g,   unit: 'g' },
+                    { label: t('recipes.detail.nutrients.sodium'),   value: recipe.sodium_mg, unit: 'mg' },
+                  ].map(({ label, value, unit }) => value != null && (
+                    <div key={label} className="glass rounded-xl py-2.5 px-2">
+                      <div className="text-sm font-semibold text-white">{value % 1 === 0 ? value : value.toFixed(1)}<span className="text-xs text-white/40 ml-0.5">{unit}</span></div>
+                      <div className="text-[10px] text-white/50 mt-0.5">{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleAnalyzeNutrition()}
+                  disabled={nutritionLoading}
+                  className="mt-2 flex items-center gap-1.5 text-xs text-white/40 hover:text-brand-orange transition disabled:opacity-50"
+                >
+                  {nutritionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {t('recipes.detail.reanalyzeNutrition')}
+                </button>
+                {nutritionError && <p className="mt-1 text-xs text-red-400">{nutritionError}</p>}
+              </section>
+            ) : (
+              <section>
+                <button
+                  type="button"
+                  onClick={() => void handleAnalyzeNutrition()}
+                  disabled={nutritionLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-glass-border py-3 text-sm text-white/40 hover:text-brand-orange hover:border-brand-orange/40 transition disabled:opacity-50"
+                >
+                  {nutritionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {t('recipes.detail.analyzeNutrition')}
+                </button>
+                {nutritionError && <p className="mt-1 text-xs text-red-400 text-center">{nutritionError}</p>}
+              </section>
+            )}
+
+            {/* Recipe variations */}
+            {variations.length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <GitBranch className="h-4 w-4" />
+                  {t('recipes.detail.variations')}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {variations.map((v) => (
+                    <span key={v.id} className="inline-flex items-center gap-1.5 rounded-lg border border-glass-border px-3 py-1.5 text-sm text-white/70">
+                      <GitBranch className="h-3.5 w-3.5 text-white/30" />
+                      {v.title}
+                      {v.variation_label && <span className="text-xs text-brand-orange ml-1">({v.variation_label})</span>}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Comments */}
+            <section>
+              <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                {t('recipes.detail.comments')}
+                {comments.length > 0 && <span className="text-xs font-normal text-white/30">({comments.length})</span>}
+              </h3>
+              {comments.length > 0 && (
+                <ul className="space-y-3 mb-3">
+                  {comments.map((c) => (
+                    <li key={c.id} className="glass rounded-xl px-4 py-3 flex items-start gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange/20 text-xs font-semibold text-brand-orange">
+                        {(c.author_name ?? '?').charAt(0).toUpperCase()}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-medium text-white/70">{c.author_name ?? t('common.unknown')}</span>
+                          <span className="text-[10px] text-white/30">{new Date(c.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-sm text-white/80 mt-1 leading-relaxed">{c.content}</p>
+                      </div>
+                      {c.author_id === myProfile?.id && (
+                        <button
+                          type="button"
+                          onClick={() => void deleteComment(c.id)}
+                          className="shrink-0 rounded-lg p-1 text-white/20 hover:text-red-400 hover:bg-red-500/10 transition"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form onSubmit={(e) => void handleAddComment(e)} className="flex gap-2">
+                <input
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  placeholder={t('recipes.detail.addComment')}
+                  className="flex-1 rounded-xl border border-glass-border bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:ring-1 focus:ring-brand-orange"
+                />
+                <button
+                  type="submit"
+                  disabled={submittingComment || !commentDraft.trim()}
+                  className="rounded-xl bg-brand-orange/20 border border-brand-orange/40 px-3 py-2 text-sm font-medium text-brand-orange hover:bg-brand-orange/30 transition disabled:opacity-40"
+                >
+                  {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.send')}
+                </button>
+              </form>
+            </section>
 
             {consumeError && (
               <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">

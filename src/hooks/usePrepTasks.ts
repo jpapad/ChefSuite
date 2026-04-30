@@ -151,6 +151,13 @@ export function usePrepTasks(prepFor: string) {
     setState((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== id) }))
   }, [])
 
+  const removeMany = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return
+    const { error } = await supabase.from('prep_tasks').delete().in('id', ids)
+    if (error) throw error
+    setState((s) => ({ ...s, tasks: s.tasks.filter((t) => !ids.includes(t.id)) }))
+  }, [])
+
   const cycleStatus = useCallback(
     async (task: PrepTask) => {
       const nextStatus = STATUS_CYCLE[task.status]
@@ -171,5 +178,5 @@ export function usePrepTasks(prepFor: string) {
     [update],
   )
 
-  return { ...state, reload: load, create, update, remove, cycleStatus, toggleDone }
+  return { ...state, reload: load, create, update, remove, removeMany, cycleStatus, toggleDone }
 }

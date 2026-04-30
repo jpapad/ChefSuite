@@ -15,7 +15,9 @@ export interface LabelSettings {
   showAllergens: boolean
   showTags: boolean
   showPrice: boolean
-  language: 'en' | 'el' | 'both'
+  language: 'en' | 'el' | 'bg' | 'both'
+  allergenLang: 'en' | 'el' | 'bg' | 'both'
+  showAllergenLegend: boolean
 }
 
 interface Dims { w: number; h: number; namePt: number; descPt: number; gapMm: number }
@@ -54,10 +56,139 @@ export const SIZE_CSS: Record<LabelSizePreset, { w: string; h: string; nameSize:
   large:  { w: '210mm', h: '100mm', nameSize: '24pt', descSize: '11pt', gap: '10mm' },
 }
 
-const ALLERGEN_SHORT: Record<string, string> = {
-  gluten: 'ΓΛΟΥΤ', dairy: 'ΓΑΛΑΚΤ', eggs: 'ΑΥΓΑ', fish: 'ΨΑΡΙ', shellfish: 'ΟΣΤΡΑΚ',
-  nuts: 'ΞΗΡΟΙ', peanuts: 'ΦΙΣΤ', soy: 'ΣΟΓ', sesame: 'ΣΗΣΑΜ', celery: 'ΣΕΛΙΝ',
-  mustard: 'ΜΟΥΣΤ', sulphites: 'ΘΕΙΩΔ', lupin: 'ΛΟΥΠ', molluscs: 'ΜΑΛΑΚ',
+const ALLERGEN_EN: Record<string, string> = {
+  gluten: 'Gluten', dairy: 'Dairy', eggs: 'Eggs', fish: 'Fish', shellfish: 'Shellfish',
+  nuts: 'Nuts', peanuts: 'Peanuts', soy: 'Soy', sesame: 'Sesame', celery: 'Celery',
+  mustard: 'Mustard', sulphites: 'Sulphites', lupin: 'Lupin', molluscs: 'Molluscs',
+}
+
+const ALLERGEN_EL: Record<string, string> = {
+  gluten: 'Γλουτένη', dairy: 'Γαλακτοκομικά', eggs: 'Αυγά', fish: 'Ψάρι', shellfish: 'Οστρακοειδή',
+  nuts: 'Ξηροί Καρποί', peanuts: 'Φιστίκια', soy: 'Σόγια', sesame: 'Σησάμι', celery: 'Σέλινο',
+  mustard: 'Μουστάρδα', sulphites: 'Θειώδη', lupin: 'Λούπινο', molluscs: 'Μαλάκια',
+}
+
+const ALLERGEN_BG: Record<string, string> = {
+  gluten: 'Глутен', dairy: 'Млечни', eggs: 'Яйца', fish: 'Риба', shellfish: 'Ракообразни',
+  nuts: 'Ядки', peanuts: 'Фъстъци', soy: 'Соя', sesame: 'Сусам', celery: 'Целина',
+  mustard: 'Горчица', sulphites: 'Сулфити', lupin: 'Лупина', molluscs: 'Мекотели',
+}
+
+const ALL_ALLERGEN_KEYS = Object.keys(ALLERGEN_EN)
+
+// Inline SVG paths for each allergen (viewBox 0 0 24 24)
+const ALLERGEN_SVG_PATH: Record<string, string> = {
+  gluten:    `<rect x="11.3" y="8" width="1.4" height="13" rx="0.7"/><ellipse cx="12" cy="5.5" rx="2.5" ry="3.5"/><ellipse cx="8.5" cy="11" rx="2" ry="3" transform="rotate(-30 8.5 11)"/><ellipse cx="15.5" cy="11" rx="2" ry="3" transform="rotate(30 15.5 11)"/><ellipse cx="9" cy="15.5" rx="1.8" ry="2.5" transform="rotate(-20 9 15.5)"/><ellipse cx="15" cy="15.5" rx="1.8" ry="2.5" transform="rotate(20 15 15.5)"/>`,
+  dairy:     `<path d="M8 6 L7 20 Q7 22 12 22 Q17 22 17 20 L16 6 Z"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M16 9 Q20 9 20 13 Q20 17 16 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  eggs:      `<path d="M12 2 C7.5 2 4 7.5 4 13.5 C4 18.5 7.6 22 12 22 C16.4 22 20 18.5 20 13.5 C20 7.5 16.5 2 12 2 Z"/>`,
+  fish:      `<path d="M3 6 L8 12 L3 18 Z"/><ellipse cx="15" cy="12" rx="8" ry="5.5"/><circle cx="19.5" cy="10.5" r="1.2" fill="white"/><circle cx="19.5" cy="10.5" r="0.5"/>`,
+  peanuts:   `<ellipse cx="12" cy="7.5" rx="4.5" ry="5"/><ellipse cx="12" cy="16.5" rx="4.5" ry="5"/><rect x="10" y="11.5" width="4" height="2"/><rect x="9.5" y="11.8" width="5" height="1.4" rx="0.7" fill="white"/>`,
+  soy:       `<path d="M5 19 C5 19 5 5 12 3 C19 5 19 19 19 19 Q16 22 12 22 Q8 22 5 19 Z"/><ellipse cx="12" cy="8.5" rx="2" ry="2.5" fill="white" opacity="0.6"/><ellipse cx="12" cy="13.5" rx="2" ry="2.5" fill="white" opacity="0.6"/><ellipse cx="12" cy="18" rx="2" ry="2" fill="white" opacity="0.6"/>`,
+  nuts:      `<ellipse cx="12" cy="14" rx="7.5" ry="7"/><path d="M4.5 13 C4.5 13 5 6 12 5 C19 6 19.5 13 19.5 13 Z"/><rect x="11.3" y="2" width="1.4" height="4" rx="0.7"/>`,
+  shellfish: `<path d="M17 4 C20 6 21 9 19 12 C17 15 14 16 13 18 C12 20 13 22 11 22 C9 22 9 20 10 18 C8 17 6 15 5 12 C4 9 5 6 8 5 C11 4 14 6 17 4 Z"/>`,
+  sesame:    `<rect x="11.3" y="13" width="1.4" height="9" rx="0.7"/><ellipse cx="12" cy="11" rx="2.8" ry="2"/><ellipse cx="12" cy="7.5" rx="2.5" ry="1.8"/><ellipse cx="8" cy="10.5" rx="2.2" ry="1.5" transform="rotate(-25 8 10.5)"/><ellipse cx="16" cy="10.5" rx="2.2" ry="1.5" transform="rotate(25 16 10.5)"/>`,
+  celery:    `<path d="M12 22 C12 22 6 18 5 10 C5 7 7 5 9 6 C9 6 8 10 10 14 C11 17 12 22 12 22 Z"/><path d="M12 22 C12 22 9 17 10 10 C10.5 6 12 4 12 4 C12 4 13.5 6 14 10 C15 17 12 22 12 22 Z"/><path d="M12 22 C12 22 13 17 14 14 C16 10 15 6 15 6 C17 5 19 7 19 10 C18 18 12 22 12 22 Z"/>`,
+  mustard:   `<ellipse cx="12" cy="6.5" rx="3" ry="4.5"/><ellipse cx="17.5" cy="12" rx="4.5" ry="3"/><ellipse cx="12" cy="17.5" rx="3" ry="4.5"/><ellipse cx="6.5" cy="12" rx="4.5" ry="3"/><circle cx="12" cy="12" r="3.5" fill="white"/><circle cx="12" cy="12" r="2.5"/>`,
+  sulphites: `<path d="M7 3 L17 3 L15 12 Q14 15 12 15 Q10 15 9 12 Z"/><rect x="11.3" y="15" width="1.4" height="5" rx="0.7"/><rect x="8" y="20" width="8" height="1.5" rx="0.75"/>`,
+  lupin:     `<path d="M7 19 C5 17 5 7 12 3 C19 7 19 17 17 19 Q14.5 22 12 22 Q9.5 22 7 19 Z"/><circle cx="12" cy="7.5" r="2.2" fill="white" opacity="0.65"/><circle cx="12" cy="12.5" r="2.2" fill="white" opacity="0.65"/><circle cx="12" cy="17.5" r="2" fill="white" opacity="0.65"/>`,
+  molluscs:  `<path d="M12 21 C12 21 4 17 3 10 C2.5 6 5 3 9 3 C11 3 12 4 12 4 C12 4 13 3 15 3 C19 3 21.5 6 21 10 C20 17 12 21 12 21 Z"/>`,
+}
+
+function allergenLabel(key: string, lang: 'en' | 'el' | 'bg' | 'both'): string {
+  const k  = key.toLowerCase()
+  const en = ALLERGEN_EN[k] ?? key
+  const el = ALLERGEN_EL[k] ?? key
+  const bg = ALLERGEN_BG[k] ?? key
+  if (lang === 'en')   return en
+  if (lang === 'el')   return el
+  if (lang === 'bg')   return bg
+  return `${en} / ${el}`
+}
+
+function allergenSvgEl(key: string, size: string): string {
+  const path = ALLERGEN_SVG_PATH[key.toLowerCase()]
+  if (!path) return ''
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="${size}" height="${size}" style="display:inline-block;vertical-align:middle;flex-shrink:0">${path}</svg>`
+}
+
+function allergenBadgeHtml(key: string, sm: boolean, lang: 'en' | 'el' | 'bg' | 'both'): string {
+  const label    = allergenLabel(key, lang)
+  const iconSize = sm ? '10px' : '13px'
+  const fontSize = sm ? '5.5pt' : '7pt'
+  return `<span class="allergen">${allergenSvgEl(key, iconSize)}<span style="font-size:${fontSize}">${label}</span></span>`
+}
+
+function buildAllergenLegendHtml(lang: 'en' | 'el' | 'bg' | 'both', presentKeys: string[]): string {
+  const title =
+    lang === 'en' ? 'Allergen Information' :
+    lang === 'el' ? 'Αλλεργιογόνα' :
+    lang === 'bg' ? 'Информация за Алергени' :
+    'Allergen Information / Αλλεργιογόνα'
+
+  const iconHeader =
+    lang === 'el' ? 'Εικονίδιο' :
+    lang === 'bg' ? 'Икона' :
+    lang === 'en' ? 'Icon' :
+    'Icon / Εικονίδιο'
+
+  const colEn = lang === 'en' || lang === 'both'
+    ? `<th style="padding:3mm 4mm;text-align:left;border-bottom:0.5px solid #ccc;font-size:9pt;color:#555">English</th>` : ''
+  const colEl = lang === 'el' || lang === 'both'
+    ? `<th style="padding:3mm 4mm;text-align:left;border-bottom:0.5px solid #ccc;font-size:9pt;color:#555">Ελληνικά</th>` : ''
+  const colBg = lang === 'bg'
+    ? `<th style="padding:3mm 4mm;text-align:left;border-bottom:0.5px solid #ccc;font-size:9pt;color:#555">Български</th>` : ''
+
+  const rows = ALL_ALLERGEN_KEYS.map((k) => {
+    const isPresent = presentKeys.map((p) => p.toLowerCase()).includes(k)
+    const rowBg     = isPresent ? '#fff7ed' : 'white'
+    const border    = isPresent ? 'border-left:3px solid #c2410c' : 'border-left:3px solid transparent'
+    const icon      = allergenSvgEl(k, '18px')
+    const enCell = lang === 'en' || lang === 'both'
+      ? `<td style="padding:2.5mm 4mm;font-size:9pt;color:#222">${ALLERGEN_EN[k]}</td>` : ''
+    const elCell = lang === 'el' || lang === 'both'
+      ? `<td style="padding:2.5mm 4mm;font-size:9pt;color:#222">${ALLERGEN_EL[k]}</td>` : ''
+    const bgCell = lang === 'bg'
+      ? `<td style="padding:2.5mm 4mm;font-size:9pt;color:#222">${ALLERGEN_BG[k]}</td>` : ''
+    return `<tr style="background:${rowBg};${border}">
+      <td style="padding:2.5mm 4mm;text-align:center">${icon}</td>
+      ${enCell}${elCell}${bgCell}
+    </tr>`
+  }).join('\n')
+
+  const noteText =
+    lang === 'el' ? '★ Σκιασμένες γραμμές: αλλεργιογόνα παρόντα στο μενού' :
+    lang === 'bg' ? '★ Засенчените редове: алергени в менюто' :
+    lang === 'en' ? '★ Shaded rows: allergens present in this menu' :
+    '★ Shaded rows / Σκιασμένες γραμμές: allergens present in this menu / αλλεργιογόνα παρόντα στο μενού'
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0 }
+    body { font-family: Arial, sans-serif; background: white; padding: 12mm }
+    @page { size: A4; margin: 10mm }
+    h1 { font-size: 14pt; font-weight: bold; color: #111; margin-bottom: 6mm; border-bottom: 1px solid #333; padding-bottom: 3mm }
+    table { width: 100%; border-collapse: collapse; border: 0.5px solid #ddd; border-radius: 2mm; overflow: hidden }
+    tr:not(:last-child) td, tr:not(:last-child) th { border-bottom: 0.5px solid #eee }
+    .note { margin-top: 6mm; font-size: 7.5pt; color: #888; font-style: italic }
+  </style>
+</head>
+<body>
+  <h1>${title}</h1>
+  <table>
+    <thead>
+      <tr style="background:#f5f5f5">
+        <th style="padding:3mm 4mm;text-align:center;border-bottom:0.5px solid #ccc;font-size:9pt;color:#555;width:14mm">${iconHeader}</th>
+        ${colEn}${colEl}${colBg}
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p class="note">${noteText}</p>
+</body>
+</html>`
 }
 
 const TAG_SYMBOL: Record<string, string> = {
@@ -68,6 +199,7 @@ const TAG_SYMBOL: Record<string, string> = {
 function itemName(item: MenuItem, lang: LabelSettings['language']): string {
   if (lang === 'el') return item.name_el ?? item.name
   if (lang === 'both' && item.name_el) return `${item.name} / ${item.name_el}`
+  // 'bg' falls back to English (no separate BG name field yet)
   return item.name
 }
 
@@ -110,8 +242,8 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       background: #fee2e2; color: #991b1b;
       border: 0.5px solid #fca5a5; border-radius: 1.5mm;
       padding: 0.5mm 1.5mm;
-      font-size: ${sm ? '5.5pt' : '7pt'};
       font-family: Arial, sans-serif; font-weight: bold; letter-spacing: 0.03em;
+      display: inline-flex; align-items: center; gap: 1mm;
     }
     .label-name {
       font-weight: bold; line-height: 1.15; color: #111;
@@ -133,7 +265,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
 
 function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, d: Dims): string {
   const allergenBadges = settings.showAllergens && recipe?.allergens?.length
-    ? recipe.allergens.map((a) => `<span class="allergen">${ALLERGEN_SHORT[a.toLowerCase()] ?? a.toUpperCase()}</span>`).join('')
+    ? recipe.allergens.map((a) => allergenBadgeHtml(a, d.w <= 100, settings.allergenLang)).join('')
     : ''
 
   const tags = settings.showTags && item.tags?.length
@@ -192,6 +324,14 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
     .map((item) => labelHtml(item, item.recipe_id ? recipeMap.get(item.recipe_id) : undefined, settings, d))
     .join('\n')
 
+  // Collect all unique allergen keys present in selected items
+  const presentKeys = [...new Set(
+    items.flatMap((item) => {
+      const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
+      return recipe?.allergens ?? []
+    })
+  )]
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -212,6 +352,18 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
   if (!win) return
   win.document.write(html)
   win.document.close()
+
+  if (settings.showAllergenLegend) {
+    // Open legend in a second tab that auto-prints after labels
+    const legendWin = window.open('', '_blank', 'width=900,height=700')
+    if (legendWin) {
+      legendWin.document.write(buildAllergenLegendHtml(settings.allergenLang, presentKeys))
+      legendWin.document.close()
+      legendWin.focus()
+      setTimeout(() => legendWin.print(), 500)
+    }
+  }
+
   win.focus()
   setTimeout(() => win.print(), 400)
 }

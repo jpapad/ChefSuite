@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Clock, LogIn, LogOut, ChevronLeft, ChevronRight, Trash2, Timer } from 'lucide-react'
+import { Clock, LogIn, LogOut, ChevronLeft, ChevronRight, Trash2, Timer, FileDown } from 'lucide-react'
+import { exportTimeclockE8 } from '../lib/erganiExport'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
@@ -66,9 +67,28 @@ export default function Timeclock() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <header>
-        <h1 className="text-3xl font-semibold">{t('timeclock.title')}</h1>
-        <p className="text-white/60 mt-1">{t('timeclock.subtitle')}</p>
+      <header className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-semibold">{t('timeclock.title')}</h1>
+          <p className="text-white/60 mt-1">{t('timeclock.subtitle')}</p>
+        </div>
+        {entries.length > 0 && (
+          <button
+            type="button"
+            onClick={() => exportTimeclockE8(
+              entries.map((e) => ({
+                memberName: e.member_name ?? '—',
+                clockIn: e.clock_in,
+                clockOut: e.clock_out,
+              })),
+              formatDateLabel(date),
+            )}
+            className="flex items-center gap-2 text-sm text-white/60 hover:text-white/90 border border-white/10 hover:border-white/25 rounded-xl px-3 py-2 transition"
+          >
+            <FileDown className="h-4 w-4" />
+            {t('timeclock.erganiExport')}
+          </button>
+        )}
       </header>
 
       {/* Clock In / Out card — only shown for today */}

@@ -25,9 +25,19 @@ import {
   Award,
   BookOpen,
   Heart,
+  Bot,
   ChevronDown,
   Search,
   X,
+  Scale,
+  BookMarked,
+  Layers,
+  HelpCircle,
+  FlaskConical,
+  CreditCard,
+  Building2,
+  Tag,
+  Calculator,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -35,6 +45,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/cn'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePermissions, type AppModule } from '../../hooks/usePermissions'
+import { supabase } from '../../lib/supabase'
 import i18n from '../../i18n'
 
 interface NavItem {
@@ -82,14 +93,27 @@ function getFirstName(name: string | null | undefined): string {
 }
 
 export function Sidebar() {
-  const { profile } = useAuth()
+  const { profile, user, myTeams, switchTeam } = useAuth()
   const { t } = useTranslation()
   const { can } = usePermissions()
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
   const [search, setSearch] = useState('')
+  const [teamDropdownOpen, setTeamDropdownOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const teamSwitcherRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { saveCollapsed(collapsed) }, [collapsed])
+
+  useEffect(() => {
+    if (!teamDropdownOpen) return
+    function onClickOutside(e: MouseEvent) {
+      if (teamSwitcherRef.current && !teamSwitcherRef.current.contains(e.target as Node)) {
+        setTeamDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [teamDropdownOpen])
 
   // ⌘K / Ctrl+K focuses the search bar
   useEffect(() => {
@@ -122,6 +146,7 @@ export function Sidebar() {
         { to: '/prep', label: t('nav.prep'), icon: ClipboardList, module: 'prep' as AppModule },
         { to: '/kds', label: t('nav.kds'), icon: Monitor, module: 'kds' as AppModule },
         { to: '/haccp', label: t('nav.haccp'), icon: Thermometer, module: 'haccp' as AppModule },
+        { to: '/labels', label: t('nav.labels'), icon: Tag, module: 'labels' as AppModule },
       ],
     },
     {
@@ -129,6 +154,7 @@ export function Sidebar() {
       label: t('nav.groups.procurement'),
       items: [
         { to: '/inventory', label: t('nav.inventory'), icon: Package, module: 'inventory' as AppModule },
+        { to: '/stocktake', label: t('nav.stocktake'), icon: ClipboardList, module: 'stocktake' as AppModule },
         { to: '/suppliers', label: t('nav.suppliers'), icon: Truck, module: 'suppliers' as AppModule },
         { to: '/orders', label: t('nav.purchaseOrders'), icon: ClipboardCheck, module: 'orders' as AppModule },
         { to: '/waste', label: t('nav.wasteLog'), icon: Trash2, module: 'waste' as AppModule },
@@ -143,16 +169,19 @@ export function Sidebar() {
         { to: '/shifts', label: t('nav.shifts'), icon: CalendarDays, module: 'shifts' as AppModule },
         { to: '/timeclock', label: t('nav.timeclock'), icon: TimerIcon, module: 'timeclock' as AppModule },
         { to: '/staff-performance', label: t('nav.staffPerformance'), icon: Award, module: 'staff-performance' as AppModule },
+        { to: '/handover', label: t('nav.handover'), icon: ClipboardCheck, module: 'handover' as AppModule },
       ],
     },
     {
       id: 'revenue',
       label: t('nav.groups.revenue'),
       items: [
-        { to: '/menu-engineering', label: t('nav.menuEngineering'), icon: Star, module: 'menu-engineering' as AppModule },
-        { to: '/reservations', label: t('nav.reservations'), icon: CalendarCheck, module: 'reservations' as AppModule },
-        { to: '/analytics', label: t('nav.analytics'), icon: TrendingUp, module: 'analytics' as AppModule },
-        { to: '/pl', label: t('nav.profitLoss'), icon: BarChart3, module: 'pl' as AppModule },
+        { to: '/menu-engineering', label: t('nav.menuEngineering'), icon: Star,        module: 'menu-engineering' as AppModule },
+        { to: '/costing',         label: t('nav.costing'),          icon: Calculator,    module: 'costing'         as AppModule },
+        { to: '/reservations',    label: t('nav.reservations'),    icon: CalendarCheck, module: 'reservations'    as AppModule },
+        { to: '/analytics',       label: t('nav.analytics'),       icon: TrendingUp,    module: 'analytics'       as AppModule },
+        { to: '/pl',              label: t('nav.profitLoss'),       icon: BarChart3,     module: 'pl'              as AppModule },
+        { to: '/pos-settings',    label: t('nav.posSettings'),      icon: CreditCard,    module: 'pos-settings'    as AppModule },
       ],
     },
     {
@@ -163,6 +192,18 @@ export function Sidebar() {
         { to: '/walkie', label: t('nav.walkie'), icon: Radio, module: 'walkie' as AppModule },
         { to: '/journal', label: t('nav.journal'), icon: BookOpen, module: 'journal' as AppModule },
         { to: '/pulse', label: t('nav.pulse'), icon: Heart, module: 'pulse' as AppModule },
+        { to: '/copilot', label: t('nav.copilot'), icon: Bot, module: 'copilot' as AppModule },
+      ],
+    },
+    {
+      id: 'library',
+      label: t('nav.groups.library'),
+      items: [
+        { to: '/culinary-tools', label: t('nav.culinaryTools'), icon: Scale,          module: 'culinary-tools' as AppModule },
+        { to: '/glossary',       label: t('nav.glossary'),      icon: BookMarked,     module: 'glossary'       as AppModule },
+        { to: '/techniques',     label: t('nav.techniques'),    icon: Layers,         module: 'techniques'     as AppModule },
+        { to: '/ingredients',    label: t('nav.ingredients'),   icon: FlaskConical,   module: 'ingredients'    as AppModule },
+        { to: '/help',           label: t('nav.help'),          icon: HelpCircle,     module: 'help'           as AppModule },
       ],
     },
   ]
@@ -174,9 +215,13 @@ export function Sidebar() {
     : null
 
   function toggleLang() {
-    const next = i18n.language === 'el' ? 'en' : 'el'
+    const cycle = ['en', 'el', 'bg']
+    const next = cycle[(cycle.indexOf(i18n.language) + 1) % cycle.length]
     void i18n.changeLanguage(next)
     localStorage.setItem('chefsuite_lang', next)
+    if (user) {
+      void supabase.from('profiles').update({ preferred_lang: next }).eq('id', user.id)
+    }
   }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -200,6 +245,57 @@ export function Sidebar() {
           <div className="text-[11px] text-white/35 mt-0.5">Culinary Ops</div>
         </div>
       </div>
+
+      {/* Team switcher — only visible when user belongs to 2+ teams */}
+      {myTeams.length > 1 && (
+        <div className="relative mb-1" ref={teamSwitcherRef}>
+          <button
+            type="button"
+            onClick={() => setTeamDropdownOpen((prev) => !prev)}
+            className="flex w-full items-center gap-2 px-2 py-2 rounded-xl hover:bg-white/5 transition-all"
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-orange/15">
+              <Building2 className="h-3.5 w-3.5 text-brand-orange" />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <div className="text-[10px] text-white/35 leading-none uppercase tracking-wider">Restaurant</div>
+              <div className="text-xs font-semibold text-white/80 truncate leading-none mt-0.5">
+                {myTeams.find((t) => t.id === profile?.team_id)?.name ?? '—'}
+              </div>
+            </div>
+            <ChevronDown
+              className={cn('h-3 w-3 text-white/30 shrink-0 transition-transform duration-200', teamDropdownOpen && 'rotate-180')}
+            />
+          </button>
+
+          {teamDropdownOpen && (
+            <div className="absolute left-0 right-0 mt-1 z-50 glass-strong gradient-border rounded-xl py-1 shadow-xl">
+              {myTeams.map((t) => {
+                const isActive = t.id === profile?.team_id
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      void switchTeam(t.id)
+                      setTeamDropdownOpen(false)
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-lg',
+                      isActive
+                        ? 'text-brand-orange'
+                        : 'text-white/55 hover:text-white hover:bg-white/5',
+                    )}
+                  >
+                    <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', isActive ? 'bg-brand-orange' : 'bg-white/20')} />
+                    <span className="truncate">{t.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Profile section */}
       <NavLink
@@ -311,7 +407,7 @@ export function Sidebar() {
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition text-white/35 hover:bg-white/5 hover:text-white/70"
         >
           <Languages className="h-4 w-4 shrink-0" />
-          <span>{i18n.language === 'el' ? 'English' : 'Ελληνικά'}</span>
+          <span>{ i18n.language === 'en' ? 'Ελληνικά' : i18n.language === 'el' ? 'Български' : 'English' }</span>
         </button>
       </div>
     </aside>

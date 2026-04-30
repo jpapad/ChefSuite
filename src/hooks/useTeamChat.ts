@@ -3,15 +3,24 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { TeamMessage, TeamMessageWithSender } from '../types/database.types'
 
+export const CHAT_CHANNELS = [
+  { slug: 'general', emoji: '💬' },
+  { slug: 'kitchen', emoji: '🍳' },
+  { slug: 'orders',  emoji: '📋' },
+  { slug: 'staff',   emoji: '👥' },
+] as const
+
+export type ChatChannel = (typeof CHAT_CHANNELS)[number]['slug']
+
 function fireNotif(title: string, body: string) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
   if (!document.hidden) return
   new Notification(title, { body, icon: '/favicon.ico' })
 }
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 60
 
-export function useTeamChat() {
+export function useTeamChat(channel: ChatChannel = 'general') {
   const { profile } = useAuth()
   const teamId = profile?.team_id ?? null
 
@@ -20,7 +29,6 @@ export function useTeamChat() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Map of profile id → full_name for local enrichment
   const namesRef = useRef<Map<string, string | null>>(new Map())
 
   function enrich(msg: TeamMessage): TeamMessageWithSender {
@@ -34,6 +42,8 @@ export function useTeamChat() {
     const { data, error: err } = await supabase
       .from('team_messages')
       .select('*, profiles:sender_id(full_name)')
+      .eq('team_id', teamId)
+      .eq('channel', channel)
       .order('created_at', { ascending: true })
       .limit(PAGE_SIZE)
 
@@ -45,28 +55,37 @@ export function useTeamChat() {
     })
     setMessages(rows.map((r) => ({ ...r, sender_name: r.profiles?.full_name ?? null })))
     setLoading(false)
-  }, [teamId])
+  }, [teamId, channel])
 
   useEffect(() => { void load() }, [load])
 
-  // Realtime subscription
+  // Realtime subscription scoped to channel
   useEffect(() => {
     if (!teamId) return
-    const channel = supabase
-      .channel(`chat:${teamId}`)
+    const ch = supabase
+      .channel(`chat:${teamId}:${channel}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'team_messages', filter: `team_id=eq.${teamId}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'team_messages',
+          filter: `team_id=eq.${teamId}`,
+        },
         async (payload) => {
-          const msg = payload.new as TeamMessage
-          // Fetch sender name if not cached
+          const msg = payload.new as TeamMessage & { channel?: string }
+          if (msg.channel !== channel) return
+
           if (!namesRef.current.has(msg.sender_id)) {
             const { data } = await supabase
               .from('profiles')
               .select('full_name')
               .eq('id', msg.sender_id)
               .single()
-            namesRef.current.set(msg.sender_id, (data as { full_name: string | null } | null)?.full_name ?? null)
+            namesRef.current.set(
+              msg.sender_id,
+              (data as { full_name: string | null } | null)?.full_name ?? null,
+            )
           }
           const enriched = enrich(msg)
           setMessages((s) => [...s, enriched])
@@ -78,7 +97,12 @@ export function useTeamChat() {
       )
       .on(
         'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'team_messages', filter: `team_id=eq.${teamId}` },
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'team_messages',
+          filter: `team_id=eq.${teamId}`,
+        },
         (payload) => {
           const old = payload.old as { id?: string }
           if (old.id) setMessages((s) => s.filter((m) => m.id !== old.id))
@@ -86,9 +110,9 @@ export function useTeamChat() {
       )
       .subscribe()
 
-    return () => { void supabase.removeChannel(channel) }
+    return () => { void supabase.removeChannel(ch) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId])
+  }, [teamId, channel])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!teamId || !profile) throw new Error('No team')
@@ -100,12 +124,24 @@ export function useTeamChat() {
         team_id: teamId,
         sender_id: profile.id,
         content: trimmed,
+        channel,
       })
       if (err) throw err
+
+      void supabase.functions.invoke('send-push', {
+        body: {
+          team_id: teamId,
+          exclude_user_id: profile.id,
+          title: `💬 ${profile.full_name ?? 'Team'} · #${channel}`,
+          body: trimmed.length > 100 ? trimmed.slice(0, 97) + '…' : trimmed,
+          url: '/chat',
+          tag: `chat-${channel}`,
+        },
+      })
     } finally {
       setSending(false)
     }
-  }, [teamId, profile])
+  }, [teamId, profile, channel])
 
   const deleteMessage = useCallback(async (id: string) => {
     const { error: err } = await supabase.from('team_messages').delete().eq('id', id)

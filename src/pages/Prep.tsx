@@ -337,7 +337,7 @@ export default function Prep() {
   const { t } = useTranslation()
   const [date, setDate] = useState<string>(todayIso())
   const { profile } = useAuth()
-  const { tasks, loading, error, create, update, remove, cycleStatus } = usePrepTasks(date)
+  const { tasks, loading, error, create, update, remove, removeMany, cycleStatus } = usePrepTasks(date)
   const { workstations, create: createWorkstation, remove: removeWorkstation } = useWorkstations()
   const { recipes } = useRecipes()
   const { items: inventory } = useInventory()
@@ -348,6 +348,7 @@ export default function Prep() {
 
   const [selectedWorkstation, setSelectedWorkstation] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [deletingAll, setDeletingAll] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [fromMenuOpen, setFromMenuOpen] = useState(false)
   const [editing, setEditing] = useState<PrepTask | null>(null)
@@ -485,6 +486,23 @@ export default function Prep() {
     await removeWorkstation(w.id)
   }
 
+  const activeTaskIds = useMemo(
+    () => filteredTasks.filter((t) => t.status !== 'done').map((t) => t.id),
+    [filteredTasks],
+  )
+
+  async function onDeleteAll() {
+    if (activeTaskIds.length === 0) return
+    const ok = window.confirm(t('prep.deleteAllConfirm', { count: activeTaskIds.length }))
+    if (!ok) return
+    setDeletingAll(true)
+    try {
+      await removeMany(activeTaskIds)
+    } finally {
+      setDeletingAll(false)
+    }
+  }
+
   const selectedWorkstationName = workstations.find((w) => w.id === selectedWorkstation)?.name ?? null
 
   return (
@@ -530,6 +548,17 @@ export default function Prep() {
                 </select>
               </div>
             </div>
+            {activeTaskIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void onDeleteAll()}
+                disabled={deletingAll}
+                className="flex items-center gap-1.5 rounded-xl border border-red-500/40 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('prep.deleteAll')}</span>
+              </button>
+            )}
             <Button variant="secondary" leftIcon={<UtensilsCrossed className="h-5 w-5" />} onClick={() => setFromMenuOpen(true)}>
               <span className="hidden sm:inline">{t('prep.fromMenu.button')}</span>
             </Button>

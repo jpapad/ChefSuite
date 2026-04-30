@@ -35,6 +35,17 @@ import ProfitLoss from './pages/ProfitLoss'
 import StaffPerformance from './pages/StaffPerformance'
 import ChefJournal from './pages/ChefJournal'
 import KitchenPulse from './pages/KitchenPulse'
+import ChefCopilot from './pages/ChefCopilot'
+import CulinaryTools from './pages/CulinaryTools'
+import CulinaryGlossary from './pages/CulinaryGlossary'
+import TechniqueLibrary from './pages/TechniqueLibrary'
+import HelpCenter from './pages/HelpCenter'
+import IngredientsEncyclopedia from './pages/IngredientsEncyclopedia'
+import PosSettings from './pages/PosSettings'
+import HandoverNotes from './pages/HandoverNotes'
+import Labels from './pages/Labels'
+import Stocktake from './pages/Stocktake'
+import Costing from './pages/Costing'
 
 export default function App() {
   return (
@@ -85,8 +96,19 @@ export default function App() {
             <Route path="price-tracking" element={<PermissionGuard module="price-tracking"><PriceTracking /></PermissionGuard>} />
             <Route path="pl" element={<PermissionGuard module="pl"><ProfitLoss /></PermissionGuard>} />
             <Route path="staff-performance" element={<PermissionGuard module="staff-performance"><StaffPerformance /></PermissionGuard>} />
+            <Route path="handover" element={<PermissionGuard module="handover"><HandoverNotes /></PermissionGuard>} />
+            <Route path="labels" element={<PermissionGuard module="labels"><Labels /></PermissionGuard>} />
+            <Route path="stocktake" element={<PermissionGuard module="stocktake"><Stocktake /></PermissionGuard>} />
+            <Route path="costing" element={<PermissionGuard module="costing"><Costing /></PermissionGuard>} />
             <Route path="journal" element={<PermissionGuard module="journal"><ChefJournal /></PermissionGuard>} />
             <Route path="pulse" element={<PermissionGuard module="pulse"><KitchenPulse /></PermissionGuard>} />
+            <Route path="copilot" element={<PermissionGuard module="copilot"><ChefCopilot /></PermissionGuard>} />
+            <Route path="culinary-tools" element={<PermissionGuard module="culinary-tools"><CulinaryTools /></PermissionGuard>} />
+            <Route path="glossary" element={<PermissionGuard module="glossary"><CulinaryGlossary /></PermissionGuard>} />
+            <Route path="techniques" element={<PermissionGuard module="techniques"><TechniqueLibrary /></PermissionGuard>} />
+            <Route path="help" element={<PermissionGuard module="help"><HelpCenter /></PermissionGuard>} />
+            <Route path="ingredients" element={<PermissionGuard module="ingredients"><IngredientsEncyclopedia /></PermissionGuard>} />
+            <Route path="pos-settings" element={<PermissionGuard module="pos-settings"><PosSettings /></PermissionGuard>} />
           </Route>
 
           <Route path="/menu/:id" element={<MenuPublic />} />

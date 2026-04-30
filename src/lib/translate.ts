@@ -8,11 +8,13 @@ function saveCache(cache: Record<string, string>): void {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)) } catch {}
 }
 
-export function detectLang(text: string): 'el' | 'en' {
-  return /[Ͱ-Ͽἀ-῿]/.test(text) ? 'el' : 'en'
+export function detectLang(text: string): 'el' | 'en' | 'bg' {
+  if (/[Ͱ-Ͽἀ-῿]/.test(text)) return 'el'
+  if (/[Ѐ-ӿ]/.test(text)) return 'bg'
+  return 'en'
 }
 
-export async function translateText(text: string, to: 'el' | 'en'): Promise<string> {
+export async function translateText(text: string, to: 'el' | 'en' | 'bg'): Promise<string> {
   if (!text?.trim()) return text ?? ''
   const from = detectLang(text)
   if (from === to) return text

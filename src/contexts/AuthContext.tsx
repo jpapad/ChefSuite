@@ -8,9 +8,16 @@ import {
 } from 'react'
 import type { Session, User as AuthUser } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { Profile } from '../types/database.types'
+import type { Profile, UserRole } from '../types/database.types'
+import i18n from '../i18n'
 
 export type { Profile }
+
+export interface MyTeam {
+  id: string
+  name: string
+  role: UserRole
+}
 
 interface AuthContextValue {
   session: Session | null
@@ -25,6 +32,8 @@ interface AuthContextValue {
   ) => Promise<{ hasSession: boolean }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  switchTeam: (teamId: string) => Promise<void>
+  myTeams: MyTeam[]
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -32,7 +41,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, team_id, role, full_name, permissions, created_at, updated_at')
+    .select('id, team_id, active_team_id, role, full_name, permissions, preferred_lang, created_at, updated_at')
     .eq('id', userId)
     .maybeSingle()
 
@@ -43,15 +52,41 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   return data as Profile | null
 }
 
+async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
+  const { data } = await supabase
+    .from('team_memberships')
+    .select('team_id, role, teams(id, name)')
+    .eq('user_id', userId)
+
+  if (!data) return []
+  return data.map((row) => {
+    const team = row.teams as { id: string; name: string } | null
+    return {
+      id: row.team_id as string,
+      name: team?.name ?? '—',
+      role: row.role as UserRole,
+    }
+  })
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [rawProfile, setRawProfile] = useState<Profile | null>(null)
+  const [myTeams, setMyTeams] = useState<MyTeam[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Derived profile: team_id is overridden by active_team_id when set
+  const profile = useMemo<Profile | null>(() => {
+    if (!rawProfile) return null
+    return {
+      ...rawProfile,
+      team_id: rawProfile.active_team_id ?? rawProfile.team_id,
+    }
+  }, [rawProfile])
 
   useEffect(() => {
     let active = true
 
-    // Safety net: never stay stuck on loading longer than 4s
     const safetyTimer = setTimeout(() => {
       if (active) setLoading(false)
     }, 4000)
@@ -63,16 +98,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'INITIAL_SESSION') {
           clearTimeout(safetyTimer)
-          setLoading(false) // unlock immediately — don't wait for profile
+          setLoading(false)
         }
 
         if (nextSession?.user) {
-          // fetch profile in background, never blocks loading
-          fetchProfile(nextSession.user.id).then((p) => {
-            if (active) setProfile(p)
+          void Promise.all([
+            fetchProfile(nextSession.user.id),
+            fetchMyTeams(nextSession.user.id),
+          ]).then(([p, teams]) => {
+            if (!active) return
+            setRawProfile(p)
+            setMyTeams(teams)
+            if (p?.preferred_lang) {
+              const validLangs = ['en', 'el', 'bg']
+              if (validLangs.includes(p.preferred_lang)) {
+                void i18n.changeLanguage(p.preferred_lang)
+                localStorage.setItem('chefsuite_lang', p.preferred_lang)
+              }
+            }
           })
         } else {
-          setProfile(null)
+          setRawProfile(null)
+          setMyTeams([])
         }
       },
     )
@@ -90,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       profile,
       loading,
+      myTeams,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -112,10 +160,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async refreshProfile() {
         if (!session?.user) return
-        setProfile(await fetchProfile(session.user.id))
+        const [p, teams] = await Promise.all([
+          fetchProfile(session.user.id),
+          fetchMyTeams(session.user.id),
+        ])
+        setRawProfile(p)
+        setMyTeams(teams)
+      },
+      async switchTeam(teamId: string) {
+        if (!session?.user) return
+        const { error } = await supabase
+          .from('profiles')
+          .update({ active_team_id: teamId })
+          .eq('id', session.user.id)
+        if (error) throw error
+        setRawProfile((prev) => (prev ? { ...prev, active_team_id: teamId } : prev))
       },
     }),
-    [session, profile, loading],
+    [session, profile, rawProfile, loading, myTeams],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
+import { Drawer } from '../ui/Drawer'
+import { BarcodeScanner, BarcodeScanButton, BarcodeScannerStyles } from './BarcodeScanner'
 import type { InventoryItem, InventoryLocation } from '../../types/database.types'
 
 export interface InventoryFormValues {
@@ -10,6 +12,7 @@ export interface InventoryFormValues {
   min_stock_level: number
   cost_per_unit: number | null
   location_id: string | null
+  barcode: string | null
 }
 
 interface InventoryFormProps {
@@ -30,6 +33,7 @@ function blank(initial?: InventoryItem): InventoryFormValues {
     min_stock_level: initial?.min_stock_level ?? 0,
     cost_per_unit: initial?.cost_per_unit ?? null,
     location_id: initial?.location_id ?? null,
+    barcode: initial?.barcode ?? null,
   }
 }
 
@@ -42,6 +46,7 @@ export function InventoryForm({
 }: InventoryFormProps) {
   const [values, setValues] = useState<InventoryFormValues>(() => blank(initial))
   const [error, setError] = useState<string | null>(null)
+  const [scanOpen, setScanOpen] = useState(false)
 
   useEffect(() => {
     setValues(blank(initial))
@@ -69,16 +74,44 @@ export function InventoryForm({
     }
   }
 
+  function onBarcodeDetected(barcode: string, productName?: string, unit?: string) {
+    setScanOpen(false)
+    setValues((v) => ({
+      ...v,
+      name: productName ? productName : v.name || barcode,
+      unit: unit ?? v.unit,
+      barcode,
+    }))
+  }
+
   return (
+    <>
+    <BarcodeScannerStyles />
+    <Drawer open={scanOpen} onClose={() => setScanOpen(false)} title="Scan Barcode">
+      <BarcodeScanner onDetected={onBarcodeDetected} onClose={() => setScanOpen(false)} />
+    </Drawer>
     <form onSubmit={handleSubmit} className="space-y-5">
-      <Input
-        name="name"
-        label="Item name"
-        placeholder="Olive oil"
-        required
-        value={values.name}
-        onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
-      />
+      <div>
+        <div className="flex items-end justify-between mb-1">
+          <span className="text-sm font-medium text-white/80">Item name</span>
+          <BarcodeScanButton onClick={() => setScanOpen(true)} />
+        </div>
+        <Input
+          name="name"
+          placeholder="Olive oil"
+          required
+          value={values.name}
+          onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+          label=""
+        />
+        {values.barcode && (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-white/40">
+            <span className="font-mono bg-white/5 rounded px-1.5 py-0.5">{values.barcode}</span>
+            <button type="button" onClick={() => setValues((v) => ({ ...v, barcode: null }))}
+              className="hover:text-red-400 transition">✕</button>
+          </p>
+        )}
+      </div>
 
       <div>
         <Input
@@ -191,5 +224,6 @@ export function InventoryForm({
         </Button>
       </div>
     </form>
+    </>
   )
 }

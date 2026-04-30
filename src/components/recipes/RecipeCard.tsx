@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Trash2, Euro, AlertTriangle, PackageCheck, PackageX, UtensilsCrossed, History, ChefHat, Clock, Users } from 'lucide-react'
+import { Pencil, Trash2, Euro, PackageCheck, PackageX, UtensilsCrossed, History, ChefHat, Clock, Users } from 'lucide-react'
+import { AllergenDot } from '../ui/AllergenIcon'
 import type { InventoryItem, Recipe, RecipeIngredient } from '../../types/database.types'
 import { useAutoTranslate } from '../../hooks/useAutoTranslate'
 
@@ -163,10 +164,13 @@ export function RecipeCard({ recipe, ingredients, inventory, onView, onEdit, onD
               </span>
             )}
             {recipe.allergens.length > 0 && (
-              <span className="flex items-center gap-1 text-amber-300">
-                <AlertTriangle className="h-3 w-3" />
-                {recipe.allergens.slice(0, 2).join(', ')}
-                {recipe.allergens.length > 2 && ` +${recipe.allergens.length - 2}`}
+              <span className="flex items-center gap-0.5">
+                {recipe.allergens.slice(0, 3).map((a) => (
+                  <AllergenDot key={a} allergen={a} />
+                ))}
+                {recipe.allergens.length > 3 && (
+                  <span className="text-[10px] text-white/40 ml-0.5">+{recipe.allergens.length - 3}</span>
+                )}
               </span>
             )}
           </div>

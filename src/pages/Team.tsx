@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { UserPlus, Copy, Check, Trash2, Shield, Pencil, Save, Lock } from 'lucide-react'
+import { UserPlus, Copy, Check, Trash2, Shield, Pencil, Save, Lock, Languages } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
@@ -9,6 +9,7 @@ import { InviteForm } from '../components/team/InviteForm'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
 import { supabase } from '../lib/supabase'
+import { cn } from '../lib/cn'
 import { ALL_MODULES, MODULE_GROUPS, MODULE_LABEL_KEY, type AppModule } from '../hooks/usePermissions'
 import type { UserRole, Profile } from '../types/database.types'
 
@@ -91,6 +92,7 @@ export default function Team() {
   // Permissions drawer state
   const [permMember, setPermMember] = useState<Profile | null>(null)
   const [permChecked, setPermChecked] = useState<Set<AppModule>>(new Set())
+  const [permLang, setPermLang] = useState<string>('en')
   const [savingPerms, setSavingPerms] = useState(false)
   const [permSaved, setPermSaved] = useState(false)
 
@@ -102,6 +104,7 @@ export default function Team() {
       ? new Set(ALL_MODULES)
       : new Set(member.permissions as AppModule[])
     setPermChecked(initial)
+    setPermLang(member.preferred_lang ?? 'en')
     setPermMember(member)
     setPermSaved(false)
   }
@@ -123,10 +126,13 @@ export default function Team() {
     try {
       const allChecked = permChecked.size === ALL_MODULES.length
       const newPerms: string[] | null = allChecked ? null : [...permChecked]
-      await supabase.rpc('update_member_permissions', {
-        member_id: permMember.id,
-        new_permissions: newPerms,
-      })
+      await Promise.all([
+        supabase.rpc('update_member_permissions', {
+          member_id: permMember.id,
+          new_permissions: newPerms,
+        }),
+        supabase.from('profiles').update({ preferred_lang: permLang }).eq('id', permMember.id),
+      ])
       setPermSaved(true)
       setTimeout(() => setPermMember(null), 800)
     } finally {
@@ -394,18 +400,24 @@ export default function Team() {
               <p className="text-[11px] text-white/30 mt-1">{t('team.memberPasswordHint')}</p>
             </div>
             <div>
-              <label className="block text-xs text-white/50 mb-1">{t('team.memberRole')}</label>
-              <select
-                value={createForm.role}
-                onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value as UserRole }))}
-                className="w-full h-10 rounded-xl bg-white-fixed/55 border border-white/70 text-white text-sm px-3 outline-none focus:ring-1 focus:ring-brand-orange/40"
-              >
+              <label className="block text-xs text-white/50 mb-2">{t('team.memberRole')}</label>
+              <div className="grid grid-cols-2 gap-2">
                 {(['head_chef', 'sous_chef', 'cook', 'staff'] as UserRole[]).map((r) => (
-                  <option key={r} value={r} className="bg-[#0e0905]">
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setCreateForm((f) => ({ ...f, role: r }))}
+                    className={cn(
+                      'rounded-xl px-3 py-2.5 text-sm font-medium text-left transition-all',
+                      createForm.role === r
+                        ? 'bg-brand-orange text-white-fixed shadow-[0_0_12px_rgba(196,149,106,0.4)]'
+                        : 'glass text-white/70 hover:text-white hover:bg-white/8',
+                    )}
+                  >
                     {t(`team.roles.${r}`)}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
 
@@ -471,6 +483,28 @@ export default function Team() {
             <div>
               <p className="font-semibold text-white/90">{t('team.permissionsFor', { name: permMember.full_name ?? '—' })}</p>
               <p className="text-xs text-white/45 mt-1">{t('team.permissionsHint')}</p>
+            </div>
+
+            {/* Language preference */}
+            <div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Languages className="h-3.5 w-3.5" /> {t('team.memberLanguage')}
+              </p>
+              <div className="flex gap-2">
+                {(['en', 'el', 'bg'] as const).map((lang) => {
+                  const labels: Record<string, string> = { en: 'English', el: 'Ελληνικά', bg: 'Български' }
+                  return (
+                    <button key={lang} type="button" onClick={() => setPermLang(lang)}
+                      className={cn('px-3 py-1.5 rounded-lg border text-xs font-medium transition',
+                        permLang === lang
+                          ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                          : 'border-white/15 text-white/50 hover:text-white/80 hover:bg-white/5')}
+                    >
+                      {labels[lang]}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="flex gap-2">

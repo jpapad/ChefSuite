@@ -24,6 +24,17 @@ export const ALL_MODULES = [
   'walkie',
   'journal',
   'pulse',
+  'copilot',
+  'handover',
+  'labels',
+  'stocktake',
+  'costing',
+  'culinary-tools',
+  'glossary',
+  'techniques',
+  'help',
+  'ingredients',
+  'pos-settings',
 ] as const
 
 export type AppModule = (typeof ALL_MODULES)[number]
@@ -31,23 +42,27 @@ export type AppModule = (typeof ALL_MODULES)[number]
 export const MODULE_GROUPS: { labelKey: string; modules: AppModule[] }[] = [
   {
     labelKey: 'nav.groups.kitchen',
-    modules: ['dashboard', 'recipes', 'menus', 'prep', 'kds', 'haccp'],
+    modules: ['dashboard', 'recipes', 'menus', 'prep', 'kds', 'haccp', 'labels'],
   },
   {
     labelKey: 'nav.groups.procurement',
-    modules: ['inventory', 'suppliers', 'orders', 'waste', 'price-tracking'],
+    modules: ['inventory', 'suppliers', 'orders', 'waste', 'price-tracking', 'stocktake'],
   },
   {
     labelKey: 'nav.groups.team',
-    modules: ['team', 'shifts', 'timeclock', 'staff-performance'],
+    modules: ['team', 'shifts', 'timeclock', 'staff-performance', 'handover'],
   },
   {
     labelKey: 'nav.groups.revenue',
-    modules: ['menu-engineering', 'reservations', 'analytics', 'pl'],
+    modules: ['menu-engineering', 'reservations', 'analytics', 'pl', 'pos-settings', 'costing'],
   },
   {
     labelKey: 'nav.groups.comms',
-    modules: ['chat', 'walkie', 'journal', 'pulse'],
+    modules: ['chat', 'walkie', 'journal', 'pulse', 'copilot'],
+  },
+  {
+    labelKey: 'nav.groups.library',
+    modules: ['culinary-tools', 'glossary', 'techniques', 'ingredients', 'help'],
   },
 ]
 
@@ -75,6 +90,17 @@ export const MODULE_LABEL_KEY: Record<AppModule, string> = {
   'walkie': 'nav.walkie',
   'journal': 'nav.journal',
   'pulse': 'nav.pulse',
+  'copilot': 'nav.copilot',
+  'culinary-tools': 'nav.culinaryTools',
+  'glossary': 'nav.glossary',
+  'techniques': 'nav.techniques',
+  'ingredients': 'nav.ingredients',
+  'pos-settings': 'nav.posSettings',
+  'help': 'nav.help',
+  'handover': 'nav.handover',
+  'labels': 'nav.labels',
+  'stocktake': 'nav.stocktake',
+  'costing': 'nav.costing',
 }
 
 export function usePermissions() {

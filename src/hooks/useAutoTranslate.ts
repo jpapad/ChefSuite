@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { translateText } from '../lib/translate'
 
-type Lang = 'el' | 'en'
+type Lang = 'el' | 'en' | 'bg'
 
 function uiLang(code: string): Lang {
-  return code.startsWith('el') ? 'el' : 'en'
+  if (code.startsWith('el')) return 'el'
+  if (code.startsWith('bg')) return 'bg'
+  return 'en'
 }
 
 export function useAutoTranslate(text: string | null | undefined): string | null | undefined {

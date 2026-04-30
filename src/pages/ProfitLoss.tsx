@@ -68,7 +68,7 @@ export default function ProfitLoss() {
       setLoading(true)
       const teamId = profile!.team_id
 
-      const [revRes, purRes, wasteRes] = await Promise.all([
+      const [revRes, purRes, wasteRes, posRes] = await Promise.all([
         // Revenue: completed online orders
         supabase
           .from('online_order_items')
@@ -92,21 +92,32 @@ export default function ProfitLoss() {
           .eq('team_id', teamId)
           .gte('wasted_at', from)
           .not('cost', 'is', null),
+
+        // POS transactions (Viva / Square)
+        supabase
+          .from('pos_transactions')
+          .select('amount, transacted_at')
+          .eq('team_id', teamId)
+          .eq('status', 'completed')
+          .gte('transacted_at', from),
       ])
 
       type RevRow = { price: number; quantity: number; online_orders: { created_at: string } }
       type PurRow = { unit_price: number; quantity: number; purchase_orders: { received_at: string } }
       type WasteRow = { cost: number; wasted_at: string }
+      type PosRow = { amount: number; transacted_at: string }
 
       const revRows = (revRes.data ?? []) as RevRow[]
       const purRows = (purRes.data ?? []) as PurRow[]
       const wasteRows = (wasteRes.data ?? []) as WasteRow[]
+      const posRows = (posRes.data ?? []) as PosRow[]
 
-      const totalRev = revRows.reduce((s, r) => s + r.price * r.quantity, 0)
+      const totalOnlineRev = revRows.reduce((s, r) => s + r.price * r.quantity, 0)
+      const totalPosRev = posRows.reduce((s, r) => s + r.amount, 0)
       const totalPur = purRows.reduce((s, r) => s + (r.unit_price ?? 0) * r.quantity, 0)
       const totalWaste = wasteRows.reduce((s, r) => s + (r.cost ?? 0), 0)
 
-      setRevenue(totalRev)
+      setRevenue(totalOnlineRev + totalPosRev)
       setPurchases(totalPur)
       setWaste(totalWaste)
 
@@ -117,6 +128,7 @@ export default function ProfitLoss() {
         return weekMap.get(k)!
       }
       for (const r of revRows) { const k = weekKey(r.online_orders.created_at.slice(0, 10)); ensure(k).revenue += r.price * r.quantity }
+      for (const r of posRows) { const k = weekKey(r.transacted_at.slice(0, 10)); ensure(k).revenue += r.amount }
       for (const r of purRows) { const k = weekKey(r.purchase_orders.received_at?.slice(0, 10) ?? from); ensure(k).purchases += (r.unit_price ?? 0) * r.quantity }
       for (const r of wasteRows) { const k = weekKey(r.wasted_at); ensure(k).waste += r.cost ?? 0 }
 

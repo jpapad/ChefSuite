@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { HACCPCheck, HACCPCheckInsert, HACCPLocation } from '../types/database.types'
+import type { HACCPCheck, HACCPCheckInsert, HACCPCheckWithChecker, HACCPLocation } from '../types/database.types'
 
 export function isPass(check: HACCPCheck): boolean {
   return check.temperature >= check.min_temp && check.temperature <= check.max_temp
@@ -11,7 +11,7 @@ export function useHACCP(dateIso?: string) {
   const { profile } = useAuth()
   const teamId = profile?.team_id ?? null
 
-  const [checks, setChecks] = useState<HACCPCheck[]>([])
+  const [checks, setChecks] = useState<HACCPCheckWithChecker[]>([])
   const [locations, setLocations] = useState<HACCPLocation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +21,7 @@ export function useHACCP(dateIso?: string) {
     setLoading(true)
     let query = supabase
       .from('haccp_checks')
-      .select('*')
+      .select('*, profiles:checked_by(full_name)')
       .order('created_at', { ascending: false })
 
     if (dateIso) {
@@ -31,7 +31,9 @@ export function useHACCP(dateIso?: string) {
     }
 
     const { data, error: err } = await query
-    setChecks((data ?? []) as HACCPCheck[])
+    type Row = HACCPCheck & { profiles: { full_name: string | null } | null }
+    const rows = (data ?? []) as Row[]
+    setChecks(rows.map<HACCPCheckWithChecker>((r) => ({ ...r, checked_by_name: r.profiles?.full_name ?? null })))
     setError(err?.message ?? null)
     setLoading(false)
   }, [teamId, dateIso])
@@ -56,7 +58,7 @@ export function useHACCP(dateIso?: string) {
       .select('*')
       .single()
     if (err) throw err
-    const row = data as HACCPCheck
+    const row: HACCPCheckWithChecker = { ...(data as HACCPCheck), checked_by_name: profile.full_name ?? null }
     setChecks((s) => [row, ...s])
     return row
   }, [teamId, profile])

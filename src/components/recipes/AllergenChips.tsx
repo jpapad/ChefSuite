@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { AllergenBadge, ALLERGEN_META } from '../ui/AllergenIcon'
 
 interface AllergenChipsProps {
   value: string[]
@@ -9,17 +10,7 @@ interface AllergenChipsProps {
   suggestions?: string[]
 }
 
-const defaultSuggestions = [
-  'gluten',
-  'dairy',
-  'eggs',
-  'nuts',
-  'peanuts',
-  'soy',
-  'shellfish',
-  'fish',
-  'sesame',
-]
+const defaultSuggestions = Object.keys(ALLERGEN_META)
 
 export function AllergenChips({
   value,
@@ -58,18 +49,15 @@ export function AllergenChips({
       </span>
       <div className="glass rounded-xl px-3 py-2 min-h-touch-target flex flex-wrap items-center gap-2">
         {value.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 rounded-lg bg-brand-orange/20 text-brand-orange px-2 py-1 text-sm"
-          >
-            {tag}
+          <span key={tag} className="inline-flex items-center gap-1">
+            <AllergenBadge allergen={tag} size="sm" />
             <button
               type="button"
               onClick={() => remove(tag)}
               aria-label={`Remove ${tag}`}
-              className="hover:text-white"
+              className="text-white/40 hover:text-white transition"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </button>
           </span>
         ))}
@@ -89,12 +77,9 @@ export function AllergenChips({
               key={s}
               type="button"
               onClick={() => add(s)}
-              className={cn(
-                'rounded-lg border border-glass-border px-2 py-1 text-xs',
-                'text-white/60 hover:text-white hover:bg-white/5',
-              )}
+              className="opacity-60 hover:opacity-100 transition"
             >
-              + {s}
+              <AllergenBadge allergen={s} size="sm" />
             </button>
           ))}
         </div>
