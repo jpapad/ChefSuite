@@ -4,6 +4,7 @@ import { Calculator, Search, Check, TrendingUp, Package, AlertTriangle } from 'l
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
+import { ErrorState } from '../components/ui/ErrorState'
 
 type Tab = 'ingredients' | 'recipes'
 
@@ -40,22 +41,31 @@ export default function Costing() {
   const [ingredients, setIngredients] = useState<CostItem[]>([])
   const [recipes, setRecipes] = useState<RecipeCostRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [editVal, setEditVal] = useState('')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  function load() {
     if (!teamId) return
+    setLoading(true)
+    setError(null)
     Promise.all([
       supabase.from('inventory').select('id, name, unit, cost_per_unit').eq('team_id', teamId).order('name'),
       supabase.from('recipes').select('id, title, cost_per_portion, selling_price, servings').eq('team_id', teamId).order('title'),
-    ]).then(([{ data: inv }, { data: rec }]) => {
+    ]).then(([{ data: inv, error: e1 }, { data: rec, error: e2 }]) => {
+      if (e1 ?? e2) { setError((e1 ?? e2)!.message); setLoading(false); return }
       setIngredients((inv ?? []) as CostItem[])
       setRecipes((rec ?? []) as RecipeCostRow[])
       setLoading(false)
+    }).catch((err: unknown) => {
+      setError(err instanceof Error ? err.message : 'Failed to load data')
+      setLoading(false)
     })
-  }, [teamId])
+  }
+
+  useEffect(() => { load() }, [teamId])
 
   // Stats
   const stats = useMemo(() => {
@@ -109,6 +119,8 @@ export default function Costing() {
           <p className="text-xs text-white/40 mt-0.5">{t('costing.subtitle')}</p>
         </div>
       </div>
+
+      {error && <ErrorState message={error} onRetry={load} />}
 
       {/* Stats row */}
       {stats && (

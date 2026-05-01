@@ -8,6 +8,7 @@ import { Input } from '../components/ui/Input'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
+import { ErrorState } from '../components/ui/ErrorState'
 
 interface JournalEntry {
   id: string
@@ -40,14 +41,17 @@ export default function ChefJournal() {
   const [mood, setMood] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [viewing, setViewing] = useState<JournalEntry | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   async function load() {
     if (!profile?.team_id) return
-    const { data } = await supabase
+    setLoadError(null)
+    const { data, error: err } = await supabase
       .from('journal_entries')
       .select('*, profiles:author_id(full_name)')
       .eq('team_id', profile.team_id)
       .order('created_at', { ascending: false })
+    if (err) { setLoadError(err.message); setLoading(false); return }
     const rows = (data ?? []) as Array<JournalEntry & { profiles: { full_name: string } | null }>
     setEntries(rows.map((r) => ({ ...r, author_name: r.profiles?.full_name ?? undefined })))
     setLoading(false)
@@ -140,7 +144,9 @@ export default function ChefJournal() {
         )}
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <ErrorState message={loadError} onRetry={() => void load()} />
+      ) : loading ? (
         <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
       ) : filtered.length === 0 ? (
         <GlassCard className="flex flex-col items-center text-center gap-3 py-12">

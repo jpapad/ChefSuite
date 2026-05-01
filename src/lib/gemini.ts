@@ -1,8 +1,5 @@
 import type { RecipeFormValues } from '../components/recipes/RecipeForm'
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-const MODEL = 'gemini-2.0-flash'
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
+import { supabase } from './supabase'
 
 const SYSTEM_PROMPT = `You are a recipe parser. Extract recipe information from the provided text and return ONLY a valid JSON object with these fields:
 - title: string (required)
@@ -36,17 +33,17 @@ export type ImportedRecipe = Pick<
   extractedIngredients: ExtractedIngredient[]
 }
 
+async function callGeminiRaw(body: object): Promise<GeminiResponse> {
+  const { data, error } = await supabase.functions.invoke('gemini-proxy', { body })
+  if (error) throw new Error(error.message)
+  return data as GeminiResponse
+}
+
 async function callGemini(prompt: string): Promise<string> {
-  if (!API_KEY) throw new Error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env.local file.')
-  const res = await fetch(`${ENDPOINT}?key=${API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-    }),
+  const json = await callGeminiRaw({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
   })
-  const json = (await res.json()) as GeminiResponse
   if (json.error) throw new Error(json.error.message)
   const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
   return raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
@@ -375,8 +372,6 @@ export async function chatWithCopilot(
   messages: CopilotMessage[],
   context: string,
 ): Promise<string> {
-  if (!API_KEY) throw new Error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env.local file.')
-
   const systemTurn = {
     role: 'user',
     parts: [{ text: `You are Chef Copilot, an expert culinary AI assistant embedded in ChefSuite — a professional kitchen management app.
@@ -394,21 +389,14 @@ Answer questions about recipes, ingredients, costs, prep tasks, menu planning, a
 
   const lastMsg = messages[messages.length - 1]
 
-  const body = {
+  const json = await callGeminiRaw({
     system_instruction: systemTurn,
     contents: [
       ...historyTurns,
       { role: 'user', parts: [{ text: lastMsg.text }] },
     ],
     generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-  }
-
-  const res = await fetch(`${ENDPOINT}?key=${API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
   })
-  const json = (await res.json()) as GeminiResponse
   if (json.error) throw new Error(json.error.message)
   return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
 }

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
 import { Button } from '../components/ui/Button'
+import { ErrorState } from '../components/ui/ErrorState'
 
 interface StockItem {
   id: string
@@ -22,28 +23,37 @@ export default function Stocktake() {
   const [items, setItems] = useState<StockItem[]>([])
   const [counted, setCounted] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [search, setSearch] = useState('')
   const [changesOnly, setChangesOnly] = useState(false)
 
-  useEffect(() => {
+  function load() {
     if (!teamId) return
+    setLoading(true)
+    setError(null)
     supabase
       .from('inventory')
       .select('id, name, quantity, unit')
       .eq('team_id', teamId)
       .order('name')
-      .then(({ data }) => {
+      .then(({ data, error: err }) => {
+        if (err) { setError(err.message); setLoading(false); return }
         const rows = (data ?? []) as StockItem[]
         setItems(rows)
-        // Pre-fill counted with current system quantities
         const init: Record<string, string> = {}
         rows.forEach((r) => { init[r.id] = String(r.quantity) })
         setCounted(init)
         setLoading(false)
       })
-  }, [teamId])
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load inventory')
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => { load() }, [teamId])
 
   const changedItems = useMemo(
     () => items.filter((i) => {
@@ -133,6 +143,8 @@ export default function Stocktake() {
           </Button>
         </div>
       </div>
+
+      {error && <ErrorState message={error} onRetry={load} />}
 
       {/* Toolbar */}
       <div className="flex gap-3 items-center flex-wrap">

@@ -772,6 +772,39 @@
     "signedInAs": "Signed in as {{email}}",
     "signOut": "Sign out"
   },
+  "welcome": {
+    "title": "Welcome to Chefsuite!",
+    "subtitle": "Let's get {{team}} up and running",
+    "skip": "Skip",
+    "next": "Next",
+    "finish": "Go to dashboard",
+    "steps": {
+      "invite": "Invite team",
+      "recipe": "Add recipe",
+      "explore": "Explore"
+    },
+    "invite": {
+      "title": "Invite your team",
+      "desc": "Send invite links to your crew so they can join",
+      "emailPlaceholder": "colleague@restaurant.com",
+      "sendInvite": "Send invite",
+      "sending": "Sending…",
+      "inviteAnother": "Invite another person"
+    },
+    "recipe": {
+      "title": "Add your first recipe",
+      "desc": "Start your recipe library with one dish",
+      "titlePlaceholder": "e.g. Grilled Salmon",
+      "servings": "Servings",
+      "save": "Save recipe",
+      "saving": "Saving…",
+      "saved": "\"{{title}}\" saved! You can add ingredients later."
+    },
+    "explore": {
+      "title": "Explore Chefsuite",
+      "desc": "Jump to any section to see what's possible"
+    }
+  },
   "notFound": {
     "title": "Page not found",
     "description": "This route doesn't exist in the kitchen.",

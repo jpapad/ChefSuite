@@ -259,8 +259,8 @@ const FEATURE_GROUPS: FeatureGroup[] = [
         name: 'Chef Copilot', nameEl: 'Chef Copilot',
         description: 'AI assistant with full context of your kitchen data — ask about food cost, recipe ideas, substitutions, or anything culinary.',
         descriptionEl: 'AI βοηθός με πλήρη πρόσβαση στα δεδομένα κουζίνας σας — ρωτήστε για κόστος, ιδέες συνταγών ή οτιδήποτε μαγειρικό.',
-        bullets: ['Aware of your recipes, inventory, and waste data', 'Answers in Greek or English', 'Requires VITE_GEMINI_API_KEY in .env.local'],
-        bulletsEl: ['Γνωρίζει τις συνταγές, το stock και τη σπατάλη σας', 'Απαντά στα ελληνικά ή αγγλικά', 'Απαιτεί VITE_GEMINI_API_KEY στο .env.local'],
+        bullets: ['Aware of your recipes, inventory, and waste data', 'Answers in Greek or English', 'Requires GEMINI_API_KEY set as a Supabase secret'],
+        bulletsEl: ['Γνωρίζει τις συνταγές, το stock και τη σπατάλη σας', 'Απαντά στα ελληνικά ή αγγλικά', 'Απαιτεί GEMINI_API_KEY ως Supabase secret'],
       },
     ],
   },
@@ -310,8 +310,8 @@ const FAQ: FAQItem[] = [
   {
     q: 'Which features require a Gemini API key?',
     qEl: 'Ποιες λειτουργίες χρειάζονται Gemini API key;',
-    a: 'Three features require a VITE_GEMINI_API_KEY in your .env.local file: (1) AI Recipe Import — paste text or describe a dish to auto-structure it as a recipe, (2) Nutrition Estimation — analyse a recipe\'s macros from its ingredients, (3) Chef Copilot — the conversational AI kitchen assistant. All other features work without it.',
-    aEl: 'Τρεις λειτουργίες χρειάζονται VITE_GEMINI_API_KEY στο αρχείο .env.local σας: (1) AI Εισαγωγή Συνταγής — επικολλήστε κείμενο ή περιγράψτε πιάτο για αυτόματη δομή, (2) Εκτίμηση Θρεπτικών — ανάλυση μακροθρεπτικών συνταγής από τα υλικά, (3) Chef Copilot — ο AI βοηθός κουζίνας. Όλες οι άλλες λειτουργίες δουλεύουν χωρίς αυτό.',
+    a: 'Three features require a GEMINI_API_KEY set as a Supabase secret: (1) AI Recipe Import — paste text or describe a dish to auto-structure it as a recipe, (2) Nutrition Estimation — analyse a recipe\'s macros from its ingredients, (3) Chef Copilot — the conversational AI kitchen assistant. All other features work without it.',
+    aEl: 'Τρεις λειτουργίες χρειάζονται GEMINI_API_KEY ως Supabase secret: (1) AI Εισαγωγή Συνταγής — επικολλήστε κείμενο ή περιγράψτε πιάτο για αυτόματη δομή, (2) Εκτίμηση Θρεπτικών — ανάλυση μακροθρεπτικών συνταγής από τα υλικά, (3) Chef Copilot — ο AI βοηθός κουζίνας. Όλες οι άλλες λειτουργίες δουλεύουν χωρίς αυτό.',
   },
   {
     q: 'How do I set up automated email reports?',

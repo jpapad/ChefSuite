@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
+import { ErrorState } from '../components/ui/ErrorState'
 
 interface PulseRow {
   week: string
@@ -48,20 +49,23 @@ export default function KitchenPulse() {
   const [workload, setWorkload] = useState(3)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const currentWeek = thisMonday()
 
   async function load() {
     if (!profile?.team_id) return
+    setLoadError(null)
     const twoMonthsAgo = new Date()
     twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 56)
-    const { data } = await supabase
+    const { data, error: err } = await supabase
       .from('pulse_responses')
       .select('week, morale, workload, note, created_at')
       .eq('team_id', profile.team_id)
       .gte('week', twoMonthsAgo.toISOString().slice(0, 10))
       .order('week', { ascending: false })
 
+    if (err) { setLoadError(err.message); setLoading(false); return }
     const rows = (data ?? []) as PulseRow[]
 
     // Aggregate by week
@@ -136,6 +140,8 @@ export default function KitchenPulse() {
         <h1 className="text-3xl font-semibold">{t('pulse.title')}</h1>
         <p className="text-white/60 mt-1">{t('pulse.subtitle')}</p>
       </header>
+
+      {loadError && <ErrorState message={loadError} onRetry={() => void load()} />}
 
       {/* Weekly check-in card */}
       <GlassCard className="border border-brand-orange/20">

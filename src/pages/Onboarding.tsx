@@ -44,7 +44,7 @@ export default function Onboarding() {
       )
       if (rpcErr) throw rpcErr
       await refreshProfile()
-      navigate('/', { replace: true })
+      navigate('/welcome', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create team')
     } finally {
