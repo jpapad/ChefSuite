@@ -47,7 +47,7 @@ export function Drawer({ open, onClose, title, children, footer }: DrawerProps) 
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={typeof title === 'string' ? title : undefined}
         className={cn(
           'absolute right-0 top-0 h-full w-full max-w-lg',
           'bg-[#f5f0e8]/95 backdrop-blur-xl border-l border-white/60 flex flex-col transition-transform duration-300 ease-out',
