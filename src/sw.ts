@@ -41,7 +41,8 @@ self.addEventListener('push', (event) => {
       badge: '/icon.svg',
       tag: data.tag ?? 'chefsuite',
       data: { url: data.url ?? '/' },
-      vibrate: [100, 50, 100],
+      // vibrate is a non-standard extension; cast to satisfy strict types
+      ...(({ vibrate: [100, 50, 100] }) as Record<string, unknown>),
     }),
   )
 })

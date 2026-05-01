@@ -73,7 +73,7 @@ export default function PriceTracking() {
           }
         }
 
-        const rows = (data ?? []) as Row[]
+        const rows = (data ?? []) as unknown as Row[]
 
         // Group by normalized item name
         const map = new Map<string, { unit: string; points: PricePoint[] }>()

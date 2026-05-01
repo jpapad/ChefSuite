@@ -7,14 +7,7 @@ import { recordScan } from '../hooks/useMenuScans'
 import { placeOrder } from '../hooks/useOnlineOrders'
 import type { MenuWithSections, MenuItemTag, PrintTemplate, MenuItem } from '../types/database.types'
 
-// ── Tag styles ───────────────────────────────────────────────────────────────
-const TAG_COLORS: Record<MenuItemTag, string> = {
-  vegan:       'bg-green-500/15 text-green-400',
-  vegetarian:  'bg-lime-500/15 text-lime-400',
-  gluten_free: 'bg-amber-400/15 text-amber-400',
-  spicy:       'bg-red-500/15 text-red-400',
-  chefs_pick:  'bg-brand-orange/15 text-brand-orange',
-}
+
 const TAG_EMOJI: Record<MenuItemTag, string> = {
   vegan: '🌱', vegetarian: '🥦', gluten_free: '🌾', spicy: '🌶️', chefs_pick: '⭐',
 }

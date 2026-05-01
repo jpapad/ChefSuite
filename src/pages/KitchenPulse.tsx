@@ -88,9 +88,7 @@ export default function KitchenPulse() {
 
     setHistory(summaries)
 
-    // Check if current user already submitted this week
-    const thisWeekRows = rows.filter((r) => r.week === currentWeek)
-    // We can't know if it's the same anonymous user, but limit via UI by checking created_at in localStorage
+    // Check if current user already submitted this week via localStorage
     const lastSubmit = localStorage.getItem(`pulse_${profile.team_id}_${currentWeek}`)
     setSubmitted(!!lastSubmit)
     setLoading(false)
@@ -121,8 +119,6 @@ export default function KitchenPulse() {
   const latestWeek = history.at(-1)
   const prevWeek = history.at(-2)
   const moraleTrend = latestWeek && prevWeek ? latestWeek.avgMorale - prevWeek.avgMorale : null
-  const maxMorale = Math.max(...history.map((w) => w.avgMorale), 1)
-
   function scoreColor(v: number): string {
     if (v >= 4) return 'text-emerald-400'
     if (v >= 3) return 'text-amber-400'

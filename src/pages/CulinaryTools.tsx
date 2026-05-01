@@ -175,7 +175,7 @@ export default function CulinaryTools() {
     if (next === 'temp')   { setFromUnit('°C'); setToUnit('°F')  }
   }
 
-  const unitMap = ctype === 'weight' ? WEIGHT : ctype === 'volume' ? VOLUME
+  const unitMap: Record<string, { label: string; factor?: number }> = ctype === 'weight' ? WEIGHT : ctype === 'volume' ? VOLUME
     : { '°C': { label: '°C' }, '°F': { label: '°F' } }
 
   const scaleFactor = baseYield > 0 && targetYield > 0 ? targetYield / baseYield : 1

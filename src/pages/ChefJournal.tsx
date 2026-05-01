@@ -22,7 +22,6 @@ interface JournalEntry {
 }
 
 const MOOD_EMOJI = ['', '😞', '😐', '🙂', '😊', '🤩']
-const MOOD_LABEL = ['', '1', '2', '3', '4', '5']
 
 export default function ChefJournal() {
   const { t } = useTranslation()

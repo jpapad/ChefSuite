@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Plus, ChevronLeft, ChevronRight, Pencil, Trash2, CalendarDays, Clock, X, Check, Printer, FileDown,
+  Plus, ChevronLeft, ChevronRight, Pencil, Trash2, Clock, X, Printer, FileDown,
 } from 'lucide-react'
 import { exportE4 } from '../lib/erganiExport'
 import { useTranslation } from 'react-i18next'

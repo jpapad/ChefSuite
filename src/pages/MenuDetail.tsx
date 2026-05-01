@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -70,7 +70,7 @@ export default function MenuDetail() {
     addItem, updateItem, removeItem, moveItemUp, moveItemDown,
   } = useMenuDetail(id ?? null)
   const { recipes } = useRecipes()
-  const { inventory } = useInventory()
+  const { items: inventory } = useInventory()
   const { workstations } = useWorkstations()
   const { members } = useTeam()
 

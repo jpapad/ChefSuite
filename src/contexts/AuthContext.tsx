@@ -60,7 +60,7 @@ async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
 
   if (!data) return []
   return data.map((row) => {
-    const team = row.teams as { id: string; name: string } | null
+    const team = (row.teams as unknown) as { id: string; name: string } | null
     return {
       id: row.team_id as string,
       name: team?.name ?? '—',

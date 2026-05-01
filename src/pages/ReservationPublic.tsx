@@ -35,7 +35,7 @@ export default function ReservationPublic() {
       .single()
       .then(({ data }) => {
         if (!data) { setTeam(null); return }
-        const row = data as { team_id: string; teams: { name: string } | null }
+        const row = data as unknown as { team_id: string; teams: { name: string } | null }
         setTeam({ id: row.team_id, name: row.teams?.name ?? 'Restaurant' })
       })
   }, [id])

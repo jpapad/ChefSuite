@@ -28,7 +28,7 @@ interface Props {
   recipes: Recipe[]
 }
 
-export function ShoppingListDrawer({ open, onClose, menu, recipes }: Props) {
+export function ShoppingListDrawer({ open, onClose, menu, recipes: _recipes }: Props) {
   const { t } = useTranslation()
   const [pax, setPax] = useState('10')
   const [ingredients, setIngredients] = useState<IngredientRow[]>([])

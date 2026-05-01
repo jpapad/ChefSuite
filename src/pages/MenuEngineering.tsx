@@ -79,7 +79,7 @@ export default function MenuEngineering() {
           } | null
         }
 
-        const rows = (data ?? []) as Row[]
+        const rows = (data ?? []) as unknown as Row[]
 
         // Aggregate by menu_item_id (fall back to name)
         const map = new Map<string, {

@@ -65,8 +65,8 @@ export interface Recipe {
 
 export type RecipeInsert = Pick<
   Recipe,
-  'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fiber_g' | 'sodium_mg'
-> & { team_id: UUID }
+  'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label'
+> & { team_id: UUID; calories?: number | null; protein_g?: number | null; carbs_g?: number | null; fat_g?: number | null; fiber_g?: number | null; sodium_mg?: number | null }
 
 export type RecipeUpdate = Partial<
   Pick<
@@ -170,8 +170,8 @@ export interface InventoryItem {
 
 export type InventoryInsert = Pick<
   InventoryItem,
-  'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id' | 'supplier_id' | 'barcode'
-> & { team_id: UUID }
+  'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id'
+> & { team_id: UUID; supplier_id?: string | null; barcode?: string | null }
 
 export type InventoryUpdate = Partial<
   Pick<
@@ -248,8 +248,8 @@ export interface PrepTask {
 
 export type PrepTaskInsert = Pick<
   PrepTask,
-  'title' | 'description' | 'recipe_id' | 'menu_id' | 'quantity' | 'assignee_id' | 'prep_for' | 'workstation_id' | 'status'
-> & { team_id: UUID; created_by: UUID }
+  'title' | 'description' | 'recipe_id' | 'quantity' | 'assignee_id' | 'prep_for' | 'workstation_id' | 'status'
+> & { team_id: UUID; created_by: UUID; menu_id?: string | null }
 
 export type PrepTaskUpdate = Partial<
   Pick<

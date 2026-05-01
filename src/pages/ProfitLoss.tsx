@@ -107,8 +107,8 @@ export default function ProfitLoss() {
       type WasteRow = { cost: number; wasted_at: string }
       type PosRow = { amount: number; transacted_at: string }
 
-      const revRows = (revRes.data ?? []) as RevRow[]
-      const purRows = (purRes.data ?? []) as PurRow[]
+      const revRows = (revRes.data ?? []) as unknown as RevRow[]
+      const purRows = (purRes.data ?? []) as unknown as PurRow[]
       const wasteRows = (wasteRes.data ?? []) as WasteRow[]
       const posRows = (posRes.data ?? []) as PosRow[]
 

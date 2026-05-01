@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
-import { Input } from '../components/ui/Input'
 import {
   PrepTaskForm,
   type PrepTaskFormValues,
@@ -235,7 +234,7 @@ interface WorkstationSidebarProps {
   workstations: Workstation[]
   selected: string | null
   onSelect: (id: string | null) => void
-  onCreate: (name: string) => Promise<void>
+  onCreate: (name: string) => Promise<unknown>
   onDelete: (w: Workstation) => Promise<void>
   t: (key: string, opts?: Record<string, unknown>) => string
 }

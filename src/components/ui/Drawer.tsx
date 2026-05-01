@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn'
 interface DrawerProps {
   open: boolean
   onClose: () => void
-  title: string
+  title: ReactNode
   children: ReactNode
   footer?: ReactNode
 }

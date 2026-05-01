@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Plus, ShoppingCart, ChevronRight, Trash2, Check, Package,
-  Send, RotateCcw, X, Euro, FileUp, Loader2, Sparkles, AlertTriangle,
+  Send, RotateCcw, X, Euro, Loader2, Sparkles, AlertTriangle,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -92,7 +92,7 @@ export default function PurchaseOrders() {
   const [itemDraft, setItemDraft] = useState<ItemDraft>(BLANK_ITEM)
   const [addingItem, setAddingItem] = useState(false)
 
-  const { items: orderItems, addItem, removeItem, reload: reloadItems } = usePurchaseOrderItems(
+  const { items: orderItems, addItem, removeItem } = usePurchaseOrderItems(
     activeOrder?.id ?? null,
   )
 

@@ -110,7 +110,7 @@ export default function StaffPerformance() {
         end_time: string
       }
 
-      const entries = (entriesRes.data ?? []) as EntryRow[]
+      const entries = (entriesRes.data ?? []) as unknown as EntryRow[]
       const shifts  = (shiftsRes.data  ?? []) as ShiftRow[]
 
       // Collect member names & ids

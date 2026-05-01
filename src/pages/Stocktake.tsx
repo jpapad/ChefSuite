@@ -33,7 +33,7 @@ export default function Stocktake() {
     if (!teamId) return
     setLoading(true)
     setError(null)
-    supabase
+    void supabase
       .from('inventory')
       .select('id, name, quantity, unit')
       .eq('team_id', teamId)
@@ -45,10 +45,6 @@ export default function Stocktake() {
         const init: Record<string, string> = {}
         rows.forEach((r) => { init[r.id] = String(r.quantity) })
         setCounted(init)
-        setLoading(false)
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to load inventory')
         setLoading(false)
       })
   }
