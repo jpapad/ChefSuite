@@ -5,6 +5,14 @@ import { NetworkFirst } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope
 
+// Take control immediately so stale chunks from the previous deployment don't
+// keep serving after a new build is deployed.
+self.addEventListener('install', () => { void self.skipWaiting() })
+self.addEventListener('activate', (event) => { event.waitUntil(self.clients.claim()) })
+self.addEventListener('message', (event) => {
+  if ((event.data as { type?: string })?.type === 'SKIP_WAITING') void self.skipWaiting()
+})
+
 // Workbox precache manifest injected by VitePWA
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()

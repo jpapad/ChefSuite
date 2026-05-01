@@ -15,6 +15,15 @@ export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null }
 
   static getDerivedStateFromError(error: Error): State {
+    // Stale lazy chunk after a new deployment — reload to fetch the new index.html
+    if (
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Importing a module script failed') ||
+      error.message.includes('Unable to preload CSS')
+    ) {
+      window.location.reload()
+      return { hasError: false, error: null }
+    }
     return { hasError: true, error }
   }
 
