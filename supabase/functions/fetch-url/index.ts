@@ -5,9 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const MODEL = 'gemini-2.0-flash'
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -31,31 +28,34 @@ Deno.serve(async (req) => {
     })
   }
 
-  const apiKey = Deno.env.get('GEMINI_API_KEY')
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured on server' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
   try {
-    const body = await req.json()
-    const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const data = await res.json()
-
-    // Return 429 as a 200 with an error field so the client gets a readable message
-    if (res.status === 429) {
-      return new Response(JSON.stringify({
-        error: { message: 'AI rate limit reached. Please wait a minute and try again.' },
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const body = await req.json() as { url?: string }
+    const url = body.url
+    if (!url || typeof url !== 'string') {
+      return new Response(JSON.stringify({ error: 'url is required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    return new Response(JSON.stringify(data), {
-      status: res.status,
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'el-GR,el;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+      },
+      signal: AbortSignal.timeout(15000),
+    })
+
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: `Site returned ${res.status}` }), {
+        status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const html = await res.text()
+    return new Response(JSON.stringify({ html }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {

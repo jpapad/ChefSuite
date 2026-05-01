@@ -476,21 +476,18 @@ function schemaToImportedRecipe(schema: Record<string, unknown>): ImportedRecipe
 }
 
 async function fetchHtmlViaProxy(url: string): Promise<string> {
-  const encoded = encodeURIComponent(url)
-  const timeout = 12000
-
-  // Primary: corsproxy.io — returns raw HTML with CORS headers
+  // Primary: server-side fetch via edge function — bypasses CORS and site-level proxy blocks
   try {
-    const res = await fetch(`https://corsproxy.io/?${encoded}`, {
-      signal: AbortSignal.timeout(timeout),
-    })
-    if (res.ok) {
-      const html = await res.text()
+    const { data, error } = await supabase.functions.invoke('fetch-url', { body: { url } })
+    if (!error && typeof (data as { html?: string })?.html === 'string') {
+      const html = (data as { html: string }).html
       if (html.trim()) return html
     }
-  } catch { /* fall through to next proxy */ }
+  } catch { /* fall through to client-side proxies */ }
 
-  // Fallback: allorigins.win — wraps response in JSON
+  // Fallback: allorigins.win
+  const encoded = encodeURIComponent(url)
+  const timeout = 12000
   try {
     const res = await fetch(`https://api.allorigins.win/get?url=${encoded}`, {
       signal: AbortSignal.timeout(timeout),
