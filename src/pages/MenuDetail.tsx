@@ -26,7 +26,7 @@ import { useTeam } from '../hooks/useTeam'
 import { useAuth } from '../contexts/AuthContext'
 import { useInventory } from '../contexts/InventoryContext'
 import { supabase } from '../lib/supabase'
-import { translateMenuItems, type TranslateLang } from '../lib/gemini'
+import { translateMenuItems } from '../lib/gemini'
 import { cn } from '../lib/cn'
 import { AllergenBadge, AllergenDot } from '../components/ui/AllergenIcon'
 import type { MenuSectionWithItems, MenuItem, MenuItemTag } from '../types/database.types'
@@ -52,6 +52,8 @@ interface ItemFormValues {
   description: string
   name_el: string
   description_el: string
+  name_bg: string
+  description_bg: string
   price: string
   available: boolean
   recipe_id: string
@@ -60,6 +62,7 @@ interface ItemFormValues {
 
 const EMPTY_ITEM: ItemFormValues = {
   name: '', description: '', name_el: '', description_el: '',
+  name_bg: '', description_bg: '',
   price: '', available: true, recipe_id: '', tags: [],
 }
 
@@ -104,8 +107,6 @@ export default function MenuDetail() {
   const [librarySearch, setLibrarySearch] = useState('')
   const [addingFromLibrary, setAddingFromLibrary] = useState(false)
   const [autoTranslate, setAutoTranslate] = useState(false)
-  const [translateLang, setTranslateLang] = useState<TranslateLang>('el')
-  // edit-item auto-translate
   const [translatingItem, setTranslatingItem] = useState(false)
 
   // ── Staff print overlay ────────────────────────────────────────────────────
@@ -174,6 +175,8 @@ export default function MenuDetail() {
       description: item.description ?? '',
       name_el: item.name_el ?? '',
       description_el: item.description_el ?? '',
+      name_bg: item.name_bg ?? '',
+      description_bg: item.description_bg ?? '',
       price: item.price != null ? String(item.price) : '',
       available: item.available,
       recipe_id: item.recipe_id ?? '',
@@ -203,6 +206,8 @@ export default function MenuDetail() {
         description: itemForm.description.trim() || null,
         name_el: itemForm.name_el.trim() || null,
         description_el: itemForm.description_el.trim() || null,
+        name_bg: itemForm.name_bg.trim() || null,
+        description_bg: itemForm.description_bg.trim() || null,
         price: itemForm.price ? parseFloat(itemForm.price) : null,
         available: itemForm.available,
         recipe_id: itemForm.recipe_id || null,
@@ -281,12 +286,11 @@ export default function MenuDetail() {
         .map((id) => recipes.find((r) => r.id === id))
         .filter((r): r is NonNullable<typeof r> => !!r)
 
-      // Batch-translate if requested
+      // Batch-translate FROM Greek TO English + Bulgarian if requested
       let translations: Awaited<ReturnType<typeof translateMenuItems>> | null = null
       if (autoTranslate) {
         translations = await translateMenuItems(
           selectedRecipes.map((r) => ({ name: r.title, description: r.description ?? null })),
-          translateLang,
         )
       }
 
@@ -298,6 +302,8 @@ export default function MenuDetail() {
           description: recipe.description ?? null,
           name_el: tr?.name_el ?? null,
           description_el: tr?.description_el ?? null,
+          name_bg: tr?.name_bg ?? null,
+          description_bg: tr?.description_bg ?? null,
           price: recipe.selling_price ?? null,
           available: true,
           recipe_id: recipe.id,
@@ -315,14 +321,15 @@ export default function MenuDetail() {
     if (!itemForm.name.trim()) return
     setTranslatingItem(true)
     try {
-      const [tr] = await translateMenuItems(
-        [{ name: itemForm.name, description: itemForm.description || null }],
-        'both',
-      )
+      const [tr] = await translateMenuItems([
+        { name: itemForm.name, description: itemForm.description || null },
+      ])
       setItemForm((f) => ({
         ...f,
-        name_el: tr.name_el ?? f.name_el,
+        name_el:        tr.name_el        ?? f.name_el,
         description_el: tr.description_el ?? f.description_el,
+        name_bg:        tr.name_bg        ?? f.name_bg,
+        description_bg: tr.description_bg ?? f.description_bg,
       }))
     } finally {
       setTranslatingItem(false)
@@ -659,28 +666,16 @@ export default function MenuDetail() {
               </div>
 
               {/* Auto-translate toggle */}
-              <div className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 space-y-3">
-                <label className="flex items-center justify-between gap-3 cursor-pointer">
-                  <span className="text-sm font-medium text-white/70">🌐 Auto-translate names</span>
-                  <button type="button" onClick={() => setAutoTranslate((v) => !v)}
-                    className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors', autoTranslate ? 'bg-brand-orange' : 'bg-white/20')}>
-                    <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white-fixed transition-transform', autoTranslate ? 'translate-x-6' : 'translate-x-1')} />
-                  </button>
-                </label>
-                {autoTranslate && (
-                  <div className="flex gap-2">
-                    {(['el', 'bg', 'both'] as TranslateLang[]).map((l) => (
-                      <button key={l} type="button" onClick={() => setTranslateLang(l)}
-                        className={cn(
-                          'flex-1 rounded-lg border py-1.5 text-xs font-medium transition',
-                          translateLang === l ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-glass-border text-white/50 hover:text-white',
-                        )}>
-                        {l === 'el' ? '🇬🇷 Ελληνικά' : l === 'bg' ? '🇧🇬 Български' : '🌍 Και τα δύο'}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/3 px-4 py-3 cursor-pointer">
+                <div>
+                  <span className="text-sm font-medium text-white/70">🌐 Αυτόματη μετάφραση</span>
+                  <p className="text-xs text-white/40 mt-0.5">Ελληνικά → 🏴󠁧󠁢󠁥󠁮󠁧󠁿 Αγγλικά + 🇧🇬 Βουλγαρικά</p>
+                </div>
+                <button type="button" onClick={() => setAutoTranslate((v) => !v)}
+                  className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0', autoTranslate ? 'bg-brand-orange' : 'bg-white/20')}>
+                  <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white-fixed transition-transform', autoTranslate ? 'translate-x-6' : 'translate-x-1')} />
+                </button>
+              </label>
 
               {/* Section picker */}
               <div className="space-y-2">
@@ -909,6 +904,21 @@ export default function MenuDetail() {
               <textarea value={itemForm.description_el}
                 onChange={(e) => setItemForm((f) => ({ ...f, description_el: e.target.value }))}
                 placeholder={t('menus.detail.itemDescriptionElPlaceholder')} rows={2}
+                className="w-full rounded-xl px-3 py-2.5 text-sm bg-white/5 border border-glass-border text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 resize-none" />
+            </div>
+          </div>
+
+          {/* Bulgarian translation */}
+          <div className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 space-y-3">
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">🇧🇬 Βουλγαρικά</p>
+            <Input name="item_name_bg" label="Όνομα (Βουλγαρικά)"
+              placeholder="Βουλγαρικό όνομα…"
+              value={itemForm.name_bg} onChange={(e) => setItemForm((f) => ({ ...f, name_bg: e.target.value }))} />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-white/70">Περιγραφή (Βουλγαρικά)</label>
+              <textarea value={itemForm.description_bg}
+                onChange={(e) => setItemForm((f) => ({ ...f, description_bg: e.target.value }))}
+                placeholder="Βουλγαρική περιγραφή…" rows={2}
                 className="w-full rounded-xl px-3 py-2.5 text-sm bg-white/5 border border-glass-border text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 resize-none" />
             </div>
           </div>

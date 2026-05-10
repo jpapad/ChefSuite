@@ -362,8 +362,7 @@ Rules:
 }
 
 // ── Menu Item Translation ──────────────────────────────────────────────────────
-
-export type TranslateLang = 'el' | 'bg' | 'both'
+// Translates FROM Greek TO English (→ name_el) and Bulgarian (→ name_bg)
 
 export interface TranslatedItem {
   name_el: string | null
@@ -372,49 +371,42 @@ export interface TranslatedItem {
   description_bg: string | null
 }
 
+const FALLBACK_TRANSLATED: TranslatedItem = { name_el: null, description_el: null, name_bg: null, description_bg: null }
+
 export async function translateMenuItems(
   items: Array<{ name: string; description: string | null }>,
-  lang: TranslateLang,
 ): Promise<TranslatedItem[]> {
-  const needEl = lang === 'el' || lang === 'both'
-  const needBg = lang === 'bg' || lang === 'both'
-
-  const langBlock = [
-    needEl && '"name_el": "Greek translation of name"',
-    needEl && '"description_el": "Greek translation of description, or null"',
-    needBg && '"name_bg": "Bulgarian translation of name"',
-    needBg && '"description_bg": "Bulgarian translation of description, or null"',
-  ].filter(Boolean).join(',\n    ')
-
   const itemsBlock = items
     .map((it, i) => `${i + 1}. name: "${it.name}"${it.description ? ` | description: "${it.description}"` : ''}`)
     .join('\n')
 
   const prompt = `You are a professional menu translator for a restaurant management app.
 
-Translate the following dish names and descriptions. Keep culinary terms authentic.
-${needEl ? 'Greek: translate naturally for a Greek restaurant menu.' : ''}
-${needBg ? 'Bulgarian: translate naturally for a Bulgarian restaurant menu.' : ''}
+The source language is Greek. Translate each dish name and description into English and Bulgarian.
+Keep culinary terms authentic and natural — not word-for-word literal translations.
 
-Items to translate:
+Items to translate (Greek source):
 ${itemsBlock}
 
 Return ONLY a valid JSON array with one object per item (same order):
 [
   {
-    ${langBlock}
+    "name_el": "English translation of name",
+    "description_el": "English translation of description, or null if no description",
+    "name_bg": "Bulgarian translation of name",
+    "description_bg": "Bulgarian translation of description, or null if no description"
   }
 ]
 
 Rules:
-- If description is missing or very short, set description translations to null
-- Keep dish names culinary and natural, not literal word-for-word
+- If description is missing or very short, set its translations to null
+- Dish names must sound natural on a restaurant menu
 - Do NOT include markdown or any text outside the JSON array`
 
   const raw = await callGemini(prompt)
   let parsed: unknown
-  try { parsed = JSON.parse(raw) } catch { return items.map(() => ({ name_el: null, description_el: null, name_bg: null, description_bg: null })) }
-  if (!Array.isArray(parsed)) return items.map(() => ({ name_el: null, description_el: null, name_bg: null, description_bg: null }))
+  try { parsed = JSON.parse(raw) } catch { return items.map(() => FALLBACK_TRANSLATED) }
+  if (!Array.isArray(parsed)) return items.map(() => FALLBACK_TRANSLATED)
 
   return (parsed as unknown[]).map((item) => {
     const o = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}

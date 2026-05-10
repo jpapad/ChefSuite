@@ -90,6 +90,8 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
         description: row.description,
         name_el: null,
         description_el: null,
+        name_bg: null,
+        description_bg: null,
         price: row.price,
         available: true,
         tags: [],

@@ -199,14 +199,25 @@ const TAG_SYMBOL: Record<string, string> = {
 
 function itemName(item: MenuItem, lang: LabelSettings['language']): string {
   if (lang === 'el') return item.name_el ?? item.name
-  if (lang === 'both' && item.name_el) return `${item.name} / ${item.name_el}`
-  // 'bg' falls back to English (no separate BG name field yet)
+  if (lang === 'bg') return item.name_bg ?? item.name
+  if (lang === 'both') {
+    const parts = [item.name]
+    if (item.name_el) parts.push(item.name_el)
+    if (item.name_bg) parts.push(item.name_bg)
+    return parts.join(' / ')
+  }
   return item.name
 }
 
 function itemDesc(item: MenuItem, lang: LabelSettings['language']): string | null {
   if (lang === 'el') return item.description_el ?? item.description
-  if (lang === 'both' && item.description_el) return `${item.description} / ${item.description_el}`
+  if (lang === 'bg') return item.description_bg ?? item.description
+  if (lang === 'both') {
+    const parts = [item.description].filter(Boolean)
+    if (item.description_el) parts.push(item.description_el)
+    if (item.description_bg) parts.push(item.description_bg)
+    return parts.join(' / ') || null
+  }
   return item.description
 }
 
