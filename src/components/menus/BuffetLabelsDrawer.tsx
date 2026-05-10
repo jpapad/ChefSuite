@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlignCenter, AlignLeft, AlignRight, Printer, Save, Tag, Trash2 } from 'lucide-react'
+import QRCode from 'qrcode'
+import { AlignCenter, AlignLeft, AlignRight, Loader2, Printer, QrCode, Save, Tag, Trash2 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { ImageUpload } from '../ui/ImageUpload'
@@ -49,6 +50,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   language: 'en',
   allergenLang: 'both',
   showAllergenLegend: false,
+  showQr: false,
 })
 
 export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
@@ -66,6 +68,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(allItems.map((fi) => fi.item.id)))
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>(() => loadPresets())
   const [presetName, setPresetName] = useState('')
+  const [qrMap, setQrMap] = useState<Map<string, string>>(new Map())
+  const [generatingQr, setGeneratingQr] = useState(false)
 
   // Sync logo default when menu prop changes
   useEffect(() => {
@@ -76,6 +80,33 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   useEffect(() => {
     setSelectedIds(new Set(allItems.map((fi) => fi.item.id)))
   }, [allItems])
+
+  // Generate QR data URLs for each item
+  useEffect(() => {
+    if (!settings.showQr) {
+      setQrMap(new Map())
+      return
+    }
+    setGeneratingQr(true)
+    const origin = window.location.origin
+    Promise.all(
+      allItems.map(async ({ item }) => {
+        const payload: Record<string, string> = { n: item.name }
+        if (item.name_el)        payload.ne = item.name_el
+        if (item.name_bg)        payload.nb = item.name_bg
+        if (item.description)    payload.d  = item.description
+        if (item.description_el) payload.de = item.description_el
+        if (item.description_bg) payload.db = item.description_bg
+        const url = `${origin}/dish?d=${btoa(encodeURIComponent(JSON.stringify(payload)))}`
+        const dataUrl = await QRCode.toDataURL(url, { width: 120, margin: 1 })
+        return [item.id, dataUrl] as const
+      })
+    ).then((pairs) => {
+      setQrMap(new Map(pairs))
+    }).finally(() => {
+      setGeneratingQr(false)
+    })
+  }, [settings.showQr, allItems])
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -140,15 +171,16 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
   useEffect(() => {
     if (!previewItem) return
-    const html = buildPreviewHtml(previewItem, previewRecipe, settings)
+    const qrDataUrl = settings.showQr ? qrMap.get(previewItem.id) : undefined
+    const html = buildPreviewHtml(previewItem, previewRecipe, settings, qrDataUrl)
     const iframe = iframeRef.current
     if (iframe) iframe.srcdoc = html
-  }, [previewItem, previewRecipe, settings])
+  }, [previewItem, previewRecipe, settings, qrMap])
 
   const handlePrint = useCallback(() => {
     if (selectedItems.length === 0) return
-    printLabels(selectedItems, menu, recipes, settings)
-  }, [selectedItems, menu, recipes, settings])
+    printLabels(selectedItems, menu, recipes, settings, settings.showQr ? qrMap : undefined)
+  }, [selectedItems, menu, recipes, settings, qrMap])
 
   // ── Static option lists ────────────────────────────────────────────────────
 
@@ -178,6 +210,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     { key: 'showTags',          label: t('menus.labels.showTags') },
     { key: 'showPrice',         label: t('menus.labels.showPrice') },
     { key: 'showAllergenLegend', label: t('menus.labels.showAllergenLegend') },
+    { key: 'showQr',            label: 'QR Code (scan for description)' },
   ]
 
   const alignOptions: { value: LabelSettings['logoAlign']; Icon: typeof AlignLeft }[] = [
@@ -455,6 +488,20 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 </label>
               ))}
             </div>
+
+            {/* ── QR generating indicator ── */}
+            {settings.showQr && generatingQr && (
+              <div className="flex items-center gap-2 text-xs text-white/40">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Generating QR codes…</span>
+              </div>
+            )}
+            {settings.showQr && !generatingQr && qrMap.size > 0 && (
+              <div className="flex items-center gap-2 text-xs text-emerald-400/70">
+                <QrCode className="h-3.5 w-3.5" />
+                <span>{qrMap.size} QR codes ready — scan to get description in 🇬🇷 🏴󠁧󠁢󠁥󠁮󠁧󠁿 🇧🇬</span>
+              </div>
+            )}
 
             {/* ── Item selection ── */}
             <div className="space-y-2">

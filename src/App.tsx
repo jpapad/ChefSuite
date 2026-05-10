@@ -51,6 +51,7 @@ const HandoverNotes      = lazy(() => import('./pages/HandoverNotes'))
 const Labels             = lazy(() => import('./pages/Labels'))
 const Stocktake          = lazy(() => import('./pages/Stocktake'))
 const Costing            = lazy(() => import('./pages/Costing'))
+const DishInfo           = lazy(() => import('./pages/DishInfo'))
 
 export default function App() {
   return (
@@ -129,6 +130,7 @@ export default function App() {
 
               <Route path="/menu/:id" element={<MenuPublic />} />
               <Route path="/reserve/:id" element={<ReservationPublic />} />
+              <Route path="/dish" element={<DishInfo />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

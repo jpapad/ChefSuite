@@ -19,6 +19,7 @@ export interface LabelSettings {
   language: 'en' | 'el' | 'bg' | 'both'
   allergenLang: 'en' | 'el' | 'bg' | 'both'
   showAllergenLegend: boolean
+  showQr: boolean
 }
 
 interface Dims { w: number; h: number; namePt: number; descPt: number; gapMm: number }
@@ -227,12 +228,21 @@ function labelCss(settings: LabelSettings, d: Dims): string {
     * { box-sizing: border-box; margin: 0; padding: 0 }
     body { font-family: 'Georgia', serif; background: white }
     .label {
+      position: relative;
       border: 1px solid #333; border-radius: 3mm;
       padding: ${sm ? '3mm' : '6mm'};
       display: flex; flex-direction: column;
       gap: ${sm ? '2mm' : '4mm'};
       break-inside: avoid; page-break-inside: avoid;
       overflow: hidden;
+    }
+    .label-qr {
+      position: absolute;
+      bottom: ${sm ? '2mm' : '3mm'};
+      right: ${sm ? '2mm' : '3mm'};
+      width: ${sm ? '13mm' : '20mm'};
+      height: ${sm ? '13mm' : '20mm'};
+      opacity: 0.85;
     }
     .label-header {
       display: flex; align-items: flex-start;
@@ -276,7 +286,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
   `
 }
 
-function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, d: Dims): string {
+function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, d: Dims, qrDataUrl?: string): string {
   const allergenBadges = settings.showAllergens && recipe?.allergens?.length
     ? recipe.allergens.map((a) => allergenBadgeHtml(a, d.w <= 100, settings.allergenLang)).join('')
     : ''
@@ -302,16 +312,21 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
     headerHtml = `<div class="label-header">${logoEl}<div class="allergens">${allergenBadges}</div></div>`
   }
 
+  const qrEl = settings.showQr && qrDataUrl
+    ? `<img src="${qrDataUrl}" class="label-qr" alt="" />`
+    : ''
+
   return `
 <div class="label" style="width:${d.w}mm;height:${d.h}mm">
   ${headerHtml}
   <div class="label-name">${itemName(item, settings.language)}${price}</div>
   ${desc ? `<div class="label-desc">${desc}</div>` : ''}
   ${tags}
+  ${qrEl}
 </div>`
 }
 
-export function buildPreviewHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings): string {
+export function buildPreviewHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, qrDataUrl?: string): string {
   const d = getDims(settings)
   const scale = TARGET_W / (d.w * MM_TO_PX)
 
@@ -325,16 +340,16 @@ export function buildPreviewHtml(item: MenuItem, recipe: Recipe | undefined, set
   </style>
 </head>
 <body>
-  ${labelHtml(item, recipe, settings, d)}
+  ${labelHtml(item, recipe, settings, d, qrDataUrl)}
 </body>
 </html>`
 }
 
-export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], settings: LabelSettings): void {
+export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], settings: LabelSettings, qrMap?: Map<string, string>): void {
   const d = getDims(settings)
   const recipeMap = new Map(recipes.map((r) => [r.id, r]))
   const labelsHtml = items
-    .map((item) => labelHtml(item, item.recipe_id ? recipeMap.get(item.recipe_id) : undefined, settings, d))
+    .map((item) => labelHtml(item, item.recipe_id ? recipeMap.get(item.recipe_id) : undefined, settings, d, qrMap?.get(item.id)))
     .join('\n')
 
   // Collect all unique allergen keys present in selected items
