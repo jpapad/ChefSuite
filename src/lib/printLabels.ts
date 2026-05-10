@@ -11,6 +11,7 @@ export interface LabelSettings {
   logoMaxW: number         // mm
   logoMaxH: number         // mm
   logoAlign: 'left' | 'center' | 'right'
+  nameAlign: 'left' | 'center' | 'right'
   showDescription: boolean
   showAllergens: boolean
   showTags: boolean
@@ -248,7 +249,8 @@ function labelCss(settings: LabelSettings, d: Dims): string {
     .label-name {
       font-weight: bold; line-height: 1.15; color: #111;
       flex: 1; display: flex; align-items: center;
-      justify-content: space-between; gap: 3mm;
+      justify-content: ${settings.nameAlign === 'center' ? 'center' : settings.nameAlign === 'right' ? 'flex-end' : 'space-between'}; gap: 3mm;
+      text-align: ${settings.nameAlign};
       font-size: ${d.namePt}pt;
     }
     .price { font-size: 0.7em; color: #555; white-space: nowrap; }

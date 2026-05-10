@@ -361,6 +361,72 @@ Rules:
   }
 }
 
+// ── Menu Item Translation ──────────────────────────────────────────────────────
+
+export type TranslateLang = 'el' | 'bg' | 'both'
+
+export interface TranslatedItem {
+  name_el: string | null
+  description_el: string | null
+  name_bg: string | null
+  description_bg: string | null
+}
+
+export async function translateMenuItems(
+  items: Array<{ name: string; description: string | null }>,
+  lang: TranslateLang,
+): Promise<TranslatedItem[]> {
+  const needEl = lang === 'el' || lang === 'both'
+  const needBg = lang === 'bg' || lang === 'both'
+
+  const langBlock = [
+    needEl && '"name_el": "Greek translation of name"',
+    needEl && '"description_el": "Greek translation of description, or null"',
+    needBg && '"name_bg": "Bulgarian translation of name"',
+    needBg && '"description_bg": "Bulgarian translation of description, or null"',
+  ].filter(Boolean).join(',\n    ')
+
+  const itemsBlock = items
+    .map((it, i) => `${i + 1}. name: "${it.name}"${it.description ? ` | description: "${it.description}"` : ''}`)
+    .join('\n')
+
+  const prompt = `You are a professional menu translator for a restaurant management app.
+
+Translate the following dish names and descriptions. Keep culinary terms authentic.
+${needEl ? 'Greek: translate naturally for a Greek restaurant menu.' : ''}
+${needBg ? 'Bulgarian: translate naturally for a Bulgarian restaurant menu.' : ''}
+
+Items to translate:
+${itemsBlock}
+
+Return ONLY a valid JSON array with one object per item (same order):
+[
+  {
+    ${langBlock}
+  }
+]
+
+Rules:
+- If description is missing or very short, set description translations to null
+- Keep dish names culinary and natural, not literal word-for-word
+- Do NOT include markdown or any text outside the JSON array`
+
+  const raw = await callGemini(prompt)
+  let parsed: unknown
+  try { parsed = JSON.parse(raw) } catch { return items.map(() => ({ name_el: null, description_el: null, name_bg: null, description_bg: null })) }
+  if (!Array.isArray(parsed)) return items.map(() => ({ name_el: null, description_el: null, name_bg: null, description_bg: null }))
+
+  return (parsed as unknown[]).map((item) => {
+    const o = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}
+    return {
+      name_el:        typeof o.name_el        === 'string' ? o.name_el        : null,
+      description_el: typeof o.description_el === 'string' ? o.description_el : null,
+      name_bg:        typeof o.name_bg        === 'string' ? o.name_bg        : null,
+      description_bg: typeof o.description_bg === 'string' ? o.description_bg : null,
+    }
+  })
+}
+
 // ── Chef Copilot ───────────────────────────────────────────────────────────────
 
 export interface CopilotMessage {

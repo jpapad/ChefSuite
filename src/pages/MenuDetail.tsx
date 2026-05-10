@@ -26,6 +26,7 @@ import { useTeam } from '../hooks/useTeam'
 import { useAuth } from '../contexts/AuthContext'
 import { useInventory } from '../contexts/InventoryContext'
 import { supabase } from '../lib/supabase'
+import { translateMenuItems, type TranslateLang } from '../lib/gemini'
 import { cn } from '../lib/cn'
 import { AllergenBadge, AllergenDot } from '../components/ui/AllergenIcon'
 import type { MenuSectionWithItems, MenuItem, MenuItemTag } from '../types/database.types'
@@ -102,6 +103,10 @@ export default function MenuDetail() {
   const [newSectionName, setNewSectionName] = useState('')
   const [librarySearch, setLibrarySearch] = useState('')
   const [addingFromLibrary, setAddingFromLibrary] = useState(false)
+  const [autoTranslate, setAutoTranslate] = useState(false)
+  const [translateLang, setTranslateLang] = useState<TranslateLang>('el')
+  // edit-item auto-translate
+  const [translatingItem, setTranslatingItem] = useState(false)
 
   // ── Staff print overlay ────────────────────────────────────────────────────
   const [printOverlayOpen, setPrintOverlayOpen] = useState(false)
@@ -268,21 +273,34 @@ export default function MenuDetail() {
     try {
       let sectionId = addToSectionId
       if (!sectionId) {
-        const name = newSectionName.trim() || 'Menu'
-        const newSection = await addSection(name)
+        const newSection = await addSection(newSectionName.trim() || 'Menu')
         sectionId = newSection.id
       }
-      for (const recipeId of selectedRecipeIds) {
-        const recipe = recipes.find((r) => r.id === recipeId)
-        if (!recipe) continue
+
+      const selectedRecipes = [...selectedRecipeIds]
+        .map((id) => recipes.find((r) => r.id === id))
+        .filter((r): r is NonNullable<typeof r> => !!r)
+
+      // Batch-translate if requested
+      let translations: Awaited<ReturnType<typeof translateMenuItems>> | null = null
+      if (autoTranslate) {
+        translations = await translateMenuItems(
+          selectedRecipes.map((r) => ({ name: r.title, description: r.description ?? null })),
+          translateLang,
+        )
+      }
+
+      for (let i = 0; i < selectedRecipes.length; i++) {
+        const recipe = selectedRecipes[i]
+        const tr = translations?.[i]
         await addItem(sectionId, {
           name: recipe.title,
           description: recipe.description ?? null,
-          name_el: null,
-          description_el: null,
+          name_el: tr?.name_el ?? null,
+          description_el: tr?.description_el ?? null,
           price: recipe.selling_price ?? null,
           available: true,
-          recipe_id: recipeId,
+          recipe_id: recipe.id,
           tags: [],
         })
       }
@@ -290,6 +308,24 @@ export default function MenuDetail() {
       setSelectedRecipeIds(new Set())
     } finally {
       setAddingFromLibrary(false)
+    }
+  }
+
+  async function autoTranslateItem() {
+    if (!itemForm.name.trim()) return
+    setTranslatingItem(true)
+    try {
+      const [tr] = await translateMenuItems(
+        [{ name: itemForm.name, description: itemForm.description || null }],
+        'both',
+      )
+      setItemForm((f) => ({
+        ...f,
+        name_el: tr.name_el ?? f.name_el,
+        description_el: tr.description_el ?? f.description_el,
+      }))
+    } finally {
+      setTranslatingItem(false)
     }
   }
 
@@ -622,6 +658,30 @@ export default function MenuDetail() {
                   })}
               </div>
 
+              {/* Auto-translate toggle */}
+              <div className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 space-y-3">
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="text-sm font-medium text-white/70">🌐 Auto-translate names</span>
+                  <button type="button" onClick={() => setAutoTranslate((v) => !v)}
+                    className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors', autoTranslate ? 'bg-brand-orange' : 'bg-white/20')}>
+                    <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white-fixed transition-transform', autoTranslate ? 'translate-x-6' : 'translate-x-1')} />
+                  </button>
+                </label>
+                {autoTranslate && (
+                  <div className="flex gap-2">
+                    {(['el', 'bg', 'both'] as TranslateLang[]).map((l) => (
+                      <button key={l} type="button" onClick={() => setTranslateLang(l)}
+                        className={cn(
+                          'flex-1 rounded-lg border py-1.5 text-xs font-medium transition',
+                          translateLang === l ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-glass-border text-white/50 hover:text-white',
+                        )}>
+                        {l === 'el' ? '🇬🇷 Ελληνικά' : l === 'bg' ? '🇧🇬 Български' : '🌍 Και τα δύο'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Section picker */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-white/70">Add to section</label>
@@ -826,9 +886,21 @@ export default function MenuDetail() {
 
           {/* Greek translation (optional) */}
           <div className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 space-y-3">
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-              {t('menus.detail.greekTranslation')}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                {t('menus.detail.greekTranslation')}
+              </p>
+              <button
+                type="button"
+                onClick={() => void autoTranslateItem()}
+                disabled={translatingItem || !itemForm.name.trim()}
+                className="flex items-center gap-1.5 rounded-lg border border-brand-orange/40 px-2.5 py-1 text-xs font-medium text-brand-orange hover:bg-brand-orange/10 transition disabled:opacity-40"
+              >
+                {translatingItem
+                  ? <><Loader2 className="h-3 w-3 animate-spin" />Translating…</>
+                  : <>🌐 Auto-translate</>}
+              </button>
+            </div>
             <Input name="item_name_el" label={t('menus.detail.itemNameEl')}
               placeholder={t('menus.detail.itemNameElPlaceholder')}
               value={itemForm.name_el} onChange={(e) => setItemForm((f) => ({ ...f, name_el: e.target.value }))} />

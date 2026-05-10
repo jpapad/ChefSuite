@@ -41,6 +41,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   logoMaxW: 45,
   logoMaxH: 18,
   logoAlign: 'left',
+  nameAlign: 'left',
   showDescription: true,
   showAllergens: true,
   showTags: true,
@@ -265,6 +266,29 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* ── Title alignment ── */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">Title alignment</label>
+              <div className="flex gap-1">
+                {alignOptions.map(({ value, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => set('nameAlign', value)}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium transition',
+                      settings.nameAlign === value
+                        ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                        : 'border-glass-border text-white/40 hover:text-white hover:bg-white/5',
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {value === 'left' ? 'Left' : value === 'center' ? 'Center' : 'Right'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* ── Label size ── */}
