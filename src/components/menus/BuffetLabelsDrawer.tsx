@@ -91,14 +91,21 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     const origin = window.location.origin
     Promise.all(
       allItems.map(async ({ item }) => {
-        const payload: Record<string, string> = { n: item.name }
-        if (item.name_el)        payload.ne = item.name_el
-        if (item.name_bg)        payload.nb = item.name_bg
-        if (item.description)    payload.d  = item.description
-        if (item.description_el) payload.de = item.description_el
-        if (item.description_bg) payload.db = item.description_bg
+        // Keep payload short: truncate descriptions to reduce QR density
+        const trunc = (s: string | null | undefined, max = 100) =>
+          s ? s.slice(0, max) : undefined
+        const payload: Record<string, string> = { n: item.name.slice(0, 60) }
+        if (item.name_el)        payload.ne = item.name_el.slice(0, 60)
+        if (item.name_bg)        payload.nb = item.name_bg.slice(0, 60)
+        const d = trunc(item.description); if (d) payload.d = d
+        const de = trunc(item.description_el); if (de) payload.de = de
+        const db = trunc(item.description_bg); if (db) payload.db = db
         const url = `${origin}/dish?d=${btoa(encodeURIComponent(JSON.stringify(payload)))}`
-        const dataUrl = await QRCode.toDataURL(url, { width: 120, margin: 1 })
+        const dataUrl = await QRCode.toDataURL(url, {
+          width: 400,
+          margin: 2,
+          errorCorrectionLevel: 'L',
+        })
         return [item.id, dataUrl] as const
       })
     ).then((pairs) => {

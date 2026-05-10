@@ -240,9 +240,10 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       position: absolute;
       bottom: ${sm ? '2mm' : '3mm'};
       right: ${sm ? '2mm' : '3mm'};
-      width: ${sm ? '13mm' : '20mm'};
-      height: ${sm ? '13mm' : '20mm'};
-      opacity: 0.85;
+      width: ${sm ? '18mm' : '28mm'};
+      height: ${sm ? '18mm' : '28mm'};
+      image-rendering: crisp-edges;
+      opacity: 0.9;
     }
     .label-header {
       display: flex; align-items: flex-start;
