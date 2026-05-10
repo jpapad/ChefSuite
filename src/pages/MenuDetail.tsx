@@ -5,6 +5,7 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
   Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
+  Link2, Loader2, Search,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -86,6 +87,13 @@ export default function MenuDetail() {
   const [itemSectionId, setItemSectionId] = useState<string>('')
   const [itemForm, setItemForm] = useState<ItemFormValues>(EMPTY_ITEM)
   const [savingItem, setSavingItem] = useState(false)
+
+  // ── Link recipes (batch) ───────────────────────────────────────────────────
+  const [linkRecipesOpen, setLinkRecipesOpen] = useState(false)
+  const [pendingLinks, setPendingLinks] = useState<Map<string, string | null>>(new Map())
+  const [linkSearch, setLinkSearch] = useState<Map<string, string>>(new Map())
+  const [openLinkDropdown, setOpenLinkDropdown] = useState<string | null>(null)
+  const [savingLinks, setSavingLinks] = useState(false)
 
   // ── Staff print overlay ────────────────────────────────────────────────────
   const [printOverlayOpen, setPrintOverlayOpen] = useState(false)
@@ -223,6 +231,51 @@ export default function MenuDetail() {
     }
   }
 
+  // ── Link recipes (batch) ───────────────────────────────────────────────────
+  function openLinkRecipes() {
+    setPendingLinks(new Map())
+    setLinkSearch(new Map())
+    setOpenLinkDropdown(null)
+    setLinkRecipesOpen(true)
+  }
+
+  function closeLinkRecipes() {
+    if (savingLinks) return
+    setLinkRecipesOpen(false)
+    setPendingLinks(new Map())
+    setLinkSearch(new Map())
+    setOpenLinkDropdown(null)
+  }
+
+  function getLinkRecipeId(itemId: string, originalId: string | null): string | null {
+    return pendingLinks.has(itemId) ? pendingLinks.get(itemId)! : originalId
+  }
+
+  function setPendingLink(itemId: string, recipeId: string | null) {
+    setPendingLinks((prev) => new Map(prev).set(itemId, recipeId))
+  }
+
+  async function saveAllLinks() {
+    if (pendingLinks.size === 0 || !menu) return
+    setSavingLinks(true)
+    try {
+      const sectionMap = new Map<string, string>()
+      for (const s of menu.sections)
+        for (const item of s.items)
+          sectionMap.set(item.id, s.id)
+
+      for (const [itemId, recipeId] of pendingLinks.entries()) {
+        const sId = sectionMap.get(itemId)
+        if (!sId) continue
+        await updateItem(itemId, sId, { recipe_id: recipeId })
+      }
+      setLinkRecipesOpen(false)
+      setPendingLinks(new Map())
+    } finally {
+      setSavingLinks(false)
+    }
+  }
+
   // ── QR code ────────────────────────────────────────────────────────────────
   async function openQrDrawer() {
     setQrDrawerOpen(true)
@@ -276,6 +329,9 @@ export default function MenuDetail() {
             </Button>
             <Button variant="secondary" leftIcon={<Tag className="h-4 w-4" />} onClick={() => setLabelsDrawerOpen(true)}>
               {t('menus.labels.button')}
+            </Button>
+            <Button variant="secondary" leftIcon={<Link2 className="h-4 w-4" />} onClick={openLinkRecipes}>
+              Link Recipes
             </Button>
             <Button variant="secondary" leftIcon={<Radio className="h-4 w-4" />} onClick={() => setServiceBoardOpen(true)}>
               {t('menus.serviceBoard.button')}
@@ -433,6 +489,132 @@ export default function MenuDetail() {
           </GlassCard>
         ))}
       </div>
+
+      {/* ── Link Recipes drawer ── */}
+      <Drawer open={linkRecipesOpen} onClose={closeLinkRecipes} title="Link Recipes to Items">
+        <div className="space-y-4">
+          <p className="text-sm text-white/50">
+            Search and assign a recipe to each menu item. Click <strong className="text-white/70">Save All</strong> when done.
+          </p>
+
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            {menu && menu.sections.flatMap((s) =>
+              s.items.map((item) => {
+                const linkedId = getLinkRecipeId(item.id, item.recipe_id)
+                const linkedRecipeObj = linkedId ? recipes.find((r) => r.id === linkedId) : null
+                const isOpen = openLinkDropdown === item.id
+                const term = linkSearch.get(item.id) ?? ''
+                const filtered = recipes.filter((r) =>
+                  !term || r.title.toLowerCase().includes(term.toLowerCase())
+                )
+                const isPending = pendingLinks.has(item.id)
+
+                return (
+                  <div key={item.id} className={cn(
+                    'rounded-xl border px-3 py-2.5 space-y-2 transition',
+                    isPending ? 'border-brand-orange/40 bg-brand-orange/5' : 'border-glass-border',
+                  )}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="shrink-0 text-[10px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded">
+                        {s.name}
+                      </span>
+                      <span className="text-sm font-medium text-white truncate">{item.name}</span>
+                      {isPending && (
+                        <span className="shrink-0 text-[10px] text-brand-orange ml-auto">unsaved</span>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 items-center relative">
+                      <div className="relative flex-1">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
+                        <input
+                          type="text"
+                          value={isOpen ? term : (linkedRecipeObj?.title ?? '')}
+                          placeholder="Search recipes…"
+                          onFocus={() => {
+                            setOpenLinkDropdown(item.id)
+                            setLinkSearch((prev) => new Map(prev).set(item.id, ''))
+                          }}
+                          onChange={(e) =>
+                            setLinkSearch((prev) => new Map(prev).set(item.id, e.target.value))
+                          }
+                          onBlur={() => setTimeout(() => setOpenLinkDropdown(null), 120)}
+                          className={cn(
+                            'w-full rounded-lg border bg-white/5 pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none transition',
+                            linkedRecipeObj ? 'border-emerald-500/40' : 'border-glass-border',
+                            'focus:border-brand-orange/50',
+                          )}
+                        />
+
+                        {isOpen && (
+                          <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-52 overflow-y-auto rounded-xl border border-glass-border bg-zinc-900 shadow-2xl">
+                            {filtered.length === 0 ? (
+                              <p className="px-3 py-2.5 text-sm text-white/40">No recipes found</p>
+                            ) : (
+                              filtered.map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault()
+                                    setPendingLink(item.id, r.id)
+                                    setOpenLinkDropdown(null)
+                                    setLinkSearch((prev) => { const n = new Map(prev); n.delete(item.id); return n })
+                                  }}
+                                  className={cn(
+                                    'w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-3',
+                                    r.id === linkedId
+                                      ? 'bg-brand-orange/10 text-brand-orange'
+                                      : 'text-white hover:bg-white/8',
+                                  )}
+                                >
+                                  <span className="truncate">{r.title}</span>
+                                  {r.allergens.length > 0 && (
+                                    <span className="text-xs text-white/30 shrink-0">
+                                      {r.allergens.slice(0, 3).join(', ')}
+                                    </span>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {linkedId && (
+                        <button
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); setPendingLink(item.id, null) }}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={savingLinks || pendingLinks.size === 0}
+              onClick={() => void saveAllLinks()}
+            >
+              {savingLinks
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</>
+                : `Save ${pendingLinks.size} change${pendingLinks.size !== 1 ? 's' : ''}`
+              }
+            </Button>
+            <Button type="button" variant="secondary" onClick={closeLinkRecipes} disabled={savingLinks}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Drawer>
 
       {/* ── Section drawer ── */}
       <Drawer
