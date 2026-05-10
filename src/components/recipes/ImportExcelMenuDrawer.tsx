@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   FileSpreadsheet, Loader2, ArrowLeft, Check, AlertCircle,
-  ChevronRight, Tag, UtensilsCrossed,
+  ChevronRight, Tag, UtensilsCrossed, Layers,
 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
@@ -20,7 +20,7 @@ interface Props {
   onBatchImport: (rows: ImportedRecipe[]) => void
 }
 
-type Step = 'upload' | 'mapping' | 'preview'
+type Step = 'upload' | 'sheet' | 'mapping' | 'preview'
 type ActionMode = 'recipes' | 'labels' | null
 
 const MAPPING_FIELDS: { key: keyof ColumnMapping; label: string; required?: boolean }[] = [
@@ -140,6 +140,11 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [fileName, setFileName] = useState('')
 
+  // Sheet selection
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [sheetNames, setSheetNames] = useState<string[]>([])
+  const [selectedSheet, setSelectedSheet] = useState('')
+
   const [parsed, setParsed] = useState<ParsedExcelData | null>(null)
   const [mapping, setMapping] = useState<ColumnMapping>({
     name: null, description: null, category: null,
@@ -157,6 +162,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
     setLoading(false)
     setError(null)
     setFileName('')
+    setUploadedFile(null)
+    setSheetNames([])
+    setSelectedSheet('')
     setParsed(null)
     setMapping({ name: null, description: null, category: null, price: null, allergens: null, ingredients: null })
     setRows([])
@@ -181,14 +189,45 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
     setLoading(true)
     try {
       const data = await parseExcelFile(file)
-      if (data.headers.length === 0) throw new Error('The file appears to be empty or has no columns.')
-      setParsed(data)
+      if (data.sheetNames.length === 0) throw new Error('The file appears to be empty.')
 
+      setUploadedFile(file)
+      setSheetNames(data.sheetNames)
+      setSelectedSheet(data.sheetName)
+
+      if (data.sheetNames.length > 1) {
+        // Let the user pick a sheet first
+        setLoading(false)
+        setStep('sheet')
+        return
+      }
+
+      // Single sheet — go straight to mapping
+      if (data.headers.length === 0) throw new Error('The sheet appears to be empty or has no columns.')
+      setParsed(data)
       const suggested = await suggestColumnMapping(data.headers, data.rows)
       setMapping(suggested)
       setStep('mapping')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read the file. Make sure it is a valid Excel or CSV file.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSheetConfirm() {
+    if (!uploadedFile) return
+    setError(null)
+    setLoading(true)
+    try {
+      const data = await parseExcelFile(uploadedFile, selectedSheet)
+      if (data.headers.length === 0) throw new Error('The selected sheet appears to be empty or has no columns.')
+      setParsed(data)
+      const suggested = await suggestColumnMapping(data.headers, data.rows)
+      setMapping(suggested)
+      setStep('mapping')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read the sheet.')
     } finally {
       setLoading(false)
     }
@@ -317,6 +356,67 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
           <div className="flex justify-end">
             <Button type="button" variant="ghost" onClick={handleClose} disabled={loading}>
               Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 1b: Sheet Picker ── */}
+      {step === 'sheet' && (
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            <Layers className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>
+              The file <strong>{fileName}</strong> has {sheetNames.length} sheets. Select which one to import.
+            </p>
+          </div>
+
+          <ul className="space-y-2">
+            {sheetNames.map((name, i) => (
+              <li key={name}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSheet(name)}
+                  className={cn(
+                    'w-full flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition',
+                    selectedSheet === name
+                      ? 'border-emerald-500 bg-emerald-500/10 text-white'
+                      : 'border-white/10 hover:border-white/25 text-white/60',
+                  )}
+                >
+                  <div className={cn(
+                    'h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition',
+                    selectedSheet === name ? 'border-emerald-400 bg-emerald-400' : 'border-white/30',
+                  )}>
+                    {selectedSheet === name && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm">{name}</span>
+                    <span className="ml-2 text-xs text-white/30">Sheet {i + 1}</span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2">
+            <Button type="button" variant="ghost" leftIcon={<ArrowLeft className="h-4 w-4" />} onClick={reset}>
+              Back
+            </Button>
+            <Button
+              type="button"
+              leftIcon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+              onClick={() => void handleSheetConfirm()}
+              disabled={!selectedSheet || loading}
+            >
+              {loading ? 'Loading sheet…' : 'Use this sheet'}
             </Button>
           </div>
         </div>

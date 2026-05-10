@@ -23,16 +23,19 @@ export interface ParsedExcelData {
   headers: string[]
   rows: Record<string, string>[]
   sheetName: string
+  sheetNames: string[]
 }
 
-export async function parseExcelFile(file: File): Promise<ParsedExcelData> {
+export async function parseExcelFile(file: File, targetSheet?: string): Promise<ParsedExcelData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer)
         const workbook = XLSX.read(data, { type: 'array' })
-        const sheetName = workbook.SheetNames[0]
+        const sheetNames = workbook.SheetNames
+        const sheetName =
+          targetSheet && sheetNames.includes(targetSheet) ? targetSheet : sheetNames[0]
         const sheet = workbook.Sheets[sheetName]
         const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
         // Normalise all values to strings
@@ -40,7 +43,7 @@ export async function parseExcelFile(file: File): Promise<ParsedExcelData> {
           Object.fromEntries(Object.entries(r).map(([k, v]) => [String(k), String(v ?? '')]))
         )
         const headers = rows.length > 0 ? Object.keys(rows[0]) : []
-        resolve({ headers, rows, sheetName })
+        resolve({ headers, rows, sheetName, sheetNames })
       } catch (err) {
         reject(err)
       }
