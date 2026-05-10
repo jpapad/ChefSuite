@@ -90,10 +90,18 @@ export default function MenuDetail() {
 
   // ── Link recipes (batch) ───────────────────────────────────────────────────
   const [linkRecipesOpen, setLinkRecipesOpen] = useState(false)
+  const [linkTab, setLinkTab] = useState<'link' | 'add'>('link')
+  // tab: link existing items
   const [pendingLinks, setPendingLinks] = useState<Map<string, string | null>>(new Map())
   const [linkSearch, setLinkSearch] = useState<Map<string, string>>(new Map())
   const [openLinkDropdown, setOpenLinkDropdown] = useState<string | null>(null)
   const [savingLinks, setSavingLinks] = useState(false)
+  // tab: add from library
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set())
+  const [addToSectionId, setAddToSectionId] = useState<string>('')
+  const [newSectionName, setNewSectionName] = useState('')
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [addingFromLibrary, setAddingFromLibrary] = useState(false)
 
   // ── Staff print overlay ────────────────────────────────────────────────────
   const [printOverlayOpen, setPrintOverlayOpen] = useState(false)
@@ -236,15 +244,53 @@ export default function MenuDetail() {
     setPendingLinks(new Map())
     setLinkSearch(new Map())
     setOpenLinkDropdown(null)
+    setSelectedRecipeIds(new Set())
+    setAddToSectionId(menu?.sections[0]?.id ?? '')
+    setNewSectionName('')
+    setLibrarySearch('')
+    setLinkTab(menu && menu.sections.flatMap((s) => s.items).length > 0 ? 'link' : 'add')
     setLinkRecipesOpen(true)
   }
 
   function closeLinkRecipes() {
-    if (savingLinks) return
+    if (savingLinks || addingFromLibrary) return
     setLinkRecipesOpen(false)
     setPendingLinks(new Map())
     setLinkSearch(new Map())
     setOpenLinkDropdown(null)
+    setSelectedRecipeIds(new Set())
+    setLibrarySearch('')
+  }
+
+  async function addFromLibrary() {
+    if (!menu || selectedRecipeIds.size === 0) return
+    setAddingFromLibrary(true)
+    try {
+      let sectionId = addToSectionId
+      if (!sectionId) {
+        const name = newSectionName.trim() || 'Menu'
+        const newSection = await addSection(name)
+        sectionId = newSection.id
+      }
+      for (const recipeId of selectedRecipeIds) {
+        const recipe = recipes.find((r) => r.id === recipeId)
+        if (!recipe) continue
+        await addItem(sectionId, {
+          name: recipe.title,
+          description: recipe.description ?? null,
+          name_el: null,
+          description_el: null,
+          price: recipe.selling_price ?? null,
+          available: true,
+          recipe_id: recipeId,
+          tags: [],
+        })
+      }
+      setLinkRecipesOpen(false)
+      setSelectedRecipeIds(new Set())
+    } finally {
+      setAddingFromLibrary(false)
+    }
   }
 
   function getLinkRecipeId(itemId: string, originalId: string | null): string | null {
@@ -493,126 +539,239 @@ export default function MenuDetail() {
       {/* ── Link Recipes drawer ── */}
       <Drawer open={linkRecipesOpen} onClose={closeLinkRecipes} title="Link Recipes to Items">
         <div className="space-y-4">
-          <p className="text-sm text-white/50">
-            Search and assign a recipe to each menu item. Click <strong className="text-white/70">Save All</strong> when done.
-          </p>
+          {/* Tabs */}
+          <div className="flex rounded-xl border border-glass-border overflow-hidden">
+            {([
+              { key: 'add', label: 'Add from Library' },
+              { key: 'link', label: 'Link to Existing Items' },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setLinkTab(key)}
+                className={cn(
+                  'flex-1 py-2 text-sm font-medium transition',
+                  linkTab === key
+                    ? 'bg-brand-orange text-white'
+                    : 'text-white/50 hover:text-white hover:bg-white/5',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-            {menu && menu.sections.flatMap((s) =>
-              s.items.map((item) => {
-                const linkedId = getLinkRecipeId(item.id, item.recipe_id)
-                const linkedRecipeObj = linkedId ? recipes.find((r) => r.id === linkedId) : null
-                const isOpen = openLinkDropdown === item.id
-                const term = linkSearch.get(item.id) ?? ''
-                const filtered = recipes.filter((r) =>
-                  !term || r.title.toLowerCase().includes(term.toLowerCase())
-                )
-                const isPending = pendingLinks.has(item.id)
+          {/* ── Tab: Add from Library ── */}
+          {linkTab === 'add' && (
+            <div className="space-y-4">
+              <p className="text-sm text-white/50">
+                Select recipes and add them directly as menu items.
+              </p>
 
-                return (
-                  <div key={item.id} className={cn(
-                    'rounded-xl border px-3 py-2.5 space-y-2 transition',
-                    isPending ? 'border-brand-orange/40 bg-brand-orange/5' : 'border-glass-border',
-                  )}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="shrink-0 text-[10px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded">
-                        {s.name}
-                      </span>
-                      <span className="text-sm font-medium text-white truncate">{item.name}</span>
-                      {isPending && (
-                        <span className="shrink-0 text-[10px] text-brand-orange ml-auto">unsaved</span>
-                      )}
-                    </div>
+              {/* Search */}
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                <input
+                  type="text"
+                  value={librarySearch}
+                  onChange={(e) => setLibrarySearch(e.target.value)}
+                  placeholder="Search recipes…"
+                  className="w-full rounded-xl border border-glass-border bg-white/5 pl-9 pr-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50"
+                />
+              </div>
 
-                    <div className="flex gap-2 items-center relative">
-                      <div className="relative flex-1">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
-                        <input
-                          type="text"
-                          value={isOpen ? term : (linkedRecipeObj?.title ?? '')}
-                          placeholder="Search recipes…"
-                          onFocus={() => {
-                            setOpenLinkDropdown(item.id)
-                            setLinkSearch((prev) => new Map(prev).set(item.id, ''))
-                          }}
-                          onChange={(e) =>
-                            setLinkSearch((prev) => new Map(prev).set(item.id, e.target.value))
-                          }
-                          onBlur={() => setTimeout(() => setOpenLinkDropdown(null), 120)}
-                          className={cn(
-                            'w-full rounded-lg border bg-white/5 pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none transition',
-                            linkedRecipeObj ? 'border-emerald-500/40' : 'border-glass-border',
-                            'focus:border-brand-orange/50',
-                          )}
-                        />
-
-                        {isOpen && (
-                          <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-52 overflow-y-auto rounded-xl border border-glass-border bg-zinc-900 shadow-2xl">
-                            {filtered.length === 0 ? (
-                              <p className="px-3 py-2.5 text-sm text-white/40">No recipes found</p>
-                            ) : (
-                              filtered.map((r) => (
-                                <button
-                                  key={r.id}
-                                  type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault()
-                                    setPendingLink(item.id, r.id)
-                                    setOpenLinkDropdown(null)
-                                    setLinkSearch((prev) => { const n = new Map(prev); n.delete(item.id); return n })
-                                  }}
-                                  className={cn(
-                                    'w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-3',
-                                    r.id === linkedId
-                                      ? 'bg-brand-orange/10 text-brand-orange'
-                                      : 'text-white hover:bg-white/8',
-                                  )}
-                                >
-                                  <span className="truncate">{r.title}</span>
-                                  {r.allergens.length > 0 && (
-                                    <span className="text-xs text-white/30 shrink-0">
-                                      {r.allergens.slice(0, 3).join(', ')}
-                                    </span>
-                                  )}
-                                </button>
-                              ))
-                            )}
-                          </div>
+              {/* Recipe list */}
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {recipes
+                  .filter((r) => !librarySearch || r.title.toLowerCase().includes(librarySearch.toLowerCase()))
+                  .map((r) => {
+                    const sel = selectedRecipeIds.has(r.id)
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedRecipeIds((prev) => {
+                            const next = new Set(prev)
+                            sel ? next.delete(r.id) : next.add(r.id)
+                            return next
+                          })
+                        }
+                        className={cn(
+                          'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition',
+                          sel ? 'border-brand-orange/40 bg-brand-orange/8' : 'border-glass-border hover:bg-white/5',
                         )}
-                      </div>
+                      >
+                        <div className={cn(
+                          'h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition',
+                          sel ? 'border-brand-orange bg-brand-orange' : 'border-white/30',
+                        )}>
+                          {sel && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-white truncate">{r.title}</div>
+                          {r.allergens.length > 0 && (
+                            <div className="text-xs text-white/30 truncate">{r.allergens.slice(0, 4).join(', ')}</div>
+                          )}
+                        </div>
+                        {r.selling_price != null && (
+                          <span className="text-xs text-white/40 shrink-0">€{r.selling_price.toFixed(2)}</span>
+                        )}
+                      </button>
+                    )
+                  })}
+              </div>
 
-                      {linkedId && (
-                        <button
-                          type="button"
-                          onMouseDown={(e) => { e.preventDefault(); setPendingLink(item.id, null) }}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
+              {/* Section picker */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Add to section</label>
+                <select
+                  value={addToSectionId}
+                  onChange={(e) => setAddToSectionId(e.target.value)}
+                  className="w-full rounded-xl border border-glass-border bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange/50"
+                >
+                  <option value="">+ Create new section</option>
+                  {menu && menu.sections.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                {!addToSectionId && (
+                  <input
+                    type="text"
+                    value={newSectionName}
+                    onChange={(e) => setNewSectionName(e.target.value)}
+                    placeholder="Section name (e.g. Κυρίως, Ορεκτικά…)"
+                    className="w-full rounded-xl border border-glass-border bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50"
+                  />
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  type="button"
+                  className="flex-1"
+                  disabled={addingFromLibrary || selectedRecipeIds.size === 0 || (!addToSectionId && !newSectionName.trim())}
+                  onClick={() => void addFromLibrary()}
+                >
+                  {addingFromLibrary
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Adding…</>
+                    : `Add ${selectedRecipeIds.size} recipe${selectedRecipeIds.size !== 1 ? 's' : ''} to menu`
+                  }
+                </Button>
+                <Button type="button" variant="secondary" onClick={closeLinkRecipes} disabled={addingFromLibrary}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Tab: Link to existing items ── */}
+          {linkTab === 'link' && (
+            <div className="space-y-4">
+              {menu && menu.sections.flatMap((s) => s.items).length === 0 ? (
+                <p className="text-sm text-white/40 text-center py-6">
+                  No items yet — use <strong className="text-white/60">Add from Library</strong> to add recipes as menu items first.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-white/50">
+                    Assign a recipe to each item. Click <strong className="text-white/70">Save All</strong> when done.
+                  </p>
+                  <div className="space-y-2 max-h-[52vh] overflow-y-auto pr-1">
+                    {menu && menu.sections.flatMap((s) =>
+                      s.items.map((item) => {
+                        const linkedId = getLinkRecipeId(item.id, item.recipe_id)
+                        const linkedRecipeObj = linkedId ? recipes.find((r) => r.id === linkedId) : null
+                        const isOpen = openLinkDropdown === item.id
+                        const term = linkSearch.get(item.id) ?? ''
+                        const filtered = recipes.filter((r) =>
+                          !term || r.title.toLowerCase().includes(term.toLowerCase())
+                        )
+                        const isPending = pendingLinks.has(item.id)
+
+                        return (
+                          <div key={item.id} className={cn(
+                            'rounded-xl border px-3 py-2.5 space-y-2 transition',
+                            isPending ? 'border-brand-orange/40 bg-brand-orange/5' : 'border-glass-border',
+                          )}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="shrink-0 text-[10px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded">{s.name}</span>
+                              <span className="text-sm font-medium text-white truncate">{item.name}</span>
+                              {isPending && <span className="shrink-0 text-[10px] text-brand-orange ml-auto">unsaved</span>}
+                            </div>
+                            <div className="flex gap-2 items-center relative">
+                              <div className="relative flex-1">
+                                <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
+                                <input
+                                  type="text"
+                                  value={isOpen ? term : (linkedRecipeObj?.title ?? '')}
+                                  placeholder="Search recipes…"
+                                  onFocus={() => { setOpenLinkDropdown(item.id); setLinkSearch((prev) => new Map(prev).set(item.id, '')) }}
+                                  onChange={(e) => setLinkSearch((prev) => new Map(prev).set(item.id, e.target.value))}
+                                  onBlur={() => setTimeout(() => setOpenLinkDropdown(null), 120)}
+                                  className={cn(
+                                    'w-full rounded-lg border bg-white/5 pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none transition',
+                                    linkedRecipeObj ? 'border-emerald-500/40' : 'border-glass-border',
+                                    'focus:border-brand-orange/50',
+                                  )}
+                                />
+                                {isOpen && (
+                                  <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-52 overflow-y-auto rounded-xl border border-glass-border bg-zinc-900 shadow-2xl">
+                                    {filtered.length === 0
+                                      ? <p className="px-3 py-2.5 text-sm text-white/40">No recipes found</p>
+                                      : filtered.map((r) => (
+                                          <button key={r.id} type="button"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              setPendingLink(item.id, r.id)
+                                              setOpenLinkDropdown(null)
+                                              setLinkSearch((prev) => { const n = new Map(prev); n.delete(item.id); return n })
+                                            }}
+                                            className={cn(
+                                              'w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-3',
+                                              r.id === linkedId ? 'bg-brand-orange/10 text-brand-orange' : 'text-white hover:bg-white/8',
+                                            )}
+                                          >
+                                            <span className="truncate">{r.title}</span>
+                                            {r.allergens.length > 0 && <span className="text-xs text-white/30 shrink-0">{r.allergens.slice(0, 3).join(', ')}</span>}
+                                          </button>
+                                        ))
+                                    }
+                                  </div>
+                                )}
+                              </div>
+                              {linkedId && (
+                                <button type="button"
+                                  onMouseDown={(e) => { e.preventDefault(); setPendingLink(item.id, null) }}
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
                   </div>
-                )
-              })
-            )}
-          </div>
-
-          <div className="flex gap-2 pt-1">
-            <Button
-              type="button"
-              className="flex-1"
-              disabled={savingLinks || pendingLinks.size === 0}
-              onClick={() => void saveAllLinks()}
-            >
-              {savingLinks
-                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</>
-                : `Save ${pendingLinks.size} change${pendingLinks.size !== 1 ? 's' : ''}`
-              }
-            </Button>
-            <Button type="button" variant="secondary" onClick={closeLinkRecipes} disabled={savingLinks}>
-              Cancel
-            </Button>
-          </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button type="button" className="flex-1"
+                      disabled={savingLinks || pendingLinks.size === 0}
+                      onClick={() => void saveAllLinks()}
+                    >
+                      {savingLinks
+                        ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</>
+                        : `Save ${pendingLinks.size} change${pendingLinks.size !== 1 ? 's' : ''}`
+                      }
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={closeLinkRecipes} disabled={savingLinks}>
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </Drawer>
 
