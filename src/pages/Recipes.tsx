@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles, ScanLine } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../components/ui/Input'
@@ -14,6 +14,7 @@ import {
 } from '../components/recipes/RecipeForm'
 import { ImportRecipeDrawer } from '../components/recipes/ImportRecipeDrawer'
 import { ScanRecipeDrawer } from '../components/recipes/ScanRecipeDrawer'
+import { ImportExcelMenuDrawer } from '../components/recipes/ImportExcelMenuDrawer'
 import { RecipeVersionHistory } from '../components/recipes/RecipeVersionHistory'
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../hooks/useInventory'
@@ -35,6 +36,7 @@ export default function Recipes() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
   const [scanDrawerOpen, setScanDrawerOpen] = useState(false)
+  const [excelMenuDrawerOpen, setExcelMenuDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Recipe | null>(null)
   const [viewing, setViewing] = useState<Recipe | null>(null)
   const [saving, setSaving] = useState(false)
@@ -95,6 +97,32 @@ export default function Recipes() {
     setEditing(null)
     setPrefill(prefillData)
     setDrawerOpen(true)
+  }
+
+  async function onBatchImport(imported: ImportedRecipe[]) {
+    setSaving(true)
+    try {
+      for (const item of imported) {
+        await create({
+          title: item.title,
+          description: item.description ?? null,
+          instructions: item.instructions ?? null,
+          allergens: item.allergens,
+          cost_per_portion: item.cost_per_portion ?? null,
+          selling_price: null,
+          category: null,
+          image_url: null,
+          prep_time: null,
+          cook_time: null,
+          servings: null,
+          difficulty: null,
+          parent_recipe_id: null,
+          variation_label: null,
+        })
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function onSubmit(values: RecipeFormValues) {
@@ -170,6 +198,13 @@ export default function Recipes() {
             onClick={() => setScanDrawerOpen(true)}
           >
             {t('recipes.scan.button')}
+          </Button>
+          <Button
+            variant="secondary"
+            leftIcon={<FileSpreadsheet className="h-5 w-5" />}
+            onClick={() => setExcelMenuDrawerOpen(true)}
+          >
+            Import Excel Menu
           </Button>
           <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
             {t('recipes.newRecipe')}
@@ -300,6 +335,12 @@ export default function Recipes() {
         open={scanDrawerOpen}
         onClose={() => setScanDrawerOpen(false)}
         onImported={onImported}
+      />
+
+      <ImportExcelMenuDrawer
+        open={excelMenuDrawerOpen}
+        onClose={() => setExcelMenuDrawerOpen(false)}
+        onBatchImport={onBatchImport}
       />
 
       {versionRecipe && (
