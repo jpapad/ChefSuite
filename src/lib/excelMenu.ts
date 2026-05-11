@@ -1,11 +1,20 @@
 import * as XLSX from 'xlsx'
-// @ts-ignore — no type declarations for this internal xlsx dist file
-import * as cptable from 'xlsx/dist/cpexcel.full.mjs'
 import { supabase } from './supabase'
 
-// Enable full codepage support for .xls files with Greek, Cyrillic, etc. (Windows-1253, Windows-1251, …)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-XLSX.set_cptable(cptable as any)
+// Loaded once, lazily, the first time parseExcelFile is called
+let cptableLoaded = false
+async function ensureCptable() {
+  if (cptableLoaded) return
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = await (import(/* @vite-ignore */ 'xlsx/dist/cpexcel.full.mjs' as string) as Promise<any>)
+    XLSX.set_cptable(mod.cptable ?? mod)
+    cptableLoaded = true
+  } catch {
+    // Codepage loading failed — .xls files with non-ASCII will show "?"
+    // but the app will continue to work normally
+  }
+}
 
 export interface ColumnMapping {
   name: string | null
@@ -33,6 +42,7 @@ export interface ParsedExcelData {
 }
 
 export async function parseExcelFile(file: File, targetSheet?: string): Promise<ParsedExcelData> {
+  await ensureCptable()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
