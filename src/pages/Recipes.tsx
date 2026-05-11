@@ -21,7 +21,7 @@ import { useInventory } from '../hooks/useInventory'
 import { useRecipeIngredients } from '../hooks/useRecipeIngredients'
 import { RECIPE_CATEGORIES } from '../components/recipes/RecipeForm'
 import type { ImportedRecipe } from '../lib/gemini'
-import type { Recipe, RecipeCategory, RecipeIngredientDraft, RecipeVersion } from '../types/database.types'
+import type { Recipe, RecipeCategory, RecipeDifficulty, RecipeIngredientDraft, RecipeVersion } from '../types/database.types'
 
 export default function Recipes() {
   const { t } = useTranslation()
@@ -113,12 +113,12 @@ export default function Recipes() {
           allergens: item.allergens,
           cost_per_portion: item.cost_per_portion ?? null,
           selling_price: null,
-          category: null,
+          category: (item.category as RecipeCategory | null) ?? null,
           image_url: null,
-          prep_time: null,
-          cook_time: null,
-          servings: null,
-          difficulty: null,
+          prep_time: item.prep_time ?? null,
+          cook_time: item.cook_time ?? null,
+          servings: item.servings ?? null,
+          difficulty: (item.difficulty as RecipeDifficulty | null) ?? null,
           parent_recipe_id: null,
           variation_label: null,
         })

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   FileSpreadsheet, Loader2, ArrowLeft, Check, AlertCircle,
-  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX,
+  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles,
 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
@@ -11,7 +11,7 @@ import {
   type ColumnMapping, type ExcelMenuRow, type ParsedExcelData,
 } from '../../lib/excelMenu'
 import { BuffetLabelsDrawer } from '../menus/BuffetLabelsDrawer'
-import type { ImportedRecipe } from '../../lib/gemini'
+import { suggestRecipeDetails, type ImportedRecipe } from '../../lib/gemini'
 import type { MenuItem, MenuWithSections, Recipe } from '../../types/database.types'
 
 type DuplicateReason = 'existing' | 'infile'
@@ -161,6 +161,10 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [buffetMenu, setBuffetMenu] = useState<MenuWithSections | null>(null)
   const [buffetRecipes, setBuffetRecipes] = useState<Recipe[]>([])
 
+  const [aiFillingRows, setAiFillingRows] = useState(false)
+  const [aiFillProgress, setAiFillProgress] = useState<{ done: number; total: number } | null>(null)
+  const [aiFillDone, setAiFillDone] = useState(false)
+
   function reset() {
     setStep('upload')
     setLoading(false)
@@ -177,6 +181,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setActionMode(null)
     setBuffetMenu(null)
     setBuffetRecipes([])
+    setAiFillingRows(false)
+    setAiFillProgress(null)
+    setAiFillDone(false)
   }
 
   function handleClose() {
@@ -287,16 +294,56 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     )
   }
 
+  async function handleAIFillRows() {
+    const indices = Array.from(selected).filter((i) => {
+      const r = rows[i]
+      return !r.description?.trim() || r.allergens.length === 0 || r.difficulty == null || r.prep_time == null || !r.instructions?.trim()
+    })
+    if (indices.length === 0) return
+    setAiFillingRows(true)
+    setAiFillDone(false)
+    setAiFillProgress({ done: 0, total: indices.length })
+    const updatedRows = [...rows]
+    for (let idx = 0; idx < indices.length; idx++) {
+      const i = indices[idx]
+      try {
+        const s = await suggestRecipeDetails(updatedRows[i].name)
+        const row = updatedRows[i]
+        updatedRows[i] = {
+          ...row,
+          description:  !row.description?.trim()  ? (s.description  ?? row.description)  : row.description,
+          allergens:    row.allergens.length === 0  ? s.allergens                         : row.allergens,
+          difficulty:   row.difficulty  == null     ? s.difficulty                        : row.difficulty,
+          prep_time:    row.prep_time   == null     ? s.prep_time                         : row.prep_time,
+          cook_time:    row.cook_time   == null     ? s.cook_time                         : row.cook_time,
+          servings:     row.servings    == null     ? s.servings                          : row.servings,
+          instructions: !row.instructions?.trim()  ? (s.instructions ?? row.instructions) : row.instructions,
+        }
+        setRows([...updatedRows])
+      } catch { /* skip this row */ }
+      setAiFillProgress({ done: idx + 1, total: indices.length })
+    }
+    setAiFillingRows(false)
+    setAiFillProgress(null)
+    setAiFillDone(true)
+    setTimeout(() => setAiFillDone(false), 3000)
+  }
+
   function handleImportAsRecipes() {
     const selectedRows = rows.filter((_, i) => selected.has(i))
     const imported: ImportedRecipe[] = selectedRows.map((row) => ({
       title: row.name,
       description: row.description ?? '',
-      instructions: row.ingredients ? `Ingredients:\n${row.ingredients}` : null,
+      instructions: row.instructions ?? (row.ingredients ? `Ingredients:\n${row.ingredients}` : null),
       allergens: row.allergens,
       cost_per_portion: null,
       ingredients: [],
       extractedIngredients: [],
+      category: row.category,
+      difficulty: row.difficulty,
+      prep_time: row.prep_time,
+      cook_time: row.cook_time,
+      servings: row.servings,
     }))
     onBatchImport(imported)
     reset()
@@ -538,6 +585,33 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                 </p>
               </div>
             </div>
+          )}
+
+          {/* AI Fill button */}
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleAIFillRows()}
+              disabled={aiFillingRows}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-brand-orange/40 bg-brand-orange/5 px-4 py-2.5 text-sm font-medium text-brand-orange transition hover:border-brand-orange hover:bg-brand-orange/10 disabled:opacity-60 disabled:pointer-events-none"
+            >
+              {aiFillingRows ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  AI ανάλυση {aiFillProgress?.done}/{aiFillProgress?.total}…
+                </>
+              ) : aiFillDone ? (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Συμπληρώθηκε! Έλεγξε τα πεδία παρακάτω.
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  AI Συμπλήρωση κενών πεδίων ({selected.size} επιλεγμένα)
+                </>
+              )}
+            </button>
           )}
 
           <div className="flex items-center justify-between">

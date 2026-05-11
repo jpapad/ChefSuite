@@ -8,8 +8,13 @@ async function ensureCptable() {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await (import(/* @vite-ignore */ 'xlsx/dist/cpexcel.full.mjs' as string) as Promise<any>)
-    XLSX.set_cptable(mod.cptable ?? mod)
-    cptableLoaded = true
+    // xlsx only needs cptable.utils.decode/encode/hascp — extract it regardless of how
+    // Vite wraps the module (named export → mod.utils, default-wrapped → mod.default.utils)
+    const utils = mod.utils ?? mod.default?.utils
+    if (utils?.decode) {
+      XLSX.set_cptable({ utils })
+      cptableLoaded = true
+    }
   } catch {
     // Codepage loading failed — .xls files with non-ASCII will show "?"
     // but the app will continue to work normally
@@ -32,6 +37,11 @@ export interface ExcelMenuRow {
   price: number | null
   allergens: string[]
   ingredients: string | null
+  difficulty: string | null
+  prep_time: number | null
+  cook_time: number | null
+  servings: number | null
+  instructions: string | null
 }
 
 export interface ParsedExcelData {
@@ -186,6 +196,11 @@ export function applyMapping(
       price: mapping.price ? parsePrice(row[mapping.price] ?? '') : null,
       allergens: mapping.allergens ? parseAllergens(row[mapping.allergens] ?? '') : [],
       ingredients: mapping.ingredients ? (row[mapping.ingredients] ?? '').trim() || null : null,
+      difficulty: null,
+      prep_time: null,
+      cook_time: null,
+      servings: null,
+      instructions: null,
     }))
     .filter((r) => r.name)
 }
