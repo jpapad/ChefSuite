@@ -572,3 +572,57 @@ export async function importRecipeFromUrl(url: string): Promise<ImportedRecipe> 
   if (!text.trim()) throw new Error('Could not extract readable text from the page.')
   return importRecipeFromText(text)
 }
+
+// ── AI Recipe Autofill ────────────────────────────────────────────────────────
+
+export interface RecipeSuggestion {
+  description: string | null
+  instructions: string | null
+  allergens: string[]
+  category: string | null
+  difficulty: string | null
+  prep_time: number | null
+  cook_time: number | null
+  servings: number | null
+}
+
+export async function suggestRecipeDetails(title: string): Promise<RecipeSuggestion> {
+  const prompt = `You are a professional chef assistant. Given a dish name, suggest recipe details.
+Dish name: "${title}"
+
+Respond with ONLY a valid JSON object — no markdown, no explanation:
+{
+  "description": "1-2 sentence description in the same language as the dish name",
+  "instructions": "numbered step-by-step cooking instructions in the same language as the dish name",
+  "allergens": ["only keys from: gluten, dairy, eggs, fish, shellfish, nuts, peanuts, soy, sesame, celery, mustard, sulphites, lupin, molluscs"],
+  "category": "one of: appetizer, soup, salad, main, side, sauce, bread, dessert, beverage, other",
+  "difficulty": "easy | medium | hard",
+  "prep_time": minutes as integer or null,
+  "cook_time": minutes as integer or null,
+  "servings": integer (typical portions) or null
+}`
+
+  const VALID_CATEGORIES = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
+  const VALID_DIFFICULTIES = new Set(['easy','medium','hard'])
+  const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
+
+  try {
+    const raw = await callGemini(prompt)
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+
+    return {
+      description: typeof parsed.description === 'string' ? parsed.description : null,
+      instructions: typeof parsed.instructions === 'string' ? parsed.instructions : null,
+      allergens: Array.isArray(parsed.allergens)
+        ? (parsed.allergens as unknown[]).filter((a): a is string => typeof a === 'string' && VALID_ALLERGENS.has(a))
+        : [],
+      category: typeof parsed.category === 'string' && VALID_CATEGORIES.has(parsed.category) ? parsed.category : null,
+      difficulty: typeof parsed.difficulty === 'string' && VALID_DIFFICULTIES.has(parsed.difficulty) ? parsed.difficulty : null,
+      prep_time: typeof parsed.prep_time === 'number' ? Math.round(parsed.prep_time) : null,
+      cook_time: typeof parsed.cook_time === 'number' ? Math.round(parsed.cook_time) : null,
+      servings: typeof parsed.servings === 'number' ? Math.round(parsed.servings) : null,
+    }
+  } catch {
+    throw new Error('AI suggestion failed. Please fill in the fields manually.')
+  }
+}

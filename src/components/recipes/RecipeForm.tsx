@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Loader2, Sparkles } from 'lucide-react'
 import { Input } from '../ui/Input'
 import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
@@ -7,6 +8,7 @@ import { ImageUpload } from '../ui/ImageUpload'
 import { AllergenChips } from './AllergenChips'
 import { IngredientsEditor } from './IngredientsEditor'
 import { useRecipes } from '../../hooks/useRecipes'
+import { suggestRecipeDetails } from '../../lib/gemini'
 import type {
   InventoryItem,
   Recipe,
@@ -90,6 +92,36 @@ export function RecipeForm({
     blank(initial, initialIngredients, prefill),
   )
   const [error, setError] = useState<string | null>(null)
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestDone, setSuggestDone] = useState(false)
+
+  async function handleAISuggest() {
+    const title = values.title.trim()
+    if (!title) return
+    setSuggesting(true)
+    setSuggestDone(false)
+    setError(null)
+    try {
+      const s = await suggestRecipeDetails(title)
+      setValues((v) => ({
+        ...v,
+        description:  !v.description?.trim()  ? (s.description  ?? v.description)  : v.description,
+        instructions: !v.instructions?.trim() ? (s.instructions ?? v.instructions) : v.instructions,
+        allergens:    v.allergens.length === 0  ? s.allergens                        : v.allergens,
+        category:     v.category  == null       ? (s.category as RecipeCategory | null)   : v.category,
+        difficulty:   v.difficulty == null      ? (s.difficulty as RecipeDifficulty | null) : v.difficulty,
+        prep_time:    v.prep_time  == null       ? s.prep_time                       : v.prep_time,
+        cook_time:    v.cook_time  == null       ? s.cook_time                       : v.cook_time,
+        servings:     v.servings   == null       ? s.servings                        : v.servings,
+      }))
+      setSuggestDone(true)
+      setTimeout(() => setSuggestDone(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI suggestion failed.')
+    } finally {
+      setSuggesting(false)
+    }
+  }
 
   useEffect(() => {
     setValues(blank(initial, initialIngredients, prefill))
@@ -132,6 +164,33 @@ export function RecipeForm({
         value={values.title}
         onChange={(e) => setValues((v) => ({ ...v, title: e.target.value }))}
       />
+
+      {/* AI Autofill */}
+      {values.title.trim().length >= 2 && (
+        <button
+          type="button"
+          onClick={() => void handleAISuggest()}
+          disabled={suggesting}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-brand-orange/40 bg-brand-orange/5 px-4 py-2.5 text-sm font-medium text-brand-orange transition hover:border-brand-orange hover:bg-brand-orange/10 disabled:opacity-60 disabled:pointer-events-none"
+        >
+          {suggesting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              AI ανάλυση «{values.title.trim()}»…
+            </>
+          ) : suggestDone ? (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Συμπληρώθηκε! Έλεγξε τα πεδία παρακάτω.
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              AI Αυτόματη Συμπλήρωση
+            </>
+          )}
+        </button>
+      )}
 
       {/* Category */}
       <div>
