@@ -302,8 +302,11 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     if (indices.length === 0) return
     setAiFillingRows(true)
     setAiFillDone(false)
+    setError(null)
     setAiFillProgress({ done: 0, total: indices.length })
     const updatedRows = [...rows]
+    let filled = 0
+    let lastErr = ''
     for (let idx = 0; idx < indices.length; idx++) {
       const i = indices[idx]
       try {
@@ -319,14 +322,21 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
           servings:     row.servings    == null     ? s.servings                          : row.servings,
           instructions: !row.instructions?.trim()  ? (s.instructions ?? row.instructions) : row.instructions,
         }
-        setRows([...updatedRows])
-      } catch { /* skip this row */ }
+        filled++
+        setRows(updatedRows.slice())
+      } catch (err) {
+        lastErr = err instanceof Error ? err.message : 'AI suggestion failed'
+      }
       setAiFillProgress({ done: idx + 1, total: indices.length })
     }
     setAiFillingRows(false)
     setAiFillProgress(null)
-    setAiFillDone(true)
-    setTimeout(() => setAiFillDone(false), 3000)
+    if (filled === 0) {
+      setError(`AI συμπλήρωση απέτυχε: ${lastErr}`)
+    } else {
+      setAiFillDone(true)
+      setTimeout(() => setAiFillDone(false), 3000)
+    }
   }
 
   function handleImportAsRecipes() {
@@ -668,6 +678,25 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                     )}
                     {row.description && (
                       <p className="text-xs text-white/50 truncate mt-0.5">{row.description}</p>
+                    )}
+                    {(row.difficulty || row.prep_time != null || row.servings != null) && (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {row.difficulty && (
+                          <span className="rounded-full bg-brand-orange/15 border border-brand-orange/30 px-2 py-0.5 text-[10px] text-brand-orange/80">
+                            ✦ {row.difficulty}
+                          </span>
+                        )}
+                        {row.prep_time != null && (
+                          <span className="rounded-full bg-brand-orange/15 border border-brand-orange/30 px-2 py-0.5 text-[10px] text-brand-orange/80">
+                            ✦ {row.prep_time + (row.cook_time ?? 0)} λεπτά
+                          </span>
+                        )}
+                        {row.servings != null && (
+                          <span className="rounded-full bg-brand-orange/15 border border-brand-orange/30 px-2 py-0.5 text-[10px] text-brand-orange/80">
+                            ✦ {row.servings} μερίδες
+                          </span>
+                        )}
+                      </div>
                     )}
                     {row.allergens.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
