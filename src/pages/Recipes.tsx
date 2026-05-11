@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../components/ui/Input'
@@ -43,6 +43,9 @@ export default function Recipes() {
   const [prefill, setPrefill] = useState<Partial<RecipeFormValues> | undefined>()
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [versionRecipe, setVersionRecipe] = useState<Recipe | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -170,6 +173,41 @@ export default function Recipes() {
     await remove(recipe.id)
   }
 
+  function toggleSelectionMode() {
+    setSelectionMode((v) => !v)
+    setSelectedIds(new Set())
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function selectAll() {
+    setSelectedIds(new Set(filtered.map((r) => r.id)))
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set())
+  }
+
+  async function bulkDelete() {
+    const count = selectedIds.size
+    const ok = window.confirm(`Διαγραφή ${count} συνταγ${count === 1 ? 'ής' : 'ών'}; Η ενέργεια δεν αναιρείται.`)
+    if (!ok) return
+    setBulkDeleting(true)
+    try {
+      for (const id of selectedIds) await remove(id)
+      setSelectedIds(new Set())
+      setSelectionMode(false)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   const initialIngredients: RecipeIngredientDraft[] = editing
     ? getIngredients(editing.id).map((i) => ({
         inventory_item_id: i.inventory_item_id,
@@ -184,31 +222,44 @@ export default function Recipes() {
           <h1 className="text-3xl font-semibold">{t('recipes.title')}</h1>
           <p className="text-white/60 mt-1">{t('recipes.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            leftIcon={<Sparkles className="h-5 w-5" />}
-            onClick={() => setImportDrawerOpen(true)}
-          >
-            {t('recipes.importWithAI')}
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<ScanLine className="h-5 w-5" />}
-            onClick={() => setScanDrawerOpen(true)}
-          >
-            {t('recipes.scan.button')}
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<FileSpreadsheet className="h-5 w-5" />}
-            onClick={() => setExcelMenuDrawerOpen(true)}
-          >
-            Import Excel Menu
-          </Button>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-            {t('recipes.newRecipe')}
-          </Button>
+        <div className="flex gap-2 flex-wrap">
+          {recipes.length > 0 && (
+            <Button
+              variant="secondary"
+              leftIcon={selectionMode ? <X className="h-5 w-5" /> : <CheckSquare className="h-5 w-5" />}
+              onClick={toggleSelectionMode}
+            >
+              {selectionMode ? 'Ακύρωση' : 'Επιλογή'}
+            </Button>
+          )}
+          {!selectionMode && (
+            <>
+              <Button
+                variant="secondary"
+                leftIcon={<Sparkles className="h-5 w-5" />}
+                onClick={() => setImportDrawerOpen(true)}
+              >
+                {t('recipes.importWithAI')}
+              </Button>
+              <Button
+                variant="secondary"
+                leftIcon={<ScanLine className="h-5 w-5" />}
+                onClick={() => setScanDrawerOpen(true)}
+              >
+                {t('recipes.scan.button')}
+              </Button>
+              <Button
+                variant="secondary"
+                leftIcon={<FileSpreadsheet className="h-5 w-5" />}
+                onClick={() => setExcelMenuDrawerOpen(true)}
+              >
+                Import Excel Menu
+              </Button>
+              <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
+                {t('recipes.newRecipe')}
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
@@ -308,21 +359,71 @@ export default function Recipes() {
           </Button>
         </GlassCard>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((r) => (
-            <RecipeCard
-              key={r.id}
-              recipe={r}
-              ingredients={getIngredients(r.id)}
-              inventory={inventory}
-              onView={setViewing}
-              onEdit={openEdit}
-              onDelete={onDelete}
-              onConsume={(recipe, portions) => consumeRecipe(recipe.id, portions)}
-              onHistory={setVersionRecipe}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((r) => (
+              <div key={r.id} className="relative">
+                {selectionMode && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(r.id)}
+                    className="absolute inset-0 z-10 rounded-2xl focus:outline-none"
+                    aria-label={selectedIds.has(r.id) ? 'Αποεπιλογή' : 'Επιλογή'}
+                  >
+                    <span className={[
+                      'absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition',
+                      selectedIds.has(r.id)
+                        ? 'border-red-400 bg-red-400 text-white'
+                        : 'border-white/40 bg-black/40 text-transparent',
+                    ].join(' ')}>
+                      {selectedIds.has(r.id)
+                        ? <CheckSquare className="h-4 w-4" />
+                        : <Square className="h-4 w-4 text-white/50" />}
+                    </span>
+                  </button>
+                )}
+                <div className={selectionMode ? (selectedIds.has(r.id) ? 'ring-2 ring-red-400 rounded-2xl' : 'opacity-60') : ''}>
+                  <RecipeCard
+                    recipe={r}
+                    ingredients={getIngredients(r.id)}
+                    inventory={inventory}
+                    onView={selectionMode ? () => {} : setViewing}
+                    onEdit={selectionMode ? () => {} : openEdit}
+                    onDelete={selectionMode ? () => {} : onDelete}
+                    onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)}
+                    onHistory={selectionMode ? () => {} : setVersionRecipe}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Bulk-delete action bar ── */}
+          {selectionMode && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-white/15 bg-[#1a1d25]/95 backdrop-blur px-4 py-3 shadow-2xl">
+              <button
+                type="button"
+                onClick={selectedIds.size === filtered.length ? clearSelection : selectAll}
+                className="text-sm text-white/60 hover:text-white transition whitespace-nowrap"
+              >
+                {selectedIds.size === filtered.length ? 'Αποεπιλογή όλων' : `Επιλογή όλων (${filtered.length})`}
+              </button>
+              <span className="text-white/20">|</span>
+              <span className="text-sm text-white/80 whitespace-nowrap">
+                {selectedIds.size} επιλεγμέν{selectedIds.size === 1 ? 'η' : 'ες'}
+              </span>
+              <button
+                type="button"
+                onClick={() => void bulkDelete()}
+                disabled={selectedIds.size === 0 || bulkDeleting}
+                className="flex items-center gap-1.5 rounded-xl bg-red-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Trash2 className="h-4 w-4" />
+                {bulkDeleting ? 'Διαγραφή…' : `Διαγραφή${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <ImportRecipeDrawer
