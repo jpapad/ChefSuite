@@ -98,7 +98,7 @@ export default function Recipes() {
     const { extractedIngredients: _, ...prefillData } = imported
     setImportDrawerOpen(false)
     setEditing(null)
-    setPrefill(prefillData)
+    setPrefill(prefillData as Partial<RecipeFormValues>)
     setDrawerOpen(true)
   }
 
