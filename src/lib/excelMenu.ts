@@ -1,10 +1,11 @@
 import * as XLSX from 'xlsx'
+// @ts-ignore — no type declarations for this internal xlsx dist file
+import * as cptable from 'xlsx/dist/cpexcel.full.mjs'
 import { supabase } from './supabase'
 
 // Enable full codepage support for .xls files with Greek, Cyrillic, etc. (Windows-1253, Windows-1251, …)
-// No type declarations exist for this internal xlsx dist file — cast via any
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-XLSX.set_cptable(require('xlsx/dist/cpexcel.js') as any)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+XLSX.set_cptable(cptable as any)
 
 export interface ColumnMapping {
   name: string | null
