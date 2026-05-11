@@ -442,6 +442,7 @@ export default function Recipes() {
         open={excelMenuDrawerOpen}
         onClose={() => setExcelMenuDrawerOpen(false)}
         onBatchImport={onBatchImport}
+        existingTitles={recipes.map((r) => r.title)}
       />
 
       {versionRecipe && (

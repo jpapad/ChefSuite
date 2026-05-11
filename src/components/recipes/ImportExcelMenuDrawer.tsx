@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   FileSpreadsheet, Loader2, ArrowLeft, Check, AlertCircle,
-  ChevronRight, Tag, UtensilsCrossed, Layers,
+  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX,
 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
@@ -14,10 +14,13 @@ import { BuffetLabelsDrawer } from '../menus/BuffetLabelsDrawer'
 import type { ImportedRecipe } from '../../lib/gemini'
 import type { MenuItem, MenuWithSections, Recipe } from '../../types/database.types'
 
+type DuplicateReason = 'existing' | 'infile'
+
 interface Props {
   open: boolean
   onClose: () => void
   onBatchImport: (rows: ImportedRecipe[]) => void
+  existingTitles?: string[]
 }
 
 type Step = 'upload' | 'sheet' | 'mapping' | 'preview'
@@ -132,7 +135,7 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
   return { menu, recipes: syntheticRecipes }
 }
 
-export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
+export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTitles = [] }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('upload')
@@ -152,6 +155,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
   })
   const [rows, setRows] = useState<ExcelMenuRow[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [duplicates, setDuplicates] = useState<Map<number, DuplicateReason>>(new Map())
 
   const [actionMode, setActionMode] = useState<ActionMode>(null)
   const [buffetMenu, setBuffetMenu] = useState<MenuWithSections | null>(null)
@@ -169,6 +173,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
     setMapping({ name: null, description: null, category: null, price: null, allergens: null, ingredients: null })
     setRows([])
     setSelected(new Set())
+    setDuplicates(new Map())
     setActionMode(null)
     setBuffetMenu(null)
     setBuffetRecipes([])
@@ -243,8 +248,27 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
       setError('No rows with a dish name were found. Check the column mapping.')
       return
     }
+
+    // Detect duplicates
+    const existingLower = new Set(existingTitles.map((t) => t.trim().toLowerCase()))
+    const seenInFile = new Set<string>()
+    const dupMap = new Map<number, DuplicateReason>()
+
+    result.forEach((row, i) => {
+      const key = row.name.trim().toLowerCase()
+      if (existingLower.has(key)) {
+        dupMap.set(i, 'existing')
+      } else if (seenInFile.has(key)) {
+        dupMap.set(i, 'infile')
+      } else {
+        seenInFile.add(key)
+      }
+    })
+
     setRows(result)
-    setSelected(new Set(result.map((_, i) => i)))
+    setDuplicates(dupMap)
+    // Pre-select only non-duplicates
+    setSelected(new Set(result.map((_, i) => i).filter((i) => !dupMap.has(i))))
     setError(null)
     setStep('preview')
   }
@@ -500,59 +524,88 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport }: Props) {
       {/* ── Step 3: Preview + Action ── */}
       {step === 'preview' && (
         <div className="space-y-5">
+
+          {/* Duplicate summary banner */}
+          {duplicates.size > 0 && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+              <CopyX className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">
+                  {duplicates.size} διπλότυπ{duplicates.size === 1 ? 'ο' : 'α'} βρέθηκ{duplicates.size === 1 ? 'ε' : 'αν'} και αποεπιλέχτηκ{duplicates.size === 1 ? 'ε' : 'αν'} αυτόματα.
+                </p>
+                <p className="text-amber-300/60 text-xs mt-0.5">
+                  Μπορείς να τα επιλέξεις χειροκίνητα αν θέλεις να τα περάσεις ξανά.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-white/80">
-              {selected.size} of {rows.length} rows selected
+              {selected.size} από {rows.length} γραμμές επιλεγμένες
             </p>
             <button
               type="button"
               onClick={toggleAll}
               className="text-xs text-emerald-400 hover:text-emerald-300 transition"
             >
-              {selected.size === rows.length ? 'Deselect all' : 'Select all'}
+              {selected.size === rows.length ? 'Αποεπιλογή όλων' : 'Επιλογή όλων'}
             </button>
           </div>
 
           {/* Row list */}
           <ul className="glass rounded-xl divide-y divide-glass-border max-h-80 overflow-y-auto">
-            {rows.map((row, i) => (
-              <li
-                key={i}
-                onClick={() => toggleRow(i)}
-                className={cn(
-                  'flex items-start gap-3 px-4 py-3 cursor-pointer transition',
-                  selected.has(i) ? 'bg-emerald-500/5' : 'opacity-40',
-                )}
-              >
-                <div className={cn(
-                  'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition',
-                  selected.has(i) ? 'border-emerald-400 bg-emerald-400' : 'border-white/30',
-                )}>
-                  {selected.has(i) && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-medium text-sm text-white truncate">{row.name}</span>
-                    {row.price != null && (
-                      <span className="text-xs text-white/50 shrink-0">€{row.price.toFixed(2)}</span>
+            {rows.map((row, i) => {
+              const dupReason = duplicates.get(i)
+              return (
+                <li
+                  key={i}
+                  onClick={() => toggleRow(i)}
+                  className={cn(
+                    'flex items-start gap-3 px-4 py-3 cursor-pointer transition',
+                    selected.has(i) ? 'bg-emerald-500/5' : 'opacity-40',
+                  )}
+                >
+                  <div className={cn(
+                    'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition',
+                    selected.has(i) ? 'border-emerald-400 bg-emerald-400' : 'border-white/30',
+                  )}>
+                    {selected.has(i) && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm text-white truncate">{row.name}</span>
+                      {row.price != null && (
+                        <span className="text-xs text-white/50 shrink-0">€{row.price.toFixed(2)}</span>
+                      )}
+                      {dupReason === 'existing' && (
+                        <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[10px] text-amber-300 shrink-0">
+                          Υπάρχει ήδη
+                        </span>
+                      )}
+                      {dupReason === 'infile' && (
+                        <span className="rounded-full bg-orange-500/20 border border-orange-500/40 px-2 py-0.5 text-[10px] text-orange-300 shrink-0">
+                          Διπλότυπο στο αρχείο
+                        </span>
+                      )}
+                    </div>
+                    {row.category && (
+                      <span className="text-xs text-emerald-400/80">{row.category}</span>
+                    )}
+                    {row.description && (
+                      <p className="text-xs text-white/50 truncate mt-0.5">{row.description}</p>
+                    )}
+                    {row.allergens.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {row.allergens.map((a) => (
+                          <span key={a} className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-300">{a}</span>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {row.category && (
-                    <span className="text-xs text-emerald-400/80">{row.category}</span>
-                  )}
-                  {row.description && (
-                    <p className="text-xs text-white/50 truncate mt-0.5">{row.description}</p>
-                  )}
-                  {row.allergens.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {row.allergens.map((a) => (
-                        <span key={a} className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-300">{a}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
 
           {/* Action choice */}
