@@ -11,7 +11,7 @@ import {
   type ColumnMapping, type ExcelMenuRow, type ParsedExcelData,
 } from '../../lib/excelMenu'
 import { BuffetLabelsDrawer } from '../menus/BuffetLabelsDrawer'
-import { suggestRecipeDetails, type ImportedRecipe } from '../../lib/gemini'
+import { suggestMultipleRecipeDetails, type ImportedRecipe } from '../../lib/gemini'
 import type { MenuItem, MenuWithSections, Recipe } from '../../types/database.types'
 
 type DuplicateReason = 'existing' | 'infile'
@@ -304,15 +304,15 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setAiFillDone(false)
     setError(null)
     setAiFillProgress({ done: 0, total: indices.length })
-    const updatedRows = [...rows]
-    let filled = 0
-    let lastErr = ''
-    for (let idx = 0; idx < indices.length; idx++) {
-      const i = indices[idx]
-      try {
-        const s = await suggestRecipeDetails(updatedRows[i].name)
-        const row = updatedRows[i]
-        updatedRows[i] = {
+    try {
+      const titles = indices.map((i) => rows[i].name)
+      const suggestions = await suggestMultipleRecipeDetails(titles)
+      setAiFillProgress({ done: indices.length, total: indices.length })
+      const updatedRows = [...rows]
+      indices.forEach((rowIdx, si) => {
+        const s = suggestions[si]
+        const row = updatedRows[rowIdx]
+        updatedRows[rowIdx] = {
           ...row,
           description:  !row.description?.trim()  ? (s.description  ?? row.description)  : row.description,
           allergens:    row.allergens.length === 0  ? s.allergens                         : row.allergens,
@@ -322,20 +322,15 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
           servings:     row.servings    == null     ? s.servings                          : row.servings,
           instructions: !row.instructions?.trim()  ? (s.instructions ?? row.instructions) : row.instructions,
         }
-        filled++
-        setRows(updatedRows.slice())
-      } catch (err) {
-        lastErr = err instanceof Error ? err.message : 'AI suggestion failed'
-      }
-      setAiFillProgress({ done: idx + 1, total: indices.length })
-    }
-    setAiFillingRows(false)
-    setAiFillProgress(null)
-    if (filled === 0) {
-      setError(`AI συμπλήρωση απέτυχε: ${lastErr}`)
-    } else {
+      })
+      setRows(updatedRows)
       setAiFillDone(true)
       setTimeout(() => setAiFillDone(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI συμπλήρωση απέτυχε')
+    } finally {
+      setAiFillingRows(false)
+      setAiFillProgress(null)
     }
   }
 

@@ -631,3 +631,62 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
     throw new Error('AI suggestion failed. Please fill in the fields manually.')
   }
 }
+
+// Batch variant — one Gemini call for N dish names (avoids per-row rate limiting)
+export async function suggestMultipleRecipeDetails(titles: string[]): Promise<RecipeSuggestion[]> {
+  if (titles.length === 0) return []
+
+  const VALID_CATEGORIES = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
+  const VALID_DIFFICULTIES = new Set(['easy','medium','hard'])
+  const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
+
+  const prompt = `You are a professional chef assistant. For each dish name below, suggest recipe details.
+Respond with ONLY a valid JSON array (same order, one object per dish) — no markdown, no explanation:
+[
+  {
+    "description": "1-2 sentence description in the same language as the dish name",
+    "instructions": "numbered step-by-step cooking instructions in the same language",
+    "allergens": ["only from: gluten,dairy,eggs,fish,shellfish,nuts,peanuts,soy,sesame,celery,mustard,sulphites,lupin,molluscs"],
+    "category": "one of: appetizer,soup,salad,main,side,sauce,bread,dessert,beverage,other",
+    "difficulty": "easy|medium|hard",
+    "prep_time": integer minutes or null,
+    "cook_time": integer minutes or null,
+    "servings": integer or null
+  }
+]
+
+Dish names:
+${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
+
+  const parseSuggestion = (o: unknown): RecipeSuggestion => {
+    const p = (typeof o === 'object' && o !== null ? o : {}) as Record<string, unknown>
+    return {
+      description: typeof p.description === 'string' ? p.description : null,
+      instructions: typeof p.instructions === 'string' ? p.instructions : null,
+      allergens: Array.isArray(p.allergens)
+        ? (p.allergens as unknown[]).filter((a): a is string => typeof a === 'string' && VALID_ALLERGENS.has(a))
+        : [],
+      category: typeof p.category === 'string' && VALID_CATEGORIES.has(p.category) ? p.category : null,
+      difficulty: typeof p.difficulty === 'string' && VALID_DIFFICULTIES.has(p.difficulty) ? p.difficulty : null,
+      prep_time: typeof p.prep_time === 'number' ? Math.round(p.prep_time) : null,
+      cook_time: typeof p.cook_time === 'number' ? Math.round(p.cook_time) : null,
+      servings: typeof p.servings === 'number' ? Math.round(p.servings) : null,
+    }
+  }
+
+  const empty = (): RecipeSuggestion => ({
+    description: null, instructions: null, allergens: [],
+    category: null, difficulty: null, prep_time: null, cook_time: null, servings: null,
+  })
+
+  try {
+    const raw = await callGemini(prompt)
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) throw new Error('Expected array')
+    // Pad or trim to match input length
+    const results = titles.map((_, i) => parsed[i] !== undefined ? parseSuggestion(parsed[i]) : empty())
+    return results
+  } catch {
+    throw new Error('AI batch suggestion failed.')
+  }
+}
