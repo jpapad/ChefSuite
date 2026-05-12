@@ -28,6 +28,10 @@ export interface ColumnMapping {
   price: string | null
   allergens: string | null
   ingredients: string | null
+  name_el: string | null
+  name_bg: string | null
+  description_el: string | null
+  description_bg: string | null
 }
 
 export interface ExcelMenuRow {
@@ -100,12 +104,16 @@ ${sampleLines}
 
 Identify which column header corresponds to each field below. Return ONLY a valid JSON object — no markdown, no explanation:
 {
-  "name": "exact header string for dish name, or null",
-  "description": "exact header string for dish description, or null",
+  "name": "exact header string for dish name (primary/Greek), or null",
+  "description": "exact header string for dish description (primary/Greek), or null",
   "category": "exact header string for section/category, or null",
   "price": "exact header string for price, or null",
   "allergens": "exact header string for allergens, or null",
-  "ingredients": "exact header string for ingredients list, or null"
+  "ingredients": "exact header string for ingredients list, or null",
+  "name_el": "exact header string for English dish name, or null",
+  "name_bg": "exact header string for Bulgarian dish name, or null",
+  "description_el": "exact header string for English description, or null",
+  "description_bg": "exact header string for Bulgarian description, or null"
 }
 
 Use null when no column clearly matches. Use the EXACT header string.`
@@ -135,6 +143,10 @@ Use null when no column clearly matches. Use the EXACT header string.`
       price: validKey(parsed.price),
       allergens: validKey(parsed.allergens),
       ingredients: validKey(parsed.ingredients),
+      name_el: validKey(parsed.name_el),
+      name_bg: validKey(parsed.name_bg),
+      description_el: validKey(parsed.description_el),
+      description_bg: validKey(parsed.description_bg),
     }
   } catch {
     // Fallback: first column as name
@@ -145,6 +157,10 @@ Use null when no column clearly matches. Use the EXACT header string.`
       price: null,
       allergens: null,
       ingredients: null,
+      name_el: null,
+      name_bg: null,
+      description_el: null,
+      description_bg: null,
     }
   }
 }
@@ -279,11 +295,11 @@ export function applyMapping(
   return rows
     .map((row) => ({
       name: (mapping.name ? row[mapping.name] ?? '' : '').trim(),
-      name_el: null,
-      name_bg: null,
+      name_el: mapping.name_el ? (row[mapping.name_el] ?? '').trim() || null : null,
+      name_bg: mapping.name_bg ? (row[mapping.name_bg] ?? '').trim() || null : null,
       description: mapping.description ? (row[mapping.description] ?? '').trim() || null : null,
-      description_el: null,
-      description_bg: null,
+      description_el: mapping.description_el ? (row[mapping.description_el] ?? '').trim() || null : null,
+      description_bg: mapping.description_bg ? (row[mapping.description_bg] ?? '').trim() || null : null,
       category: mapping.category ? (row[mapping.category] ?? '').trim() || null : null,
       price: mapping.price ? parsePrice(row[mapping.price] ?? '') : null,
       allergens: mapping.allergens ? parseAllergens(row[mapping.allergens] ?? '', customAllergenMap) : [],

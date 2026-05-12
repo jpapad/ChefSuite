@@ -28,13 +28,17 @@ interface Props {
 type Step = 'upload' | 'sheet' | 'mapping' | 'preview'
 type ActionMode = 'recipes' | 'labels' | null
 
-const MAPPING_FIELDS: { key: keyof ColumnMapping; label: string; required?: boolean }[] = [
-  { key: 'name',        label: 'Dish Name',    required: true },
-  { key: 'description', label: 'Description' },
-  { key: 'category',    label: 'Category / Section' },
-  { key: 'price',       label: 'Price' },
-  { key: 'allergens',   label: 'Allergens' },
-  { key: 'ingredients', label: 'Ingredients' },
+const MAPPING_FIELDS: { key: keyof ColumnMapping; label: string; required?: boolean; group?: 'trans' }[] = [
+  { key: 'name',           label: 'Dish Name',              required: true },
+  { key: 'description',    label: 'Description' },
+  { key: 'category',       label: 'Category / Section' },
+  { key: 'price',          label: 'Price' },
+  { key: 'allergens',      label: 'Allergens' },
+  { key: 'ingredients',    label: 'Ingredients' },
+  { key: 'name_el',        label: 'Name (English)',          group: 'trans' },
+  { key: 'name_bg',        label: 'Name (Bulgarian)',        group: 'trans' },
+  { key: 'description_el', label: 'Description (English)',   group: 'trans' },
+  { key: 'description_bg', label: 'Description (Bulgarian)', group: 'trans' },
 ]
 
 function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; recipes: Recipe[] } {
@@ -154,6 +158,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [mapping, setMapping] = useState<ColumnMapping>({
     name: null, description: null, category: null,
     price: null, allergens: null, ingredients: null,
+    name_el: null, name_bg: null, description_el: null, description_bg: null,
   })
   const [rows, setRows] = useState<ExcelMenuRow[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -194,7 +199,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setSheetNames([])
     setSelectedSheet('')
     setParsed(null)
-    setMapping({ name: null, description: null, category: null, price: null, allergens: null, ingredients: null })
+    setMapping({ name: null, description: null, category: null, price: null, allergens: null, ingredients: null, name_el: null, name_bg: null, description_el: null, description_bg: null })
     setRows([])
     setSelected(new Set())
     setDuplicates(new Map())
@@ -694,9 +699,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
           {/* Mapping selects */}
           <div className="space-y-3">
             <p className="text-sm font-medium text-white/80">Column Mapping</p>
-            {MAPPING_FIELDS.map(({ key, label, required }) => (
+            {MAPPING_FIELDS.filter((f) => !f.group).map(({ key, label, required }) => (
               <div key={key} className="flex items-center gap-3">
-                <span className={cn('w-40 shrink-0 text-sm', required ? 'text-white/80' : 'text-white/50')}>
+                <span className={cn('w-44 shrink-0 text-sm', required ? 'text-white/80' : 'text-white/50')}>
                   {label}{required && <span className="text-red-400 ml-0.5">*</span>}
                 </span>
                 <select
@@ -710,6 +715,28 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                     }
                   }}
                   className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none"
+                >
+                  <option value="">— not in file —</option>
+                  {headers.map((h) => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+
+            <p className="text-xs font-medium text-white/35 uppercase tracking-wider pt-1">
+              🌍 Μεταφράσεις — αν υπάρχουν ξεχωριστές στήλες στο αρχείο
+            </p>
+            {MAPPING_FIELDS.filter((f) => f.group === 'trans').map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-3">
+                <span className="w-44 shrink-0 text-sm text-sky-300/60">{label}</span>
+                <select
+                  value={mapping[key] ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value || null
+                    setMapping((prev) => ({ ...prev, [key]: val }))
+                  }}
+                  className="flex-1 rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-1.5 text-sm text-white focus:border-sky-500/40 focus:outline-none"
                 >
                   <option value="">— not in file —</option>
                   {headers.map((h) => (
@@ -921,9 +948,6 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm text-white truncate">{row.name}</span>
-                      {row.name_el && (
-                        <span className="text-xs text-sky-300/70 shrink-0 italic">{row.name_el}</span>
-                      )}
                       {row.price != null && (
                         <span className="text-xs text-white/50 shrink-0">€{row.price.toFixed(2)}</span>
                       )}
@@ -938,11 +962,20 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                         </span>
                       )}
                     </div>
+                    {row.name_el && (
+                      <p className="text-xs text-sky-300/80 mt-0.5">🇬🇧 {row.name_el}</p>
+                    )}
+                    {row.name_bg && (
+                      <p className="text-xs text-violet-300/80">🇧🇬 {row.name_bg}</p>
+                    )}
                     {row.category && (
-                      <span className="text-xs text-emerald-400/80">{row.category}</span>
+                      <span className="text-xs text-emerald-400/80 block mt-0.5">{row.category}</span>
                     )}
                     {row.description && (
                       <p className="text-xs text-white/50 truncate mt-0.5">{row.description}</p>
+                    )}
+                    {row.description_el && (
+                      <p className="text-xs text-sky-300/50 truncate">🇬🇧 {row.description_el}</p>
                     )}
                     {(row.difficulty || row.prep_time != null || row.servings != null) && (
                       <div className="flex flex-wrap gap-1.5 mt-1">

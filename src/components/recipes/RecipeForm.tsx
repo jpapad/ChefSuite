@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { cn } from '../../lib/cn'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Sparkles } from 'lucide-react'
 import { Input } from '../ui/Input'
@@ -102,6 +103,7 @@ export function RecipeForm({
   const [error, setError] = useState<string | null>(null)
   const [suggesting, setSuggesting] = useState(false)
   const [suggestDone, setSuggestDone] = useState(false)
+  const [langTab, setLangTab] = useState<'en' | 'bg'>('en')
 
   async function handleAISuggest() {
     const title = values.title.trim()
@@ -287,29 +289,48 @@ export function RecipeForm({
 
       {/* Translations */}
       <div className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 space-y-3">
-        <p className="text-xs font-medium text-white/40 uppercase tracking-wider">🌍 Μεταφράσεις</p>
-        <div className="space-y-2">
-          <p className="text-xs text-white/50">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Αγγλικά</p>
-          <Input name="name_el" label="Όνομα (Αγγλικά)"
-            placeholder="English name…"
-            value={values.name_el ?? ''}
-            onChange={(e) => setValues((v) => ({ ...v, name_el: e.target.value || null }))} />
-          <Textarea name="description_el" label="Περιγραφή (Αγγλικά)" rows={2}
-            placeholder="English description…"
-            value={values.description_el ?? ''}
-            onChange={(e) => setValues((v) => ({ ...v, description_el: e.target.value || null }))} />
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">🌍 Μεταφράσεις</p>
+          <div className="flex rounded-lg border border-white/10 overflow-hidden">
+            {(['en', 'bg'] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLangTab(lang)}
+                className={cn(
+                  'px-3 py-1 text-xs font-medium transition',
+                  langTab === lang ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70',
+                )}
+              >
+                {lang === 'en' ? '🇬🇧 EN' : '🇧🇬 BG'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="space-y-2">
-          <p className="text-xs text-white/50">🇧🇬 Βουλγαρικά</p>
-          <Input name="name_bg" label="Όνομα (Βουλγαρικά)"
-            placeholder="Βουλγαρικό όνομα…"
-            value={values.name_bg ?? ''}
-            onChange={(e) => setValues((v) => ({ ...v, name_bg: e.target.value || null }))} />
-          <Textarea name="description_bg" label="Περιγραφή (Βουλγαρικά)" rows={2}
-            placeholder="Βουλγαρική περιγραφή…"
-            value={values.description_bg ?? ''}
-            onChange={(e) => setValues((v) => ({ ...v, description_bg: e.target.value || null }))} />
-        </div>
+
+        {langTab === 'en' ? (
+          <div className="space-y-2">
+            <Input name="name_el" label="Όνομα (Αγγλικά)"
+              placeholder="English name…"
+              value={values.name_el ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, name_el: e.target.value || null }))} />
+            <Textarea name="description_el" label="Περιγραφή (Αγγλικά)" rows={2}
+              placeholder="English description…"
+              value={values.description_el ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, description_el: e.target.value || null }))} />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Input name="name_bg" label="Όνομα (Βουλγαρικά)"
+              placeholder="Βουλγαρικό όνομα…"
+              value={values.name_bg ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, name_bg: e.target.value || null }))} />
+            <Textarea name="description_bg" label="Περιγραφή (Βουλγαρικά)" rows={2}
+              placeholder="Βουλγαρική περιγραφή…"
+              value={values.description_bg ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, description_bg: e.target.value || null }))} />
+          </div>
+        )}
       </div>
 
       <Textarea
