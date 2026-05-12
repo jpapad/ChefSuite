@@ -164,6 +164,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [aiFillingRows, setAiFillingRows] = useState(false)
   const [aiFillProgress, setAiFillProgress] = useState<{ done: number; total: number } | null>(null)
   const [aiFillDone, setAiFillDone] = useState(false)
+  const [aiFillDoneMsg, setAiFillDoneMsg] = useState('')
 
   function reset() {
     setStep('upload')
@@ -184,6 +185,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setAiFillingRows(false)
     setAiFillProgress(null)
     setAiFillDone(false)
+    setAiFillDoneMsg('')
   }
 
   function handleClose() {
@@ -299,7 +301,11 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       const r = rows[i]
       return !r.description?.trim() || r.allergens.length === 0 || r.difficulty == null || r.prep_time == null || !r.instructions?.trim()
     })
-    if (indices.length === 0) return
+    if (indices.length === 0) {
+      setAiFillDone(true)
+      setTimeout(() => setAiFillDone(false), 2000)
+      return
+    }
     setAiFillingRows(true)
     setAiFillDone(false)
     setError(null)
@@ -309,10 +315,11 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       const suggestions = await suggestMultipleRecipeDetails(titles)
       setAiFillProgress({ done: indices.length, total: indices.length })
       const updatedRows = [...rows]
+      let filledCount = 0
       indices.forEach((rowIdx, si) => {
         const s = suggestions[si]
         const row = updatedRows[rowIdx]
-        updatedRows[rowIdx] = {
+        const next = {
           ...row,
           description:  !row.description?.trim()  ? (s.description  ?? row.description)  : row.description,
           allergens:    row.allergens.length === 0  ? s.allergens                         : row.allergens,
@@ -322,12 +329,17 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
           servings:     row.servings    == null     ? s.servings                          : row.servings,
           instructions: !row.instructions?.trim()  ? (s.instructions ?? row.instructions) : row.instructions,
         }
+        if (JSON.stringify(next) !== JSON.stringify(row)) filledCount++
+        updatedRows[rowIdx] = next
       })
       setRows(updatedRows)
+      setAiFillDoneMsg(filledCount > 0
+        ? `Συμπληρώθηκαν ${filledCount} πεδία ✓`
+        : 'Όλα τα πεδία ήταν ήδη συμπληρωμένα')
       setAiFillDone(true)
-      setTimeout(() => setAiFillDone(false), 3000)
+      setTimeout(() => setAiFillDone(false), 4000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI συμπλήρωση απέτυχε')
+      setError(err instanceof Error ? err.message : 'AI συμπλήρωση απέτυχε — έλεγξε τη σύνδεση')
     } finally {
       setAiFillingRows(false)
       setAiFillProgress(null)
@@ -607,8 +619,8 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                 </>
               ) : aiFillDone ? (
                 <>
-                  <Sparkles className="h-4 w-4" />
-                  Συμπληρώθηκε! Έλεγξε τα πεδία παρακάτω.
+                  <Check className="h-4 w-4" />
+                  {aiFillDoneMsg || 'Συμπληρώθηκε!'}
                 </>
               ) : (
                 <>

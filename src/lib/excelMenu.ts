@@ -145,35 +145,73 @@ Use null when no column clearly matches. Use the EXACT header string.`
   }
 }
 
-const ALLERGEN_ALIASES: Record<string, string> = {
-  gluten: 'gluten', γλουτένη: 'gluten', glouten: 'gluten',
-  dairy: 'dairy', γαλακτοκομικά: 'dairy', milk: 'dairy', γάλα: 'dairy', lactos: 'dairy',
-  eggs: 'eggs', αυγά: 'eggs', αυγό: 'eggs', egg: 'eggs',
-  fish: 'fish', ψάρι: 'fish', ψαρι: 'fish',
-  shellfish: 'shellfish', οστρακοειδή: 'shellfish', οστρακοειδη: 'shellfish',
-  nuts: 'nuts', ξηροί: 'nuts', καρποί: 'nuts', καρπους: 'nuts', καρύδια: 'nuts',
-  peanuts: 'peanuts', φιστίκια: 'peanuts', φιστικια: 'peanuts',
-  soy: 'soy', σόγια: 'soy', σογια: 'soy',
-  sesame: 'sesame', σησάμι: 'sesame', σησαμι: 'sesame',
-  celery: 'celery', σέλινο: 'celery', σελινο: 'celery',
-  mustard: 'mustard', μουστάρδα: 'mustard', μουσταρδα: 'mustard',
-  sulphites: 'sulphites', sulfites: 'sulphites', θειώδη: 'sulphites', θειωδη: 'sulphites',
-  lupin: 'lupin', λούπινο: 'lupin', λουπινο: 'lupin',
-  molluscs: 'molluscs', μαλάκια: 'molluscs', μαλακια: 'molluscs',
+// Strip diacritics so "ΓΛΟΥΤΕΝΗ" / "Γλουτένη" / "γλουτενη" all normalise to "γλουτενη"
+function deaccent(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-const KNOWN_ALLERGENS = Object.values(ALLERGEN_ALIASES).filter((v, i, a) => a.indexOf(v) === i)
+// EU regulation numeric codes 1-14
+const ALLERGEN_NUMERIC: Record<string, string> = {
+  '1': 'gluten', '2': 'shellfish', '3': 'eggs', '4': 'fish', '5': 'peanuts',
+  '6': 'soy', '7': 'dairy', '8': 'nuts', '9': 'celery', '10': 'mustard',
+  '11': 'sesame', '12': 'sulphites', '13': 'lupin', '14': 'molluscs',
+}
+
+// Keys are already deaccented & lowercase
+const ALLERGEN_ALIASES: Record<string, string> = {
+  // English
+  gluten: 'gluten', wheat: 'gluten', glouten: 'gluten',
+  dairy: 'dairy', milk: 'dairy', lactose: 'dairy', lactos: 'dairy',
+  eggs: 'eggs', egg: 'eggs',
+  fish: 'fish',
+  shellfish: 'shellfish', crustacean: 'shellfish', crustaceans: 'shellfish',
+  nuts: 'nuts', treenuts: 'nuts',
+  peanuts: 'peanuts', peanut: 'peanuts', arachis: 'peanuts',
+  soy: 'soy', soya: 'soy', soybeans: 'soy',
+  sesame: 'sesame',
+  celery: 'celery',
+  mustard: 'mustard',
+  sulphites: 'sulphites', sulfites: 'sulphites', sulphite: 'sulphites', sulfite: 'sulphites',
+  lupin: 'lupin', lupine: 'lupin',
+  molluscs: 'molluscs', mollusks: 'molluscs',
+  // Greek (deaccented)
+  γλουτενη: 'gluten', σιταρι: 'gluten',
+  γαλακτοκομικα: 'dairy', γαλα: 'dairy',
+  αυγα: 'eggs', αυγο: 'eggs',
+  ψαρι: 'fish', ψαρια: 'fish',
+  οστρακοειδη: 'shellfish', καρκινοειδη: 'shellfish', οστρακα: 'shellfish',
+  ξηροικαρποι: 'nuts', καρυδια: 'nuts', ξηροι: 'nuts',
+  φιστικια: 'peanuts', αραχιδα: 'peanuts',
+  σογια: 'soy',
+  σησαμι: 'sesame',
+  σελινο: 'celery',
+  μουσταρδα: 'mustard',
+  θειωδη: 'sulphites', θειικα: 'sulphites',
+  λουπινο: 'lupin',
+  μαλακια: 'molluscs',
+}
 
 function parseAllergens(raw: string): string[] {
   if (!raw.trim()) return []
   return raw
-    .split(/[,;/|·•\n]/)
-    .map((s) => s.trim().toLowerCase())
+    .split(/[,;/|·•\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
     .flatMap((s) => {
-      const direct = ALLERGEN_ALIASES[s]
+      // EU numeric code
+      const num = ALLERGEN_NUMERIC[s.trim()]
+      if (num) return [num]
+
+      const norm = deaccent(s)
+
+      // Direct match on deaccented key
+      const direct = ALLERGEN_ALIASES[norm]
       if (direct) return [direct]
-      // Substring match
-      return KNOWN_ALLERGENS.filter((a) => s.includes(a) || (ALLERGEN_ALIASES[s] === a))
+
+      // Substring match: allergen alias contained in input or vice versa
+      return Object.entries(ALLERGEN_ALIASES)
+        .filter(([alias]) => norm.includes(alias) || alias.includes(norm))
+        .map(([, allergen]) => allergen)
     })
     .filter((v, i, arr) => arr.indexOf(v) === i)
 }
