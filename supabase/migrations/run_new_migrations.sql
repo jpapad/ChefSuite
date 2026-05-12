@@ -344,3 +344,8 @@ end $$;
 
 create index if not exists handover_notes_team_idx on handover_notes(team_id, created_at desc);
 create index if not exists handover_notes_to_user_idx on handover_notes(to_user_id, acknowledged);
+
+-- ── 0053: Menu item Bulgarian names ──────────────────────────────────────────
+alter table public.menu_items
+  add column if not exists name_bg        text,
+  add column if not exists description_bg text;
