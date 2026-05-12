@@ -121,6 +121,10 @@ export default function Recipes() {
           difficulty: (item.difficulty as RecipeDifficulty | null) ?? null,
           parent_recipe_id: null,
           variation_label: null,
+          name_el: item.name_el ?? null,
+          description_el: item.description_el ?? null,
+          name_bg: item.name_bg ?? null,
+          description_bg: item.description_bg ?? null,
         })
       }
     } finally {

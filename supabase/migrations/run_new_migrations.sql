@@ -349,3 +349,10 @@ create index if not exists handover_notes_to_user_idx on handover_notes(to_user_
 alter table public.menu_items
   add column if not exists name_bg        text,
   add column if not exists description_bg text;
+
+-- ── 0054: Recipe translation fields ──────────────────────────────────────────
+alter table public.recipes
+  add column if not exists name_el        text,
+  add column if not exists description_el text,
+  add column if not exists name_bg        text,
+  add column if not exists description_bg text;

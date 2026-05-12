@@ -59,6 +59,10 @@ export interface Recipe {
   fat_g: number | null
   fiber_g: number | null
   sodium_mg: number | null
+  name_el: string | null
+  description_el: string | null
+  name_bg: string | null
+  description_bg: string | null
   created_at: ISODateString
   updated_at: ISODateString
 }
@@ -66,12 +70,12 @@ export interface Recipe {
 export type RecipeInsert = Pick<
   Recipe,
   'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label'
-> & { team_id: UUID; calories?: number | null; protein_g?: number | null; carbs_g?: number | null; fat_g?: number | null; fiber_g?: number | null; sodium_mg?: number | null }
+> & { team_id: UUID; calories?: number | null; protein_g?: number | null; carbs_g?: number | null; fat_g?: number | null; fiber_g?: number | null; sodium_mg?: number | null; name_el?: string | null; description_el?: string | null; name_bg?: string | null; description_bg?: string | null }
 
 export type RecipeUpdate = Partial<
   Pick<
     Recipe,
-    'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fiber_g' | 'sodium_mg'
+    'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fiber_g' | 'sodium_mg' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg'
   >
 >
 

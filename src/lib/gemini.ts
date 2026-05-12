@@ -36,6 +36,10 @@ export type ImportedRecipe = Pick<
   prep_time?: number | null
   cook_time?: number | null
   servings?: number | null
+  name_el?: string | null
+  description_el?: string | null
+  name_bg?: string | null
+  description_bg?: string | null
 }
 
 async function callGeminiRaw(body: object): Promise<GeminiResponse> {

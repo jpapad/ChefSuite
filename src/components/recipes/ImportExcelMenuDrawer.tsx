@@ -487,6 +487,10 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       prep_time: row.prep_time,
       cook_time: row.cook_time,
       servings: row.servings,
+      name_el: row.name_el ?? null,
+      description_el: row.description_el ?? null,
+      name_bg: row.name_bg ?? null,
+      description_bg: row.description_bg ?? null,
     }))
     onBatchImport(imported)
     reset()
