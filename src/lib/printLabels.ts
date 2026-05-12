@@ -336,6 +336,23 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       text-align: ${settings.nameAlign};
       font-size: ${d.namePt}pt;
     }
+    .label-name-both {
+      flex: 1; display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 3mm;
+    }
+    .label-name-lines {
+      display: flex; flex-direction: column;
+      gap: ${sm ? '0.5mm' : '1mm'}; flex: 1; min-width: 0;
+      text-align: ${settings.nameAlign};
+    }
+    .label-name-primary {
+      font-weight: bold; line-height: 1.2; color: #111;
+      font-size: ${d.namePt}pt;
+    }
+    .label-name-tr {
+      font-weight: normal; line-height: 1.2; color: #555;
+      font-style: italic; font-size: ${Math.round(d.namePt * 0.8)}pt;
+    }
     .price { font-size: 0.7em; color: #555; white-space: nowrap; }
     .label-desc {
       color: #444; font-style: italic; line-height: 1.4;
@@ -378,10 +395,23 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
     ? `<img src="${qrDataUrl}" class="label-qr" alt="" />`
     : ''
 
+  const nameHtml = settings.language === 'both'
+    ? (() => {
+        const secondaries = [item.name_el, item.name_bg].filter(Boolean)
+        return `<div class="label-name-both">
+  <div class="label-name-lines">
+    <div class="label-name-primary">${item.name}</div>
+    ${secondaries.map((t) => `<div class="label-name-tr">${t}</div>`).join('')}
+  </div>
+  ${price}
+</div>`
+      })()
+    : `<div class="label-name">${itemName(item, settings.language)}${price}</div>`
+
   return `
 <div class="label" style="width:${d.w}mm;height:${d.h}mm">
   ${headerHtml}
-  <div class="label-name">${itemName(item, settings.language)}${price}</div>
+  ${nameHtml}
   ${desc ? `<div class="label-desc">${desc}</div>` : ''}
   ${tags}
   ${qrEl}

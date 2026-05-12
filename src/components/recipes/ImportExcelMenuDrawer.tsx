@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   FileSpreadsheet, Loader2, ArrowLeft, Check, AlertCircle,
-  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles,
+  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles, Languages,
 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
@@ -13,7 +13,7 @@ import {
   type ColumnMapping, type ExcelMenuRow, type ParsedExcelData,
 } from '../../lib/excelMenu'
 import { BuffetLabelsDrawer } from '../menus/BuffetLabelsDrawer'
-import { suggestMultipleRecipeDetails, type ImportedRecipe } from '../../lib/gemini'
+import { suggestMultipleRecipeDetails, translateMenuItems, type ImportedRecipe } from '../../lib/gemini'
 import type { MenuItem, MenuWithSections, Recipe } from '../../types/database.types'
 
 type DuplicateReason = 'existing' | 'infile'
@@ -172,6 +172,10 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [aiFillDone, setAiFillDone] = useState(false)
   const [aiFillDoneMsg, setAiFillDoneMsg] = useState('')
 
+  const [translating, setTranslating] = useState(false)
+  const [translateDone, setTranslateDone] = useState(false)
+  const [translateDoneMsg, setTranslateDoneMsg] = useState('')
+
   // Auto-trigger AI fill when entering preview if any selected row is missing a description
   useEffect(() => {
     if (step !== 'preview' || autoFillTriggeredRef.current) return
@@ -204,6 +208,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setAiFillProgress(null)
     setAiFillDone(false)
     setAiFillDoneMsg('')
+    setTranslating(false)
+    setTranslateDone(false)
+    setTranslateDoneMsg('')
     autoFillTriggeredRef.current = false
   }
 
@@ -369,6 +376,44 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     } finally {
       setAiFillingRows(false)
       setAiFillProgress(null)
+    }
+  }
+
+  async function handleTranslateNames() {
+    const indices = Array.from(selected).filter((i) => !rows[i].name_el)
+    if (indices.length === 0) {
+      setTranslateDoneMsg('Όλα τα ονόματα έχουν ήδη μεταφραστεί')
+      setTranslateDone(true)
+      setTimeout(() => setTranslateDone(false), 2500)
+      return
+    }
+    setTranslating(true)
+    setTranslateDone(false)
+    setError(null)
+    try {
+      const CHUNK = 25
+      const updatedRows = [...rows]
+      for (let c = 0; c < indices.length; c += CHUNK) {
+        const chunk = indices.slice(c, c + CHUNK)
+        const items = chunk.map((i) => ({ name: rows[i].name, description: rows[i].description ?? null }))
+        const translations = await translateMenuItems(items)
+        chunk.forEach((rowIdx, j) => {
+          const t = translations[j]
+          updatedRows[rowIdx] = {
+            ...updatedRows[rowIdx],
+            name_el: updatedRows[rowIdx].name_el ?? t.name_el ?? null,
+            name_bg: updatedRows[rowIdx].name_bg ?? t.name_bg ?? null,
+          }
+        })
+      }
+      setRows(updatedRows)
+      setTranslateDoneMsg(`Μεταφράστηκαν ${indices.length} ονόματα ✓`)
+      setTranslateDone(true)
+      setTimeout(() => setTranslateDone(false), 4000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Μετάφραση απέτυχε — έλεγξε τη σύνδεση')
+    } finally {
+      setTranslating(false)
     }
   }
 
@@ -685,7 +730,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
             <button
               type="button"
               onClick={() => void handleAIFillRows()}
-              disabled={aiFillingRows}
+              disabled={aiFillingRows || translating}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-brand-orange/40 bg-brand-orange/5 px-4 py-2.5 text-sm font-medium text-brand-orange transition hover:border-brand-orange hover:bg-brand-orange/10 disabled:opacity-60 disabled:pointer-events-none"
             >
               {aiFillingRows ? (
@@ -702,6 +747,33 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                 <>
                   <Sparkles className="h-4 w-4" />
                   AI Συμπλήρωση κενών πεδίων ({selected.size} επιλεγμένα)
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Translate names button */}
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleTranslateNames()}
+              disabled={translating || aiFillingRows}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sky-400/40 bg-sky-400/5 px-4 py-2.5 text-sm font-medium text-sky-300 transition hover:border-sky-400 hover:bg-sky-400/10 disabled:opacity-60 disabled:pointer-events-none"
+            >
+              {translating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Μετάφραση ονομάτων…
+                </>
+              ) : translateDone ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  {translateDoneMsg}
+                </>
+              ) : (
+                <>
+                  <Languages className="h-4 w-4" />
+                  Μετάφραση ονομάτων → Αγγλικά + Βουλγαρικά
                 </>
               )}
             </button>
@@ -742,6 +814,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm text-white truncate">{row.name}</span>
+                      {row.name_el && (
+                        <span className="text-xs text-sky-300/70 shrink-0 italic">{row.name_el}</span>
+                      )}
                       {row.price != null && (
                         <span className="text-xs text-white/50 shrink-0">€{row.price.toFixed(2)}</span>
                       )}
