@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
   Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
-  Link2, Loader2, Search,
+  Link2, Loader2, Search, AlertCircle,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -106,6 +106,7 @@ export default function MenuDetail() {
   const [newSectionName, setNewSectionName] = useState('')
   const [librarySearch, setLibrarySearch] = useState('')
   const [addingFromLibrary, setAddingFromLibrary] = useState(false)
+  const [libraryError, setLibraryError] = useState<string | null>(null)
   const [autoTranslate, setAutoTranslate] = useState(false)
   const [translatingItem, setTranslatingItem] = useState(false)
 
@@ -258,6 +259,7 @@ export default function MenuDetail() {
     setAddToSectionId(menu?.sections[0]?.id ?? '')
     setNewSectionName('')
     setLibrarySearch('')
+    setLibraryError(null)
     setLinkTab(menu && menu.sections.flatMap((s) => s.items).length > 0 ? 'link' : 'add')
     setLinkRecipesOpen(true)
   }
@@ -270,11 +272,13 @@ export default function MenuDetail() {
     setOpenLinkDropdown(null)
     setSelectedRecipeIds(new Set())
     setLibrarySearch('')
+    setLibraryError(null)
   }
 
   async function addFromLibrary() {
     if (!menu || selectedRecipeIds.size === 0) return
     setAddingFromLibrary(true)
+    setLibraryError(null)
     try {
       let sectionId = addToSectionId
       if (!sectionId) {
@@ -312,6 +316,8 @@ export default function MenuDetail() {
       }
       setLinkRecipesOpen(false)
       setSelectedRecipeIds(new Set())
+    } catch (err) {
+      setLibraryError(err instanceof Error ? err.message : 'Αποτυχία προσθήκης — δοκίμασε ξανά')
     } finally {
       setAddingFromLibrary(false)
     }
@@ -700,6 +706,13 @@ export default function MenuDetail() {
                   />
                 )}
               </div>
+
+              {libraryError && (
+                <div className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{libraryError}</span>
+                </div>
+              )}
 
               <div className="flex gap-2 pt-1">
                 <Button

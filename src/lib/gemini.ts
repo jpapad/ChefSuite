@@ -432,7 +432,7 @@ Rules:
 - Dish names must sound natural on a restaurant menu
 - Do NOT include markdown or any text outside the JSON array`
 
-  const raw = await callGemini(prompt)
+  const raw = await callClaude(prompt)
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch { return items.map(() => FALLBACK_TRANSLATED) }
   if (!Array.isArray(parsed)) return items.map(() => FALLBACK_TRANSLATED)
