@@ -605,6 +605,8 @@ export async function importRecipeFromUrl(url: string): Promise<ImportedRecipe> 
 // ── AI Recipe Autofill ────────────────────────────────────────────────────────
 
 export interface RecipeSuggestion {
+  name_en: string | null    // English translation of the dish name
+  name_bg: string | null    // Bulgarian translation of the dish name
   description: string | null
   instructions: string | null
   allergens: string[]
@@ -640,6 +642,8 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
     const parsed = JSON.parse(raw) as Record<string, unknown>
 
     return {
+      name_en: null,
+      name_bg: null,
       description: typeof parsed.description === 'string' ? parsed.description : null,
       instructions: typeof parsed.instructions === 'string' ? parsed.instructions : null,
       allergens: Array.isArray(parsed.allergens)
@@ -664,10 +668,12 @@ export async function suggestMultipleRecipeDetails(titles: string[]): Promise<Re
   const VALID_DIFFICULTIES = new Set(['easy','medium','hard'])
   const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
 
-  const prompt = `You are a professional chef assistant. For each dish name below, suggest recipe details.
+  const prompt = `You are a professional chef assistant. For each dish name below, suggest recipe details AND translate the name to English and Bulgarian.
 Respond with ONLY a valid JSON array (same order, one object per dish) — no markdown, no explanation:
 [
   {
+    "name_en": "English translation of the dish name (if already English, repeat it)",
+    "name_bg": "Bulgarian translation of the dish name",
     "description": "1-2 sentence description in the same language as the dish name",
     "instructions": "numbered step-by-step cooking instructions in the same language",
     "allergens": ["only from: gluten,dairy,eggs,fish,shellfish,nuts,peanuts,soy,sesame,celery,mustard,sulphites,lupin,molluscs"],
@@ -685,6 +691,8 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
   const parseSuggestion = (o: unknown): RecipeSuggestion => {
     const p = (typeof o === 'object' && o !== null ? o : {}) as Record<string, unknown>
     return {
+      name_en: typeof p.name_en === 'string' ? p.name_en : null,
+      name_bg: typeof p.name_bg === 'string' ? p.name_bg : null,
       description: typeof p.description === 'string' ? p.description : null,
       instructions: typeof p.instructions === 'string' ? p.instructions : null,
       allergens: Array.isArray(p.allergens)
@@ -699,6 +707,7 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
   }
 
   const empty = (): RecipeSuggestion => ({
+    name_en: null, name_bg: null,
     description: null, instructions: null, allergens: [],
     category: null, difficulty: null, prep_time: null, cook_time: null, servings: null,
   })

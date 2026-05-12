@@ -93,9 +93,9 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
         recipe_id: recipeId,
         name: row.name,
         description: row.description,
-        name_el: null,
+        name_el: row.name_el ?? null,
         description_el: null,
-        name_bg: null,
+        name_bg: row.name_bg ?? null,
         description_bg: null,
         price: row.price,
         available: true,
@@ -345,13 +345,15 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
         const row = updatedRows[rowIdx]
         const next = {
           ...row,
-          description:  !row.description?.trim()  ? (s.description  ?? row.description)  : row.description,
+          name_el:      row.name_el == null         ? (s.name_en ?? row.name_el)          : row.name_el,
+          name_bg:      row.name_bg == null         ? (s.name_bg ?? row.name_bg)          : row.name_bg,
+          description:  !row.description?.trim()    ? (s.description  ?? row.description) : row.description,
           allergens:    row.allergens.length === 0  ? s.allergens                         : row.allergens,
           difficulty:   row.difficulty  == null     ? s.difficulty                        : row.difficulty,
           prep_time:    row.prep_time   == null     ? s.prep_time                         : row.prep_time,
           cook_time:    row.cook_time   == null     ? s.cook_time                         : row.cook_time,
           servings:     row.servings    == null     ? s.servings                          : row.servings,
-          instructions: !row.instructions?.trim()  ? (s.instructions ?? row.instructions) : row.instructions,
+          instructions: !row.instructions?.trim()   ? (s.instructions ?? row.instructions): row.instructions,
         }
         if (JSON.stringify(next) !== JSON.stringify(row)) filledCount++
         updatedRows[rowIdx] = next

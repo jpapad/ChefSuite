@@ -32,6 +32,8 @@ export interface ColumnMapping {
 
 export interface ExcelMenuRow {
   name: string
+  name_el: string | null   // English translation (used by label printer)
+  name_bg: string | null   // Bulgarian translation
   description: string | null
   category: string | null
   price: number | null
@@ -275,6 +277,8 @@ export function applyMapping(
   return rows
     .map((row) => ({
       name: (mapping.name ? row[mapping.name] ?? '' : '').trim(),
+      name_el: null,
+      name_bg: null,
       description: mapping.description ? (row[mapping.description] ?? '').trim() || null : null,
       category: mapping.category ? (row[mapping.category] ?? '').trim() || null : null,
       price: mapping.price ? parsePrice(row[mapping.price] ?? '') : null,
