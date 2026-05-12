@@ -74,7 +74,7 @@ export default function MenuDetail() {
     addSection, updateSection, removeSection, moveSectionUp, moveSectionDown,
     addItem, updateItem, removeItem, moveItemUp, moveItemDown,
   } = useMenuDetail(id ?? null)
-  const { recipes } = useRecipes()
+  const { recipes, loading: recipesLoading } = useRecipes()
   const { items: inventory } = useInventory()
   const { workstations } = useWorkstations()
   const { members } = useTeam()
@@ -945,9 +945,18 @@ export default function MenuDetail() {
                     >
                       {t('menus.detail.noRecipe')}
                     </button>
-                    {recipes
-                      .filter((r) => !recipePickerSearch || r.title.toLowerCase().includes(recipePickerSearch.toLowerCase()))
-                      .map((r) => (
+                    {recipesLoading ? (
+                      <div className="flex items-center gap-2 px-3 py-3 text-sm text-white/30">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Φόρτωση συνταγών…
+                      </div>
+                    ) : recipes.length === 0 ? (
+                      <p className="px-3 py-2.5 text-sm text-white/30 italic">Δεν υπάρχουν συνταγές ακόμα</p>
+                    ) : (() => {
+                      const filtered = recipes.filter((r) => !recipePickerSearch || r.title.toLowerCase().includes(recipePickerSearch.toLowerCase()))
+                      return filtered.length === 0 ? (
+                        <p className="px-3 py-2.5 text-sm text-white/30">Δεν βρέθηκαν αποτελέσματα</p>
+                      ) : filtered.map((r) => (
                         <button
                           key={r.id}
                           type="button"
@@ -962,10 +971,8 @@ export default function MenuDetail() {
                             <span className="text-xs text-white/30 shrink-0">{r.allergens.slice(0, 3).join(', ')}</span>
                           )}
                         </button>
-                      ))}
-                    {recipes.filter((r) => !recipePickerSearch || r.title.toLowerCase().includes(recipePickerSearch.toLowerCase())).length === 0 && (
-                      <p className="px-3 py-2.5 text-sm text-white/30">Δεν βρέθηκαν συνταγές</p>
-                    )}
+                      ))
+                    })()}
                   </div>
                 </div>
               )}
