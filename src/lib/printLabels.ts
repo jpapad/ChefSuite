@@ -5,8 +5,9 @@ export type LabelSize = LabelSizePreset | 'custom'
 
 export interface LabelSettings {
   size: LabelSize
-  customW: number          // mm – only used when size === 'custom'
-  customH: number          // mm – only used when size === 'custom'
+  customW: number          // value in customUnit – only used when size === 'custom'
+  customH: number          // value in customUnit – only used when size === 'custom'
+  customUnit: 'mm' | 'cm' // unit for customW / customH
   logoUrl: string | null
   logoMaxW: number         // mm
   logoMaxH: number         // mm
@@ -32,7 +33,9 @@ const PRESET_DIMS: Record<LabelSizePreset, Dims> = {
 
 export function getDims(settings: LabelSettings): Dims {
   if (settings.size !== 'custom') return PRESET_DIMS[settings.size]
-  const { customW: w, customH: h } = settings
+  const factor = settings.customUnit === 'cm' ? 10 : 1
+  const w = settings.customW * factor
+  const h = settings.customH * factor
   const f = w / 148
   return {
     w, h,

@@ -38,6 +38,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   size: 'medium',
   customW: 100,
   customH: 70,
+  customUnit: 'mm',
   logoUrl,
   logoMaxW: 45,
   logoMaxH: 18,
@@ -364,27 +365,49 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
               {/* Custom W/H inputs */}
               {settings.size === 'custom' && (
                 <div className="rounded-xl border border-glass-border bg-white/3 px-4 py-3 space-y-3">
+                  {/* Unit toggle */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-white/50">Μονάδα μέτρησης</span>
+                    <div className="flex rounded-lg border border-glass-border overflow-hidden text-xs font-medium">
+                      {(['mm', 'cm'] as const).map((u) => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => set('customUnit', u)}
+                          className={cn(
+                            'px-3 py-1 transition',
+                            settings.customUnit === u
+                              ? 'bg-brand-orange text-white'
+                              : 'text-white/50 hover:text-white hover:bg-white/5',
+                          )}
+                        >
+                          {u}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs text-white/60">{t('menus.labels.customWidth')}</label>
                       <div className="flex items-center gap-1.5">
                         <input
-                          type="number" min={40} max={350} value={settings.customW}
-                          onChange={(e) => set('customW', Math.max(40, +e.target.value))}
+                          type="number" min={1} value={settings.customW}
+                          onChange={(e) => set('customW', Math.max(1, +e.target.value))}
                           className="w-full rounded-lg px-2.5 py-1.5 text-sm bg-white/5 border border-glass-border text-white focus:outline-none focus:ring-1 focus:ring-brand-orange/50 [appearance:textfield]"
                         />
-                        <span className="text-xs text-white/40 shrink-0">mm</span>
+                        <span className="text-xs text-white/40 shrink-0">{settings.customUnit}</span>
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs text-white/60">{t('menus.labels.customHeight')}</label>
                       <div className="flex items-center gap-1.5">
                         <input
-                          type="number" min={30} max={250} value={settings.customH}
-                          onChange={(e) => set('customH', Math.max(30, +e.target.value))}
+                          type="number" min={1} value={settings.customH}
+                          onChange={(e) => set('customH', Math.max(1, +e.target.value))}
                           className="w-full rounded-lg px-2.5 py-1.5 text-sm bg-white/5 border border-glass-border text-white focus:outline-none focus:ring-1 focus:ring-brand-orange/50 [appearance:textfield]"
                         />
-                        <span className="text-xs text-white/40 shrink-0">mm</span>
+                        <span className="text-xs text-white/40 shrink-0">{settings.customUnit}</span>
                       </div>
                     </div>
                   </div>
