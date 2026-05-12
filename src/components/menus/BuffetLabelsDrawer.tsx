@@ -501,10 +501,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
             {/* ── Language order (both mode) ── */}
             {settings.language === 'both' && (() => {
-              const currentLines = settings.langBothLines?.length ? settings.langBothLines : ['en', 'source']
-              const allKeys = ['source', 'en', 'bg'] as const
+              type LK = 'source' | 'en' | 'bg'
+              const currentLines: LK[] = settings.langBothLines?.length ? settings.langBothLines : ['en', 'source']
+              const allKeys: LK[] = ['source', 'en', 'bg']
               const inactive = allKeys.filter((k) => !currentLines.includes(k))
-              const meta = {
+              const meta: Record<LK, { label: string; flag: string }> = {
                 source: { label: 'Ελληνικά', flag: '🇬🇷' },
                 en:     { label: 'Αγγλικά',  flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
                 bg:     { label: 'Βουλγαρικά', flag: '🇧🇬' },
@@ -520,14 +521,14 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                       </div>
                       <div className="flex flex-col">
                         <button type="button" disabled={idx === 0}
-                          onClick={() => { const l = [...currentLines]; [l[idx-1], l[idx]] = [l[idx], l[idx-1]]; set('langBothLines', l) }}
+                          onClick={() => { const l: LK[] = [...currentLines]; [l[idx-1], l[idx]] = [l[idx], l[idx-1]]; set('langBothLines', l) }}
                           className="h-4 w-4 text-[10px] text-white/30 hover:text-white disabled:opacity-15 leading-none">▲</button>
                         <button type="button" disabled={idx === currentLines.length - 1}
-                          onClick={() => { const l = [...currentLines]; [l[idx], l[idx+1]] = [l[idx+1], l[idx]]; set('langBothLines', l) }}
+                          onClick={() => { const l: LK[] = [...currentLines]; [l[idx], l[idx+1]] = [l[idx+1], l[idx]]; set('langBothLines', l) }}
                           className="h-4 w-4 text-[10px] text-white/30 hover:text-white disabled:opacity-15 leading-none">▼</button>
                       </div>
                       <button type="button" disabled={currentLines.length <= 1}
-                        onClick={() => { const l = currentLines.filter((k) => k !== key); set('langBothLines', l) }}
+                        onClick={() => { const l: LK[] = currentLines.filter((k) => k !== key); set('langBothLines', l) }}
                         className="text-white/25 hover:text-red-400 text-xs transition disabled:opacity-15">✕</button>
                     </div>
                   ))}

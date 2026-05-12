@@ -471,7 +471,6 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       }
 
       setRows(updatedRows)
-      const total = toTranslate.length + toGenerate.length
       const parts: string[] = []
       if (toTranslate.length > 0) parts.push(`${toTranslate.length} μεταφράστηκαν`)
       if (toGenerate.length > 0)  parts.push(`${toGenerate.length} δημιουργήθηκαν`)
