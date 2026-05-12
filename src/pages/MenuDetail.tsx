@@ -108,6 +108,7 @@ export default function MenuDetail() {
   const [addingFromLibrary, setAddingFromLibrary] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [autoTranslate, setAutoTranslate] = useState(false)
+  const [linkItemSearch, setLinkItemSearch] = useState('')
   const [translatingItem, setTranslatingItem] = useState(false)
 
   // ── Staff print overlay ────────────────────────────────────────────────────
@@ -260,6 +261,7 @@ export default function MenuDetail() {
     setNewSectionName('')
     setLibrarySearch('')
     setLibraryError(null)
+    setLinkItemSearch('')
     setLinkTab(menu && menu.sections.flatMap((s) => s.items).length > 0 ? 'link' : 'add')
     setLinkRecipesOpen(true)
   }
@@ -273,6 +275,7 @@ export default function MenuDetail() {
     setSelectedRecipeIds(new Set())
     setLibrarySearch('')
     setLibraryError(null)
+    setLinkItemSearch('')
   }
 
   async function addFromLibrary() {
@@ -745,9 +748,24 @@ export default function MenuDetail() {
                   <p className="text-sm text-white/50">
                     Assign a recipe to each item. Click <strong className="text-white/70">Save All</strong> when done.
                   </p>
-                  <div className="space-y-2 max-h-[52vh] overflow-y-auto pr-1">
+
+                  {/* Search menu items */}
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                    <input
+                      type="text"
+                      value={linkItemSearch}
+                      onChange={(e) => setLinkItemSearch(e.target.value)}
+                      placeholder="Φίλτρο items…"
+                      className="w-full rounded-xl border border-glass-border bg-white/5 pl-9 pr-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2 max-h-[46vh] overflow-y-auto pr-1">
                     {menu && menu.sections.flatMap((s) =>
-                      s.items.map((item) => {
+                      s.items.filter((item) =>
+                        !linkItemSearch || item.name.toLowerCase().includes(linkItemSearch.toLowerCase())
+                      ).map((item) => {
                         const linkedId = getLinkRecipeId(item.id, item.recipe_id)
                         const linkedRecipeObj = linkedId ? recipes.find((r) => r.id === linkedId) : null
                         const isOpen = openLinkDropdown === item.id

@@ -52,6 +52,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   language: 'en',
   allergenLang: 'both',
   allergenIconSet: 'default',
+  allergenSize: 'medium',
   showAllergenLegend: false,
   showQr: false,
 })
@@ -530,6 +531,30 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                           : 'border-glass-border text-white/50 hover:text-white hover:bg-white/5',
                       )}>
                       {v === 'default' ? 'Προεπιλεγμένα (SVG)' : 'Προσαρμοσμένα'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Allergen size ── */}
+            {settings.showAllergens && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Μέγεθος αλλεργιογόνων</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { v: 'small',  label: 'Μικρό' },
+                    { v: 'medium', label: 'Μεσαίο' },
+                    { v: 'large',  label: 'Μεγάλο' },
+                  ] as const).map(({ v, label }) => (
+                    <button key={v} type="button" onClick={() => set('allergenSize', v)}
+                      className={cn(
+                        'rounded-xl border px-3 py-2 text-xs font-medium transition text-center',
+                        settings.allergenSize === v
+                          ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                          : 'border-glass-border text-white/50 hover:text-white hover:bg-white/5',
+                      )}>
+                      {label}
                     </button>
                   ))}
                 </div>

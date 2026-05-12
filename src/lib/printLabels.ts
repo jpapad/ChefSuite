@@ -21,6 +21,7 @@ export interface LabelSettings {
   language: 'en' | 'el' | 'bg' | 'both'
   allergenLang: 'en' | 'el' | 'bg' | 'both'
   allergenIconSet: 'default' | 'custom'
+  allergenSize: 'small' | 'medium' | 'large'
   showAllergenLegend: boolean
   showQr: boolean
 }
@@ -160,11 +161,24 @@ function allergenIconEl(key: string, size: string, useCustom = false): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="${size}" height="${size}" style="display:inline-block;vertical-align:middle;flex-shrink:0">${path}</svg>`
 }
 
-function allergenBadgeHtml(key: string, sm: boolean, lang: 'en' | 'el' | 'bg' | 'both', useCustomIcons = false): string {
+const ALLERGEN_SIZE_MAP = {
+  small:  { icon: '9px',  font: '5pt'   },
+  medium: { icon: '13px', font: '7pt'   },
+  large:  { icon: '18px', font: '9pt'   },
+}
+
+function allergenBadgeHtml(
+  key: string,
+  sm: boolean,
+  lang: 'en' | 'el' | 'bg' | 'both',
+  useCustomIcons = false,
+  sizeOverride?: 'small' | 'medium' | 'large',
+): string {
   const label    = allergenLabel(key, lang)
-  const iconSize = sm ? '10px' : '13px'
-  const fontSize = sm ? '5.5pt' : '7pt'
-  return `<span class="allergen">${allergenIconEl(key, iconSize, useCustomIcons)}<span style="font-size:${fontSize}">${label}</span></span>`
+  const sizes    = sizeOverride
+    ? ALLERGEN_SIZE_MAP[sizeOverride]
+    : sm ? ALLERGEN_SIZE_MAP.small : ALLERGEN_SIZE_MAP.medium
+  return `<span class="allergen">${allergenIconEl(key, sizes.icon, useCustomIcons)}<span style="font-size:${sizes.font}">${label}</span></span>`
 }
 
 function buildAllergenLegendHtml(lang: 'en' | 'el' | 'bg' | 'both', presentKeys: string[], useCustomIcons = false): string {
@@ -336,7 +350,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
 
 function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, d: Dims, qrDataUrl?: string): string {
   const allergenBadges = settings.showAllergens && recipe?.allergens?.length
-    ? recipe.allergens.map((a) => allergenBadgeHtml(a, d.w <= 100, settings.allergenLang, settings.allergenIconSet === 'custom')).join('')
+    ? recipe.allergens.map((a) => allergenBadgeHtml(a, d.w <= 100, settings.allergenLang, settings.allergenIconSet === 'custom', settings.allergenSize)).join('')
     : ''
 
   const tags = settings.showTags && item.tags?.length
