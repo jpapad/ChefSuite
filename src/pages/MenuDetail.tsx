@@ -807,7 +807,7 @@ export default function MenuDetail() {
                                   )}
                                 />
                                 {isOpen && (
-                                  <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-52 overflow-y-auto rounded-xl border border-glass-border bg-zinc-900 shadow-2xl">
+                                  <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-52 overflow-y-auto rounded-xl border border-white/15 bg-[#2a2a2a] shadow-2xl">
                                     {filtered.length === 0
                                       ? <p className="px-3 py-2.5 text-sm text-white/40">No recipes found</p>
                                       : filtered.map((r) => (
@@ -917,18 +917,18 @@ export default function MenuDetail() {
 
               {/* Dropdown */}
               {recipePickerOpen && (
-                <div className="absolute z-40 mt-1 w-full rounded-xl border border-glass-border bg-zinc-900 shadow-2xl overflow-hidden">
+                <div className="absolute z-40 mt-1 w-full rounded-xl border border-white/15 bg-[#2a2a2a] shadow-2xl overflow-hidden">
                   {/* Search input */}
-                  <div className="p-2 border-b border-glass-border">
+                  <div className="p-2 border-b border-white/10">
                     <div className="relative">
-                      <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
                       <input
                         autoFocus
                         type="text"
                         value={recipePickerSearch}
                         onChange={(e) => setRecipePickerSearch(e.target.value)}
                         placeholder="Αναζήτηση συνταγής…"
-                        className="w-full rounded-lg bg-white/5 border border-glass-border pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50"
+                        className="w-full rounded-lg bg-white/10 border border-white/15 pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-brand-orange/60"
                       />
                     </div>
                   </div>
