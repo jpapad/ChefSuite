@@ -448,6 +448,24 @@ Rules:
   })
 }
 
+export async function generateDescriptions(names: string[]): Promise<(string | null)[]> {
+  if (names.length === 0) return []
+  const block = names.map((n, i) => `${i + 1}. "${n}"`).join('\n')
+  const prompt = `You are a professional menu copywriter. Write a short, appetising description (1–2 sentences, max 120 characters) in English for each dish name below. The descriptions should sound natural on a restaurant menu.
+
+Dishes:
+${block}
+
+Return ONLY a valid JSON array of strings (one per dish, same order). If a name is unrecognisable, return null for that entry.
+Example: ["Grilled sea bass fillet with lemon butter and seasonal vegetables.", null]`
+
+  const raw = await callClaude(prompt, 2048)
+  let parsed: unknown
+  try { parsed = JSON.parse(raw) } catch { return names.map(() => null) }
+  if (!Array.isArray(parsed)) return names.map(() => null)
+  return (parsed as unknown[]).map((v) => typeof v === 'string' ? v : null)
+}
+
 // ── Chef Copilot ───────────────────────────────────────────────────────────────
 
 export interface CopilotMessage {

@@ -13,7 +13,7 @@ import {
   type ColumnMapping, type ExcelMenuRow, type ParsedExcelData,
 } from '../../lib/excelMenu'
 import { BuffetLabelsDrawer } from '../menus/BuffetLabelsDrawer'
-import { suggestMultipleRecipeDetails, translateMenuItems, type ImportedRecipe } from '../../lib/gemini'
+import { suggestMultipleRecipeDetails, translateMenuItems, generateDescriptions, type ImportedRecipe } from '../../lib/gemini'
 import type { MenuItem, MenuWithSections, Recipe } from '../../types/database.types'
 
 type DuplicateReason = 'existing' | 'infile'
@@ -425,9 +425,13 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   }
 
   async function handleTranslateDescriptions() {
-    const indices = Array.from(selected).filter((i) => rows[i].description?.trim() && !rows[i].description_el)
-    if (indices.length === 0) {
-      setTranslateDescDoneMsg('Όλες οι περιγραφές έχουν ήδη μεταφραστεί')
+    // Rows needing translation (have Greek description, missing English)
+    const toTranslate = Array.from(selected).filter((i) => rows[i].description?.trim() && !rows[i].description_el)
+    // Rows needing generation (no description at all)
+    const toGenerate  = Array.from(selected).filter((i) => !rows[i].description?.trim() && !rows[i].description_el)
+
+    if (toTranslate.length === 0 && toGenerate.length === 0) {
+      setTranslateDescDoneMsg('Όλες οι περιγραφές έχουν ήδη συμπληρωθεί')
       setTranslateDescDone(true)
       setTimeout(() => setTranslateDescDone(false), 2500)
       return
@@ -438,8 +442,10 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     try {
       const CHUNK = 15
       const updatedRows = [...rows]
-      for (let c = 0; c < indices.length; c += CHUNK) {
-        const chunk = indices.slice(c, c + CHUNK)
+
+      // Translate existing descriptions
+      for (let c = 0; c < toTranslate.length; c += CHUNK) {
+        const chunk = toTranslate.slice(c, c + CHUNK)
         const items = chunk.map((i) => ({ name: rows[i].name, description: rows[i].description ?? null }))
         const translations = await translateMenuItems(items)
         chunk.forEach((rowIdx, j) => {
@@ -451,12 +457,29 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
           }
         })
       }
+
+      // Generate descriptions from name for rows with no description
+      for (let c = 0; c < toGenerate.length; c += CHUNK) {
+        const chunk = toGenerate.slice(c, c + CHUNK)
+        const names = chunk.map((i) => rows[i].name)
+        const generated = await generateDescriptions(names)
+        chunk.forEach((rowIdx, j) => {
+          if (generated[j]) {
+            updatedRows[rowIdx] = { ...updatedRows[rowIdx], description_el: generated[j] }
+          }
+        })
+      }
+
       setRows(updatedRows)
-      setTranslateDescDoneMsg(`Μεταφράστηκαν ${indices.length} περιγραφές ✓`)
+      const total = toTranslate.length + toGenerate.length
+      const parts: string[] = []
+      if (toTranslate.length > 0) parts.push(`${toTranslate.length} μεταφράστηκαν`)
+      if (toGenerate.length > 0)  parts.push(`${toGenerate.length} δημιουργήθηκαν`)
+      setTranslateDescDoneMsg(`${parts.join(', ')} ✓`)
       setTranslateDescDone(true)
       setTimeout(() => setTranslateDescDone(false), 4000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Μετάφραση απέτυχε — έλεγξε τη σύνδεση')
+      setError(err instanceof Error ? err.message : 'Μετάφραση/δημιουργία απέτυχε — έλεγξε τη σύνδεση')
     } finally {
       setTranslatingDesc(false)
     }
@@ -845,7 +868,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
               ) : (
                 <>
                   <Languages className="h-4 w-4" />
-                  Μετάφραση περιγραφών → Αγγλικά + Βουλγαρικά
+                  Μετάφραση / δημιουργία περιγραφών (Αγγλικά)
                 </>
               )}
             </button>
