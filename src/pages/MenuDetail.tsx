@@ -110,7 +110,6 @@ export default function MenuDetail() {
   const [autoTranslate, setAutoTranslate] = useState(false)
   const [linkItemSearch, setLinkItemSearch] = useState('')
   const [translatingItem, setTranslatingItem] = useState(false)
-  const [recipePickerOpen, setRecipePickerOpen] = useState(false)
   const [recipePickerSearch, setRecipePickerSearch] = useState('')
 
   // ── Staff print overlay ────────────────────────────────────────────────────
@@ -171,7 +170,7 @@ export default function MenuDetail() {
   // ── Item handlers ──────────────────────────────────────────────────────────
   function openAddItem(sectionId: string) {
     setEditingItem(null); setItemSectionId(sectionId); setItemForm(EMPTY_ITEM)
-    setRecipePickerSearch(''); setRecipePickerOpen(false)
+    setRecipePickerSearch('')
     setItemDrawerOpen(true)
   }
   function openEditItem(item: MenuItem, sectionId: string) {
@@ -188,7 +187,7 @@ export default function MenuDetail() {
       recipe_id: item.recipe_id ?? '',
       tags: item.tags ?? [],
     })
-    setRecipePickerSearch(''); setRecipePickerOpen(false)
+    setRecipePickerSearch('')
     setItemDrawerOpen(true)
   }
   function onRecipeSelect(recipeId: string) {
@@ -896,86 +895,75 @@ export default function MenuDetail() {
         <form onSubmit={onSubmitItem} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-white/70">{t('menus.detail.linkRecipe')}</label>
+            {/* Search input */}
             <div className="relative">
-              {/* Trigger / display */}
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+              <input
+                type="text"
+                value={recipePickerSearch}
+                onChange={(e) => setRecipePickerSearch(e.target.value)}
+                placeholder="Αναζήτηση συνταγής…"
+                className="w-full rounded-xl border border-glass-border bg-white/5 pl-9 pr-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50"
+              />
+            </div>
+            {/* Recipe list */}
+            <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
+              {/* Clear / no recipe option */}
               <button
                 type="button"
-                onClick={() => { setRecipePickerOpen((v) => !v); setRecipePickerSearch('') }}
+                onClick={() => onRecipeSelect('')}
                 className={cn(
-                  'w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm bg-white/5 border text-left transition',
-                  recipePickerOpen ? 'border-brand-orange/50' : 'border-glass-border',
-                  itemForm.recipe_id ? 'text-white' : 'text-white/40',
+                  'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition',
+                  !itemForm.recipe_id ? 'border-brand-orange/40 bg-brand-orange/8 text-brand-orange' : 'border-glass-border text-white/40 hover:bg-white/5',
                 )}
               >
-                <span className="truncate">
-                  {itemForm.recipe_id
-                    ? (recipes.find((r) => r.id === itemForm.recipe_id)?.title ?? t('menus.detail.noRecipe'))
-                    : t('menus.detail.noRecipe')}
-                </span>
-                <svg className={cn('h-4 w-4 shrink-0 text-white/30 transition-transform', recipePickerOpen && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+                <div className={cn(
+                  'h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition',
+                  !itemForm.recipe_id ? 'border-brand-orange bg-brand-orange' : 'border-white/30',
+                )}>
+                  {!itemForm.recipe_id && <span className="text-white text-[8px] font-bold leading-none">✓</span>}
+                </div>
+                {t('menus.detail.noRecipe')}
               </button>
-
-              {/* Dropdown */}
-              {recipePickerOpen && (
-                <div className="absolute z-40 mt-1 w-full rounded-xl border border-white/15 bg-[#2a2a2a] shadow-2xl overflow-hidden">
-                  {/* Search input */}
-                  <div className="p-2 border-b border-white/10">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
-                      <input
-                        autoFocus
-                        type="text"
-                        value={recipePickerSearch}
-                        onChange={(e) => setRecipePickerSearch(e.target.value)}
-                        placeholder="Αναζήτηση συνταγής…"
-                        className="w-full rounded-lg bg-white/10 border border-white/15 pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-brand-orange/60"
-                      />
-                    </div>
-                  </div>
-                  {/* Options list */}
-                  <div className="max-h-52 overflow-y-auto">
-                    {/* Clear option */}
+              {recipesLoading ? (
+                <div className="flex items-center gap-2 px-3 py-3 text-sm text-white/30">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Φόρτωση συνταγών…
+                </div>
+              ) : recipes.length === 0 ? (
+                <p className="px-3 py-2.5 text-sm text-white/30 italic">Δεν υπάρχουν συνταγές ακόμα</p>
+              ) : (() => {
+                const filtered = recipes.filter((r) => !recipePickerSearch || r.title.toLowerCase().includes(recipePickerSearch.toLowerCase()))
+                return filtered.length === 0 ? (
+                  <p className="px-3 py-2.5 text-sm text-white/30">Δεν βρέθηκαν αποτελέσματα</p>
+                ) : filtered.map((r) => {
+                  const sel = r.id === itemForm.recipe_id
+                  return (
                     <button
+                      key={r.id}
                       type="button"
-                      onMouseDown={(e) => { e.preventDefault(); onRecipeSelect(''); setRecipePickerOpen(false) }}
+                      onClick={() => onRecipeSelect(r.id)}
                       className={cn(
-                        'w-full text-left px-3 py-2 text-sm transition',
-                        !itemForm.recipe_id ? 'bg-brand-orange/10 text-brand-orange' : 'text-white/40 hover:bg-white/5',
+                        'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition',
+                        sel ? 'border-brand-orange/40 bg-brand-orange/8' : 'border-glass-border hover:bg-white/5',
                       )}
                     >
-                      {t('menus.detail.noRecipe')}
-                    </button>
-                    {recipesLoading ? (
-                      <div className="flex items-center gap-2 px-3 py-3 text-sm text-white/30">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Φόρτωση συνταγών…
+                      <div className={cn(
+                        'h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition',
+                        sel ? 'border-brand-orange bg-brand-orange' : 'border-white/30',
+                      )}>
+                        {sel && <span className="text-white text-[8px] font-bold leading-none">✓</span>}
                       </div>
-                    ) : recipes.length === 0 ? (
-                      <p className="px-3 py-2.5 text-sm text-white/30 italic">Δεν υπάρχουν συνταγές ακόμα</p>
-                    ) : (() => {
-                      const filtered = recipes.filter((r) => !recipePickerSearch || r.title.toLowerCase().includes(recipePickerSearch.toLowerCase()))
-                      return filtered.length === 0 ? (
-                        <p className="px-3 py-2.5 text-sm text-white/30">Δεν βρέθηκαν αποτελέσματα</p>
-                      ) : filtered.map((r) => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onMouseDown={(e) => { e.preventDefault(); onRecipeSelect(r.id); setRecipePickerOpen(false) }}
-                          className={cn(
-                            'w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-3',
-                            r.id === itemForm.recipe_id ? 'bg-brand-orange/10 text-brand-orange' : 'text-white hover:bg-white/8',
-                          )}
-                        >
-                          <span className="truncate">{r.title}</span>
-                          {r.allergens.length > 0 && (
-                            <span className="text-xs text-white/30 shrink-0">{r.allergens.slice(0, 3).join(', ')}</span>
-                          )}
-                        </button>
-                      ))
-                    })()}
-                  </div>
-                </div>
-              )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{r.title}</div>
+                        {r.allergens.length > 0 && (
+                          <div className="text-xs text-white/30 truncate">{r.allergens.slice(0, 4).join(', ')}</div>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })
+              })()}
             </div>
           </div>
 
