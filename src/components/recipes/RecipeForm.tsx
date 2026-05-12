@@ -40,6 +40,10 @@ export interface RecipeFormValues {
   difficulty: RecipeDifficulty | null
   parent_recipe_id: string | null
   variation_label: string | null
+  name_el: string | null
+  description_el: string | null
+  name_bg: string | null
+  description_bg: string | null
 }
 
 interface RecipeFormProps {
@@ -73,6 +77,10 @@ function blank(
     difficulty: initial?.difficulty ?? prefill?.difficulty ?? null,
     parent_recipe_id: initial?.parent_recipe_id ?? prefill?.parent_recipe_id ?? null,
     variation_label: initial?.variation_label ?? prefill?.variation_label ?? null,
+    name_el: initial?.name_el ?? prefill?.name_el ?? null,
+    description_el: initial?.description_el ?? prefill?.description_el ?? null,
+    name_bg: initial?.name_bg ?? prefill?.name_bg ?? null,
+    description_bg: initial?.description_bg ?? prefill?.description_bg ?? null,
   }
 }
 
@@ -276,6 +284,33 @@ export function RecipeForm({
         value={values.description ?? ''}
         onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
       />
+
+      {/* Translations */}
+      <div className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 space-y-3">
+        <p className="text-xs font-medium text-white/40 uppercase tracking-wider">🌍 Μεταφράσεις</p>
+        <div className="space-y-2">
+          <p className="text-xs text-white/50">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Αγγλικά</p>
+          <Input name="name_el" label="Όνομα (Αγγλικά)"
+            placeholder="English name…"
+            value={values.name_el ?? ''}
+            onChange={(e) => setValues((v) => ({ ...v, name_el: e.target.value || null }))} />
+          <Textarea name="description_el" label="Περιγραφή (Αγγλικά)" rows={2}
+            placeholder="English description…"
+            value={values.description_el ?? ''}
+            onChange={(e) => setValues((v) => ({ ...v, description_el: e.target.value || null }))} />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-white/50">🇧🇬 Βουλγαρικά</p>
+          <Input name="name_bg" label="Όνομα (Βουλγαρικά)"
+            placeholder="Βουλγαρικό όνομα…"
+            value={values.name_bg ?? ''}
+            onChange={(e) => setValues((v) => ({ ...v, name_bg: e.target.value || null }))} />
+          <Textarea name="description_bg" label="Περιγραφή (Βουλγαρικά)" rows={2}
+            placeholder="Βουλγαρική περιγραφή…"
+            value={values.description_bg ?? ''}
+            onChange={(e) => setValues((v) => ({ ...v, description_bg: e.target.value || null }))} />
+        </div>
+      </div>
 
       <Textarea
         name="instructions"
