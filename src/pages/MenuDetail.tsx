@@ -110,6 +110,8 @@ export default function MenuDetail() {
   const [autoTranslate, setAutoTranslate] = useState(false)
   const [linkItemSearch, setLinkItemSearch] = useState('')
   const [translatingItem, setTranslatingItem] = useState(false)
+  const [recipePickerOpen, setRecipePickerOpen] = useState(false)
+  const [recipePickerSearch, setRecipePickerSearch] = useState('')
 
   // ── Staff print overlay ────────────────────────────────────────────────────
   const [printOverlayOpen, setPrintOverlayOpen] = useState(false)
@@ -168,7 +170,9 @@ export default function MenuDetail() {
 
   // ── Item handlers ──────────────────────────────────────────────────────────
   function openAddItem(sectionId: string) {
-    setEditingItem(null); setItemSectionId(sectionId); setItemForm(EMPTY_ITEM); setItemDrawerOpen(true)
+    setEditingItem(null); setItemSectionId(sectionId); setItemForm(EMPTY_ITEM)
+    setRecipePickerSearch(''); setRecipePickerOpen(false)
+    setItemDrawerOpen(true)
   }
   function openEditItem(item: MenuItem, sectionId: string) {
     setEditingItem(item); setItemSectionId(sectionId)
@@ -184,6 +188,7 @@ export default function MenuDetail() {
       recipe_id: item.recipe_id ?? '',
       tags: item.tags ?? [],
     })
+    setRecipePickerSearch(''); setRecipePickerOpen(false)
     setItemDrawerOpen(true)
   }
   function onRecipeSelect(recipeId: string) {
@@ -891,11 +896,80 @@ export default function MenuDetail() {
         <form onSubmit={onSubmitItem} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-white/70">{t('menus.detail.linkRecipe')}</label>
-            <select value={itemForm.recipe_id} onChange={(e) => onRecipeSelect(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 text-sm bg-white/5 border border-glass-border text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/50">
-              <option value="">{t('menus.detail.noRecipe')}</option>
-              {recipes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
-            </select>
+            <div className="relative">
+              {/* Trigger / display */}
+              <button
+                type="button"
+                onClick={() => { setRecipePickerOpen((v) => !v); setRecipePickerSearch('') }}
+                className={cn(
+                  'w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm bg-white/5 border text-left transition',
+                  recipePickerOpen ? 'border-brand-orange/50' : 'border-glass-border',
+                  itemForm.recipe_id ? 'text-white' : 'text-white/40',
+                )}
+              >
+                <span className="truncate">
+                  {itemForm.recipe_id
+                    ? (recipes.find((r) => r.id === itemForm.recipe_id)?.title ?? t('menus.detail.noRecipe'))
+                    : t('menus.detail.noRecipe')}
+                </span>
+                <svg className={cn('h-4 w-4 shrink-0 text-white/30 transition-transform', recipePickerOpen && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+
+              {/* Dropdown */}
+              {recipePickerOpen && (
+                <div className="absolute z-40 mt-1 w-full rounded-xl border border-glass-border bg-zinc-900 shadow-2xl overflow-hidden">
+                  {/* Search input */}
+                  <div className="p-2 border-b border-glass-border">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
+                      <input
+                        autoFocus
+                        type="text"
+                        value={recipePickerSearch}
+                        onChange={(e) => setRecipePickerSearch(e.target.value)}
+                        placeholder="Αναζήτηση συνταγής…"
+                        className="w-full rounded-lg bg-white/5 border border-glass-border pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50"
+                      />
+                    </div>
+                  </div>
+                  {/* Options list */}
+                  <div className="max-h-52 overflow-y-auto">
+                    {/* Clear option */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); onRecipeSelect(''); setRecipePickerOpen(false) }}
+                      className={cn(
+                        'w-full text-left px-3 py-2 text-sm transition',
+                        !itemForm.recipe_id ? 'bg-brand-orange/10 text-brand-orange' : 'text-white/40 hover:bg-white/5',
+                      )}
+                    >
+                      {t('menus.detail.noRecipe')}
+                    </button>
+                    {recipes
+                      .filter((r) => !recipePickerSearch || r.title.toLowerCase().includes(recipePickerSearch.toLowerCase()))
+                      .map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); onRecipeSelect(r.id); setRecipePickerOpen(false) }}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-3',
+                            r.id === itemForm.recipe_id ? 'bg-brand-orange/10 text-brand-orange' : 'text-white hover:bg-white/8',
+                          )}
+                        >
+                          <span className="truncate">{r.title}</span>
+                          {r.allergens.length > 0 && (
+                            <span className="text-xs text-white/30 shrink-0">{r.allergens.slice(0, 3).join(', ')}</span>
+                          )}
+                        </button>
+                      ))}
+                    {recipes.filter((r) => !recipePickerSearch || r.title.toLowerCase().includes(recipePickerSearch.toLowerCase())).length === 0 && (
+                      <p className="px-3 py-2.5 text-sm text-white/30">Δεν βρέθηκαν συνταγές</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <Input name="item_name" label={t('menus.detail.itemName')}
