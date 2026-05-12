@@ -189,11 +189,21 @@ const ALLERGEN_ALIASES: Record<string, string> = {
   θειωδη: 'sulphites', θειικα: 'sulphites',
   λουπινο: 'lupin',
   μαλακια: 'molluscs',
+  // Extended dietary indicators
+  vegan: 'vegan', χορτοφαγος: 'vegan', ολικηχορτοφαγια: 'vegan',
+  vegetarian: 'vegetarian', χορτοφαγικο: 'vegetarian', χορτοφαγικη: 'vegetarian',
+  local: 'local', τοπικο: 'local', τοπικοπιατο: 'local', τοπικη: 'local',
+  spicy: 'spicy', καυτερο: 'spicy', καυτερη: 'spicy', πικαντικο: 'spicy', hot: 'spicy',
+  nolactose: 'no_lactose', lactosefree: 'no_lactose', χωρισλακτοζη: 'no_lactose',
+  χωρισγαλα: 'no_lactose', nomilk: 'no_lactose', dairyfree: 'no_lactose',
+  'no_lactose': 'no_lactose',
 }
 
 export const ALLERGEN_KEYS = [
   'gluten','dairy','eggs','fish','shellfish','nuts','peanuts',
   'soy','sesame','celery','mustard','sulphites','lupin','molluscs',
+  // extended dietary indicators (have custom PNG icons)
+  'vegan','vegetarian','local','no_lactose','spicy',
 ] as const
 
 export const ALLERGEN_LABEL_EL: Record<string, string> = {
@@ -201,6 +211,8 @@ export const ALLERGEN_LABEL_EL: Record<string, string> = {
   shellfish: 'Οστρακοειδή', nuts: 'Ξηροί Καρποί', peanuts: 'Φιστίκια',
   soy: 'Σόγια', sesame: 'Σησάμι', celery: 'Σέλινο', mustard: 'Μουστάρδα',
   sulphites: 'Θειώδη', lupin: 'Λούπινο', molluscs: 'Μαλάκια',
+  vegan: 'Vegan', vegetarian: 'Χορτοφαγικό', local: 'Τοπικό Πιάτο',
+  no_lactose: 'Χωρίς Λακτόζη', spicy: 'Καυτερό',
 }
 
 // Returns the canonical allergen key for a raw token, or null if unrecognised

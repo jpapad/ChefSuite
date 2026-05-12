@@ -66,29 +66,38 @@ const ALLERGEN_EN: Record<string, string> = {
   gluten: 'Gluten', dairy: 'Dairy', eggs: 'Eggs', fish: 'Fish', shellfish: 'Shellfish',
   nuts: 'Nuts', peanuts: 'Peanuts', soy: 'Soy', sesame: 'Sesame', celery: 'Celery',
   mustard: 'Mustard', sulphites: 'Sulphites', lupin: 'Lupin', molluscs: 'Molluscs',
+  vegan: 'Vegan', vegetarian: 'Vegetarian', local: 'Local Dish',
+  no_lactose: 'No Lactose', spicy: 'Spicy',
 }
 
 const ALLERGEN_EL: Record<string, string> = {
   gluten: 'Γλουτένη', dairy: 'Γαλακτοκομικά', eggs: 'Αυγά', fish: 'Ψάρι', shellfish: 'Οστρακοειδή',
   nuts: 'Ξηροί Καρποί', peanuts: 'Φιστίκια', soy: 'Σόγια', sesame: 'Σησάμι', celery: 'Σέλινο',
   mustard: 'Μουστάρδα', sulphites: 'Θειώδη', lupin: 'Λούπινο', molluscs: 'Μαλάκια',
+  vegan: 'Vegan', vegetarian: 'Χορτοφαγικό', local: 'Τοπικό Πιάτο',
+  no_lactose: 'Χωρίς Λακτόζη', spicy: 'Καυτερό',
 }
 
 const ALLERGEN_BG: Record<string, string> = {
   gluten: 'Глутен', dairy: 'Млечни', eggs: 'Яйца', fish: 'Риба', shellfish: 'Ракообразни',
   nuts: 'Ядки', peanuts: 'Фъстъци', soy: 'Соя', sesame: 'Сусам', celery: 'Целина',
   mustard: 'Горчица', sulphites: 'Сулфити', lupin: 'Лупина', molluscs: 'Мекотели',
+  vegan: 'Веган', vegetarian: 'Вегетарианско', local: 'Местно Ястие',
+  no_lactose: 'Без Лактоза', spicy: 'Лютиво',
 }
 
 const ALL_ALLERGEN_KEYS = Object.keys(ALLERGEN_EN)
 
 // Custom PNG icon filenames (served from /allergen-icons/)
 const CUSTOM_ALLERGEN_IMG: Partial<Record<string, string>> = {
-  gluten:    'gluten.png',
-  dairy:     'no-milk.png',
-  nuts:      'nuts.png',
-  shellfish: 'crustacean.png',
-  molluscs:  'molluscs.png',
+  gluten:      'gluten.png',
+  nuts:        'nuts.png',
+  shellfish:   'crustacean.png',
+  molluscs:    'molluscs.png',
+  vegan:       'vegan.png',
+  vegetarian:  'vegetarian.png',
+  local:       'local.png',
+  no_lactose:  'no-milk.png',
 }
 
 // Inline SVG paths for each allergen (viewBox 0 0 24 24)
@@ -107,6 +116,12 @@ const ALLERGEN_SVG_PATH: Record<string, string> = {
   sulphites: `<path d="M7 3 L17 3 L15 12 Q14 15 12 15 Q10 15 9 12 Z"/><rect x="11.3" y="15" width="1.4" height="5" rx="0.7"/><rect x="8" y="20" width="8" height="1.5" rx="0.75"/>`,
   lupin:     `<path d="M7 19 C5 17 5 7 12 3 C19 7 19 17 17 19 Q14.5 22 12 22 Q9.5 22 7 19 Z"/><circle cx="12" cy="7.5" r="2.2" fill="white" opacity="0.65"/><circle cx="12" cy="12.5" r="2.2" fill="white" opacity="0.65"/><circle cx="12" cy="17.5" r="2" fill="white" opacity="0.65"/>`,
   molluscs:  `<path d="M12 21 C12 21 4 17 3 10 C2.5 6 5 3 9 3 C11 3 12 4 12 4 C12 4 13 3 15 3 C19 3 21.5 6 21 10 C20 17 12 21 12 21 Z"/>`,
+  // Extended dietary indicators
+  vegan:      `<path d="M5 21 C5 21 8 14 13 11 C18 8 21 8 21 8 C21 8 19 13 15 17 C11 20 7 21 5 21 Z"/><path d="M5 21 C5 21 8 17 9 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  vegetarian: `<path d="M12 3 C12 3 16 8 16 13 C16 18 14 22 12 22 C10 22 8 18 8 13 C8 8 12 3 12 3 Z"/><path d="M12 3 L10 0.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 3 L14 0.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 3 L12 0.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  local:      `<path d="M12 2 C7.5 2 4 5.5 4 10 C4 16 12 22 12 22 C12 22 20 16 20 10 C20 5.5 16.5 2 12 2 Z"/><circle cx="12" cy="10" r="3.5" fill="white" opacity="0.65"/>`,
+  spicy:      `<path d="M13 2 C15 2 16 4 15 6 C14 8 13 9 13 12 C13 16 14 18 14 20 C14 21.5 13 22 11.5 22 C10 22 9 21 9 20 C9 18 10 16 10 12 C10 9 9 7 10 5 C11 3 12 2 13 2 Z"/><path d="M15 3.5 C17 2.5 19 3.5 19 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  no_lactose: `<path d="M8 6 L7 20 Q7 22 12 22 Q17 22 17 20 L16 6 Z"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="6" y1="5" x2="18" y2="21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`,
 }
 
 function allergenLabel(key: string, lang: 'en' | 'el' | 'bg' | 'both'): string {
