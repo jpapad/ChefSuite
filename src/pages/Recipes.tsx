@@ -400,18 +400,18 @@ export default function Recipes() {
 
           {/* ── Bulk-delete action bar ── */}
           {selectionMode && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-white/15 bg-[#1a1d25]/95 backdrop-blur px-4 py-3 shadow-2xl">
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border border-white/20 bg-[#1a1d25]/95 backdrop-blur px-3 py-2.5 shadow-2xl">
+              <span className="text-sm font-semibold text-white px-2 whitespace-nowrap">
+                {selectedIds.size} επιλεγμέν{selectedIds.size === 1 ? 'η' : 'ες'}
+              </span>
+              <div className="w-px h-5 bg-white/20" />
               <button
                 type="button"
                 onClick={selectedIds.size === filtered.length ? clearSelection : selectAll}
-                className="text-sm text-white/60 hover:text-white transition whitespace-nowrap"
+                className="rounded-xl border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition whitespace-nowrap"
               >
                 {selectedIds.size === filtered.length ? 'Αποεπιλογή όλων' : `Επιλογή όλων (${filtered.length})`}
               </button>
-              <span className="text-white/20">|</span>
-              <span className="text-sm text-white/80 whitespace-nowrap">
-                {selectedIds.size} επιλεγμέν{selectedIds.size === 1 ? 'η' : 'ες'}
-              </span>
               <button
                 type="button"
                 onClick={() => void bulkDelete()}
