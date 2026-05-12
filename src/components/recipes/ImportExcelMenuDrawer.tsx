@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   FileSpreadsheet, Loader2, ArrowLeft, Check, AlertCircle,
   ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles,
@@ -139,6 +139,7 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
 
 export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTitles = [] }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const autoFillTriggeredRef = useRef(false)
 
   const [step, setStep] = useState<Step>('upload')
   const [loading, setLoading] = useState(false)
@@ -171,6 +172,16 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [aiFillDone, setAiFillDone] = useState(false)
   const [aiFillDoneMsg, setAiFillDoneMsg] = useState('')
 
+  // Auto-trigger AI fill when entering preview if any selected row is missing a description
+  useEffect(() => {
+    if (step !== 'preview' || autoFillTriggeredRef.current) return
+    const hasMissingDesc = Array.from(selected).some((i) => !rows[i]?.description?.trim())
+    if (!hasMissingDesc) return
+    autoFillTriggeredRef.current = true
+    void handleAIFillRows()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
   function reset() {
     setStep('upload')
     setLoading(false)
@@ -193,6 +204,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setAiFillProgress(null)
     setAiFillDone(false)
     setAiFillDoneMsg('')
+    autoFillTriggeredRef.current = false
   }
 
   function handleClose() {
@@ -290,6 +302,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     // Pre-select only non-duplicates
     setSelected(new Set(result.map((_, i) => i).filter((i) => !dupMap.has(i))))
     setError(null)
+    autoFillTriggeredRef.current = false
     setStep('preview')
   }
 

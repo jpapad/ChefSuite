@@ -6,7 +6,7 @@ import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { ImageUpload } from '../ui/ImageUpload'
 import { cn } from '../../lib/cn'
-import { buildPreviewHtml, getDims, previewIframeHeight, printLabels } from '../../lib/printLabels'
+import { buildPreviewHtml, getDims, LABEL_FONTS, previewIframeHeight, printLabels } from '../../lib/printLabels'
 import type { LabelSettings, LabelSize, LabelSizePreset } from '../../lib/printLabels'
 import type { MenuWithSections, MenuItem, Recipe } from '../../types/database.types'
 
@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   customW: 100,
   customH: 70,
   customUnit: 'mm',
+  fontFamily: 'Georgia, serif',
   logoUrl,
   logoMaxW: 45,
   logoMaxH: 18,
@@ -97,11 +98,10 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const trunc = (s: string | null | undefined, max = 100) =>
           s ? s.slice(0, max) : undefined
         const payload: Record<string, string> = { n: item.name.slice(0, 60) }
-        if (item.name_el)        payload.ne = item.name_el.slice(0, 60)
-        if (item.name_bg)        payload.nb = item.name_bg.slice(0, 60)
+        if (item.name_el) payload.ne = item.name_el.slice(0, 60)
+        if (item.name_bg) payload.nb = item.name_bg.slice(0, 60)
+        // Description: English only in QR
         const d = trunc(item.description); if (d) payload.d = d
-        const de = trunc(item.description_el); if (de) payload.de = de
-        const db = trunc(item.description_bg); if (db) payload.db = db
         const url = `${origin}/dish?d=${btoa(encodeURIComponent(JSON.stringify(payload)))}`
         const dataUrl = await QRCode.toDataURL(url, {
           width: 400,
@@ -310,6 +310,23 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
               )}
             </div>
 
+            {/* ── Font family ── */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">Γραμματοσειρά τίτλου</label>
+              <select
+                value={settings.fontFamily}
+                onChange={(e) => set('fontFamily', e.target.value)}
+                className="w-full rounded-xl border border-glass-border bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand-orange/50"
+                style={{ fontFamily: settings.fontFamily }}
+              >
+                {LABEL_FONTS.map((f) => (
+                  <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* ── Title alignment ── */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/70">Title alignment</label>
@@ -463,7 +480,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
             {/* ── Language ── */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/70">{t('menus.labels.language')}</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {languages.map(({ value, label }) => (
                   <button key={value} type="button" onClick={() => set('language', value)}
                     className={cn(
@@ -483,7 +500,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/70">{t('menus.labels.allergenLang')}</label>
               <p className="text-xs text-white/40">{t('menus.labels.allergenLangHint')}</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {allergenLangs.map(({ value, label }) => (
                   <button key={value} type="button" onClick={() => set('allergenLang', value)}
                     className={cn(

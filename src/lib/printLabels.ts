@@ -8,6 +8,7 @@ export interface LabelSettings {
   customW: number          // value in customUnit – only used when size === 'custom'
   customH: number          // value in customUnit – only used when size === 'custom'
   customUnit: 'mm' | 'cm' // unit for customW / customH
+  fontFamily: string
   logoUrl: string | null
   logoMaxW: number         // mm
   logoMaxH: number         // mm
@@ -23,6 +24,16 @@ export interface LabelSettings {
   showAllergenLegend: boolean
   showQr: boolean
 }
+
+export const LABEL_FONTS: { label: string; value: string }[] = [
+  { label: 'Georgia (default)',  value: 'Georgia, serif' },
+  { label: 'Times New Roman',   value: '"Times New Roman", Times, serif' },
+  { label: 'Palatino',          value: 'Palatino, "Palatino Linotype", serif' },
+  { label: 'Arial',             value: 'Arial, Helvetica, sans-serif' },
+  { label: 'Verdana',           value: 'Verdana, Geneva, sans-serif' },
+  { label: 'Trebuchet MS',      value: '"Trebuchet MS", Helvetica, sans-serif' },
+  { label: 'Courier New',       value: '"Courier New", Courier, monospace' },
+]
 
 interface Dims { w: number; h: number; namePt: number; descPt: number; gapMm: number }
 
@@ -262,7 +273,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
   const sm = d.w <= 100
   return `
     * { box-sizing: border-box; margin: 0; padding: 0 }
-    body { font-family: 'Georgia', serif; background: white }
+    body { font-family: ${settings.fontFamily || 'Georgia, serif'}; background: white }
     .label {
       position: relative;
       border: 1px solid #333; border-radius: 3mm;
