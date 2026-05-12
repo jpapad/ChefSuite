@@ -57,16 +57,24 @@ async function callGemini(prompt: string): Promise<string> {
 interface ClaudeResponse {
   content?: Array<{ type: string; text?: string }>
   error?: { type: string; message: string }
+  stop_reason?: string
 }
 
-async function callClaude(prompt: string, maxTokens = 4096): Promise<string> {
+async function callClaude(prompt: string, maxTokens = 8192): Promise<string> {
   const { data, error } = await supabase.functions.invoke('claude-proxy', {
     body: { prompt, max_tokens: maxTokens },
   })
   if (error) throw new Error(error.message)
+  if (!data) throw new Error('No response from AI service — check edge function logs')
   const resp = data as ClaudeResponse
   if (resp.error) throw new Error(resp.error.message)
+  if (resp.stop_reason === 'max_tokens') {
+    throw new Error('AI response was cut off (output too long) — try fewer items at once')
+  }
   const text = resp.content?.find((c) => c.type === 'text')?.text ?? ''
+  if (!text) {
+    throw new Error(`AI returned empty content (stop_reason: ${resp.stop_reason ?? 'unknown'})`)
+  }
   return text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
 }
 
@@ -694,6 +702,18 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
     description: null, instructions: null, allergens: [],
     category: null, difficulty: null, prep_time: null, cook_time: null, servings: null,
   })
+
+  // Split into chunks of 10 to avoid response truncation
+  const CHUNK_SIZE = 10
+  if (titles.length > CHUNK_SIZE) {
+    const results: RecipeSuggestion[] = []
+    for (let i = 0; i < titles.length; i += CHUNK_SIZE) {
+      const chunk = titles.slice(i, i + CHUNK_SIZE)
+      const chunkResults = await suggestMultipleRecipeDetails(chunk)
+      results.push(...chunkResults)
+    }
+    return results
+  }
 
   try {
     const raw = await callClaude(prompt)
