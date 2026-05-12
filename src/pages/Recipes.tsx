@@ -40,6 +40,7 @@ export default function Recipes() {
   const [editing, setEditing] = useState<Recipe | null>(null)
   const [viewing, setViewing] = useState<Recipe | null>(null)
   const [saving, setSaving] = useState(false)
+  const [batchImportError, setBatchImportError] = useState<string | null>(null)
   const [prefill, setPrefill] = useState<Partial<RecipeFormValues> | undefined>()
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [versionRecipe, setVersionRecipe] = useState<Recipe | null>(null)
@@ -104,6 +105,7 @@ export default function Recipes() {
 
   async function onBatchImport(imported: ImportedRecipe[]) {
     setSaving(true)
+    setBatchImportError(null)
     try {
       for (const item of imported) {
         await create({
@@ -127,6 +129,8 @@ export default function Recipes() {
           description_bg: item.description_bg ?? null,
         })
       }
+    } catch (err) {
+      setBatchImportError(err instanceof Error ? err.message : 'Αποτυχία αποθήκευσης συνταγών')
     } finally {
       setSaving(false)
     }
@@ -444,10 +448,18 @@ export default function Recipes() {
 
       <ImportExcelMenuDrawer
         open={excelMenuDrawerOpen}
-        onClose={() => setExcelMenuDrawerOpen(false)}
+        onClose={() => { setExcelMenuDrawerOpen(false); setBatchImportError(null) }}
         onBatchImport={onBatchImport}
         existingTitles={recipes.map((r) => r.title)}
       />
+
+      {batchImportError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3 text-sm text-red-300 shadow-2xl backdrop-blur max-w-md">
+          <span className="shrink-0">⚠️</span>
+          <span className="flex-1">{batchImportError}</span>
+          <button type="button" onClick={() => setBatchImportError(null)} className="shrink-0 text-red-300/60 hover:text-red-300">✕</button>
+        </div>
+      )}
 
       {versionRecipe && (
         <RecipeVersionHistory
