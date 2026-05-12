@@ -103,11 +103,12 @@ export default function Recipes() {
     setDrawerOpen(true)
   }
 
-  async function onBatchImport(imported: ImportedRecipe[]) {
+  async function onBatchImport(imported: ImportedRecipe[], onProgress: (done: number, total: number) => void) {
     setSaving(true)
     setBatchImportError(null)
     try {
-      for (const item of imported) {
+      for (let i = 0; i < imported.length; i++) {
+        const item = imported[i]
         await create({
           title: item.title,
           description: item.description ?? null,
@@ -128,9 +129,11 @@ export default function Recipes() {
           name_bg: item.name_bg ?? null,
           description_bg: item.description_bg ?? null,
         })
+        onProgress(i + 1, imported.length)
       }
     } catch (err) {
       setBatchImportError(err instanceof Error ? err.message : 'Αποτυχία αποθήκευσης συνταγών')
+      throw err
     } finally {
       setSaving(false)
     }

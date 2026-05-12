@@ -21,7 +21,7 @@ type DuplicateReason = 'existing' | 'infile'
 interface Props {
   open: boolean
   onClose: () => void
-  onBatchImport: (rows: ImportedRecipe[]) => void
+  onBatchImport: (rows: ImportedRecipe[], onProgress: (done: number, total: number) => void) => Promise<void>
   existingTitles?: string[]
 }
 
@@ -179,6 +179,11 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [translateDescDone, setTranslateDescDone] = useState(false)
   const [translateDescDoneMsg, setTranslateDescDoneMsg] = useState('')
 
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null)
+  const [importResult, setImportResult] = useState<{
+    total: number; withNameEl: number; withDescEl: number; withNameBg: number; withAllergens: number
+  } | null>(null)
+
 
   function reset() {
     setStep('upload')
@@ -208,6 +213,8 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setTranslatingDesc(false)
     setTranslateDescDone(false)
     setTranslateDescDoneMsg('')
+    setImportProgress(null)
+    setImportResult(null)
   }
 
   function handleClose() {
@@ -472,7 +479,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     }
   }
 
-  function handleImportAsRecipes() {
+  async function handleImportAsRecipes() {
     const selectedRows = rows.filter((_, i) => selected.has(i))
     const imported: ImportedRecipe[] = selectedRows.map((row) => ({
       title: row.name,
@@ -492,9 +499,23 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       name_bg: row.name_bg ?? null,
       description_bg: row.description_bg ?? null,
     }))
-    onBatchImport(imported)
-    reset()
-    onClose()
+    setImportProgress({ done: 0, total: imported.length })
+    setImportResult(null)
+    setError(null)
+    try {
+      await onBatchImport(imported, (done, total) => setImportProgress({ done, total }))
+      setImportResult({
+        total: imported.length,
+        withNameEl:    imported.filter((r) => r.name_el).length,
+        withDescEl:    imported.filter((r) => r.description_el).length,
+        withNameBg:    imported.filter((r) => r.name_bg).length,
+        withAllergens: imported.filter((r) => r.allergens.length > 0).length,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Αποτυχία εισαγωγής — έλεγξε τη σύνδεση')
+    } finally {
+      setImportProgress(null)
+    }
   }
 
   function handleOpenBuffetLabels() {
@@ -955,54 +976,108 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
             })}
           </ul>
 
-          {/* Action choice */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-white/80">What would you like to do?</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={handleImportAsRecipes}
-                disabled={selected.size === 0}
-                className={cn(
-                  'flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition',
-                  selected.size > 0
-                    ? 'border-brand-orange/40 hover:border-brand-orange hover:bg-brand-orange/5 cursor-pointer'
-                    : 'border-white/10 opacity-40 cursor-not-allowed',
-                )}
-              >
-                <UtensilsCrossed className="h-6 w-6 text-brand-orange" />
-                <span className="text-sm font-medium text-white">Import as Recipes</span>
-                <span className="text-xs text-white/40 text-center">Add to your recipe library</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenBuffetLabels}
-                disabled={selected.size === 0}
-                className={cn(
-                  'flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition',
-                  selected.size > 0
-                    ? 'border-emerald-500/40 hover:border-emerald-500 hover:bg-emerald-500/5 cursor-pointer'
-                    : 'border-white/10 opacity-40 cursor-not-allowed',
-                )}
-              >
-                <Tag className="h-6 w-6 text-emerald-400" />
-                <span className="text-sm font-medium text-white">Buffet Labels</span>
-                <span className="text-xs text-white/40 text-center">Print labels for your buffet</span>
-              </button>
+          {/* Import progress */}
+          {importProgress && (
+            <div className="rounded-xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-brand-orange font-medium">
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                Εισαγωγή συνταγών… {importProgress.done}/{importProgress.total}
+              </div>
+              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-brand-orange transition-all duration-300"
+                  style={{ width: `${importProgress.total > 0 ? (importProgress.done / importProgress.total) * 100 : 0}%` }}
+                />
+              </div>
+              <p className="text-xs text-white/40">Παρακαλώ μην κλείσεις αυτό το παράθυρο</p>
             </div>
-          </div>
+          )}
 
-          <div className="flex justify-start pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              leftIcon={<ArrowLeft className="h-4 w-4" />}
-              onClick={() => setStep('mapping')}
-            >
-              Back
-            </Button>
-          </div>
+          {/* Import result */}
+          {importResult && !importProgress && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-4 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-300 font-medium">
+                <Check className="h-5 w-5 shrink-0" />
+                <span>{importResult.total} συνταγές εισήχθησαν επιτυχώς!</span>
+              </div>
+              <div className="space-y-1.5 text-sm">
+                {[
+                  { label: 'Αγγλικό όνομα',       count: importResult.withNameEl,    total: importResult.total },
+                  { label: 'Αγγλική περιγραφή',    count: importResult.withDescEl,    total: importResult.total },
+                  { label: 'Βουλγαρικό όνομα',     count: importResult.withNameBg,    total: importResult.total },
+                  { label: 'Αλλεργιογόνα',         count: importResult.withAllergens, total: importResult.total },
+                ].map(({ label, count, total }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className={count === total ? 'text-emerald-400' : count > 0 ? 'text-amber-400' : 'text-white/25'}>
+                      {count === total ? '✓' : count > 0 ? '◑' : '○'}
+                    </span>
+                    <span className="text-white/60 flex-1">{label}</span>
+                    <span className={cn('text-xs font-medium tabular-nums',
+                      count === total ? 'text-emerald-400' : count > 0 ? 'text-amber-400' : 'text-white/25'
+                    )}>
+                      {count}/{total}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" className="w-full mt-1" onClick={() => { reset(); onClose() }}>
+                Κλείσιμο
+              </Button>
+            </div>
+          )}
+
+          {/* Action choice */}
+          {!importProgress && !importResult && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-white/80">What would you like to do?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => void handleImportAsRecipes()}
+                  disabled={selected.size === 0}
+                  className={cn(
+                    'flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition',
+                    selected.size > 0
+                      ? 'border-brand-orange/40 hover:border-brand-orange hover:bg-brand-orange/5 cursor-pointer'
+                      : 'border-white/10 opacity-40 cursor-not-allowed',
+                  )}
+                >
+                  <UtensilsCrossed className="h-6 w-6 text-brand-orange" />
+                  <span className="text-sm font-medium text-white">Import as Recipes</span>
+                  <span className="text-xs text-white/40 text-center">Add to your recipe library</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenBuffetLabels}
+                  disabled={selected.size === 0}
+                  className={cn(
+                    'flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition',
+                    selected.size > 0
+                      ? 'border-emerald-500/40 hover:border-emerald-500 hover:bg-emerald-500/5 cursor-pointer'
+                      : 'border-white/10 opacity-40 cursor-not-allowed',
+                  )}
+                >
+                  <Tag className="h-6 w-6 text-emerald-400" />
+                  <span className="text-sm font-medium text-white">Buffet Labels</span>
+                  <span className="text-xs text-white/40 text-center">Print labels for your buffet</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!importProgress && !importResult && (
+            <div className="flex justify-start pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                leftIcon={<ArrowLeft className="h-4 w-4" />}
+                onClick={() => setStep('mapping')}
+              >
+                Back
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Drawer>
