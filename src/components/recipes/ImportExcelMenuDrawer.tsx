@@ -8,6 +8,8 @@ import { Button } from '../ui/Button'
 import { cn } from '../../lib/cn'
 import {
   parseExcelFile, suggestColumnMapping, applyMapping,
+  collectAllergenTokens, resolveAllergenToken,
+  ALLERGEN_KEYS, ALLERGEN_LABEL_EL,
   type ColumnMapping, type ExcelMenuRow, type ParsedExcelData,
 } from '../../lib/excelMenu'
 import { BuffetLabelsDrawer } from '../menus/BuffetLabelsDrawer'
@@ -161,6 +163,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [buffetMenu, setBuffetMenu] = useState<MenuWithSections | null>(null)
   const [buffetRecipes, setBuffetRecipes] = useState<Recipe[]>([])
 
+  const [customAllergenMap, setCustomAllergenMap] = useState<Record<string, string>>({})
+  const [allergenTokens, setAllergenTokens] = useState<string[]>([])
+
   const [aiFillingRows, setAiFillingRows] = useState(false)
   const [aiFillProgress, setAiFillProgress] = useState<{ done: number; total: number } | null>(null)
   const [aiFillDone, setAiFillDone] = useState(false)
@@ -182,6 +187,8 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setActionMode(null)
     setBuffetMenu(null)
     setBuffetRecipes([])
+    setCustomAllergenMap({})
+    setAllergenTokens([])
     setAiFillingRows(false)
     setAiFillProgress(null)
     setAiFillDone(false)
@@ -221,6 +228,8 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       setParsed(data)
       const suggested = await suggestColumnMapping(data.headers, data.rows)
       setMapping(suggested)
+      setAllergenTokens(collectAllergenTokens(data.rows, suggested.allergens))
+      setCustomAllergenMap({})
       setStep('mapping')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read the file. Make sure it is a valid Excel or CSV file.')
@@ -239,6 +248,8 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       setParsed(data)
       const suggested = await suggestColumnMapping(data.headers, data.rows)
       setMapping(suggested)
+      setAllergenTokens(collectAllergenTokens(data.rows, suggested.allergens))
+      setCustomAllergenMap({})
       setStep('mapping')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read the sheet.')
@@ -252,7 +263,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       setError('Please select at least the "Dish Name" column.')
       return
     }
-    const result = applyMapping(parsed.rows, mapping)
+    const result = applyMapping(parsed.rows, mapping, customAllergenMap)
     if (result.length === 0) {
       setError('No rows with a dish name were found. Check the column mapping.')
       return
@@ -550,7 +561,14 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                 </span>
                 <select
                   value={mapping[key] ?? ''}
-                  onChange={(e) => setMapping((prev) => ({ ...prev, [key]: e.target.value || null }))}
+                  onChange={(e) => {
+                    const val = e.target.value || null
+                    setMapping((prev) => ({ ...prev, [key]: val }))
+                    if (key === 'allergens' && parsed) {
+                      setAllergenTokens(collectAllergenTokens(parsed.rows, val))
+                      setCustomAllergenMap({})
+                    }
+                  }}
                   className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none"
                 >
                   <option value="">— not in file —</option>
@@ -561,6 +579,41 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
               </div>
             ))}
           </div>
+
+          {/* Allergen value mapping */}
+          {mapping.allergens && allergenTokens.length > 0 && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+              <p className="text-xs font-semibold text-amber-300/70 uppercase tracking-wider">
+                Αντιστοίχιση αλλεργιογόνων στη στήλη "{mapping.allergens}"
+              </p>
+              <div className="space-y-2">
+                {allergenTokens.map((token) => {
+                  const auto = resolveAllergenToken(token)
+                  const chosen = customAllergenMap[token]
+                  const effective = chosen !== undefined ? chosen : (auto ?? '')
+                  return (
+                    <div key={token} className="flex items-center gap-3">
+                      <span className="flex-1 text-sm text-white/80 truncate font-mono">{token}</span>
+                      <span className="text-white/20">→</span>
+                      <select
+                        value={effective}
+                        onChange={(e) => setCustomAllergenMap((prev) => ({ ...prev, [token]: e.target.value }))}
+                        className={cn(
+                          'rounded-lg border px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 bg-white/5',
+                          effective ? 'border-emerald-500/40 text-emerald-300' : 'border-red-500/30 text-red-400',
+                        )}
+                      >
+                        <option value="">— αγνόησε —</option>
+                        {ALLERGEN_KEYS.map((k) => (
+                          <option key={k} value={k}>{ALLERGEN_LABEL_EL[k]} ({k})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -601,6 +654,14 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                   Μπορείς να τα επιλέξεις χειροκίνητα αν θέλεις να τα περάσεις ξανά.
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Error display (AI fill or other) */}
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 

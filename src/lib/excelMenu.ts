@@ -191,27 +191,60 @@ const ALLERGEN_ALIASES: Record<string, string> = {
   μαλακια: 'molluscs',
 }
 
-function parseAllergens(raw: string): string[] {
+export const ALLERGEN_KEYS = [
+  'gluten','dairy','eggs','fish','shellfish','nuts','peanuts',
+  'soy','sesame','celery','mustard','sulphites','lupin','molluscs',
+] as const
+
+export const ALLERGEN_LABEL_EL: Record<string, string> = {
+  gluten: 'Γλουτένη', dairy: 'Γαλακτοκομικά', eggs: 'Αυγά', fish: 'Ψάρι',
+  shellfish: 'Οστρακοειδή', nuts: 'Ξηροί Καρποί', peanuts: 'Φιστίκια',
+  soy: 'Σόγια', sesame: 'Σησάμι', celery: 'Σέλινο', mustard: 'Μουστάρδα',
+  sulphites: 'Θειώδη', lupin: 'Λούπινο', molluscs: 'Μαλάκια',
+}
+
+// Returns the canonical allergen key for a raw token, or null if unrecognised
+export function resolveAllergenToken(s: string): string | null {
+  const num = ALLERGEN_NUMERIC[s.trim()]
+  if (num) return num
+  const norm = deaccent(s)
+  const direct = ALLERGEN_ALIASES[norm]
+  if (direct) return direct
+  const match = Object.entries(ALLERGEN_ALIASES).find(([alias]) => norm.includes(alias) || alias.includes(norm))
+  return match ? match[1] : null
+}
+
+// Extract every unique raw token from the allergen column
+export function collectAllergenTokens(
+  rows: Record<string, string>[],
+  allergenColumn: string | null,
+): string[] {
+  if (!allergenColumn) return []
+  const tokens = new Set<string>()
+  for (const row of rows) {
+    const raw = (row[allergenColumn] ?? '').trim()
+    if (!raw) continue
+    raw.split(/[,;/|·•\n]+/).map((s) => s.trim()).filter(Boolean).forEach((s) => tokens.add(s))
+  }
+  return Array.from(tokens).sort()
+}
+
+function parseAllergens(raw: string, customMap: Record<string, string> = {}): string[] {
   if (!raw.trim()) return []
   return raw
     .split(/[,;/|·•\n]+/)
     .map((s) => s.trim())
     .filter(Boolean)
     .flatMap((s) => {
+      // User-defined mapping takes priority
+      const custom = customMap[s]
+      if (custom === '') return []   // explicitly skipped
+      if (custom) return [custom]
+
       // EU numeric code
-      const num = ALLERGEN_NUMERIC[s.trim()]
-      if (num) return [num]
-
-      const norm = deaccent(s)
-
-      // Direct match on deaccented key
-      const direct = ALLERGEN_ALIASES[norm]
-      if (direct) return [direct]
-
-      // Substring match: allergen alias contained in input or vice versa
-      return Object.entries(ALLERGEN_ALIASES)
-        .filter(([alias]) => norm.includes(alias) || alias.includes(norm))
-        .map(([, allergen]) => allergen)
+      const resolved = resolveAllergenToken(s)
+      if (resolved) return [resolved]
+      return []
     })
     .filter((v, i, arr) => arr.indexOf(v) === i)
 }
@@ -225,6 +258,7 @@ function parsePrice(raw: string): number | null {
 export function applyMapping(
   rows: Record<string, string>[],
   mapping: ColumnMapping,
+  customAllergenMap: Record<string, string> = {},
 ): ExcelMenuRow[] {
   return rows
     .map((row) => ({
@@ -232,7 +266,7 @@ export function applyMapping(
       description: mapping.description ? (row[mapping.description] ?? '').trim() || null : null,
       category: mapping.category ? (row[mapping.category] ?? '').trim() || null : null,
       price: mapping.price ? parsePrice(row[mapping.price] ?? '') : null,
-      allergens: mapping.allergens ? parseAllergens(row[mapping.allergens] ?? '') : [],
+      allergens: mapping.allergens ? parseAllergens(row[mapping.allergens] ?? '', customAllergenMap) : [],
       ingredients: mapping.ingredients ? (row[mapping.ingredients] ?? '').trim() || null : null,
       difficulty: null,
       prep_time: null,
