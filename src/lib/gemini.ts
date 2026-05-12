@@ -698,9 +698,9 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
   try {
     const raw = await callClaude(prompt)
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) throw new Error('Expected array')
+    if (!Array.isArray(parsed)) throw new Error(`Expected JSON array, got: ${raw.slice(0, 120)}`)
     return titles.map((_, i) => parsed[i] !== undefined ? parseSuggestion(parsed[i]) : empty())
-  } catch {
-    throw new Error('AI batch suggestion failed.')
+  } catch (err) {
+    throw new Error(`AI batch suggestion failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
