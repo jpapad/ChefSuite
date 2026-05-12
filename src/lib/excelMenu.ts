@@ -35,6 +35,8 @@ export interface ExcelMenuRow {
   name_el: string | null   // English translation (used by label printer)
   name_bg: string | null   // Bulgarian translation
   description: string | null
+  description_el: string | null
+  description_bg: string | null
   category: string | null
   price: number | null
   allergens: string[]
@@ -280,6 +282,8 @@ export function applyMapping(
       name_el: null,
       name_bg: null,
       description: mapping.description ? (row[mapping.description] ?? '').trim() || null : null,
+      description_el: null,
+      description_bg: null,
       category: mapping.category ? (row[mapping.category] ?? '').trim() || null : null,
       price: mapping.price ? parsePrice(row[mapping.price] ?? '') : null,
       allergens: mapping.allergens ? parseAllergens(row[mapping.allergens] ?? '', customAllergenMap) : [],

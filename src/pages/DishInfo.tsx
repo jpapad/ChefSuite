@@ -41,7 +41,7 @@ export default function DishInfo() {
     return langs
   }, [payload])
 
-  const [lang, setLang] = useState<Lang>('el')
+  const [lang, setLang] = useState<Lang>('en')
 
   if (!payload) {
     return (

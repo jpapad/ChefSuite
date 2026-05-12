@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   showTags: true,
   showPrice: true,
   language: 'en',
+  langBothLines: ['en', 'source'],
   allergenLang: 'both',
   allergenIconSet: 'default',
   allergenSize: 'medium',
@@ -101,8 +102,9 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const payload: Record<string, string> = { n: item.name.slice(0, 60) }
         if (item.name_el) payload.ne = item.name_el.slice(0, 60)
         if (item.name_bg) payload.nb = item.name_bg.slice(0, 60)
-        // Description: English only in QR
-        const d = trunc(item.description); if (d) payload.d = d
+        const d  = trunc(item.description);    if (d)  payload.d  = d
+        const de = trunc(item.description_el); if (de) payload.de = de
+        const db = trunc(item.description_bg); if (db) payload.db = db
         const url = `${origin}/dish?d=${btoa(encodeURIComponent(JSON.stringify(payload)))}`
         const dataUrl = await QRCode.toDataURL(url, {
           width: 400,
@@ -496,6 +498,54 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 ))}
               </div>
             </div>
+
+            {/* ── Language order (both mode) ── */}
+            {settings.language === 'both' && (() => {
+              const currentLines = settings.langBothLines?.length ? settings.langBothLines : ['en', 'source']
+              const allKeys = ['source', 'en', 'bg'] as const
+              const inactive = allKeys.filter((k) => !currentLines.includes(k))
+              const meta = {
+                source: { label: 'Ελληνικά', flag: '🇬🇷' },
+                en:     { label: 'Αγγλικά',  flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+                bg:     { label: 'Βουλγαρικά', flag: '🇧🇬' },
+              }
+              return (
+                <div className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-1.5">
+                  <p className="text-xs text-white/50 mb-2">Σειρά γλωσσών στην ετικέτα</p>
+                  {currentLines.map((key, idx) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="w-4 shrink-0 text-center text-[10px] text-white/25">{idx + 1}</span>
+                      <div className="flex-1 rounded-lg border border-brand-orange/40 bg-brand-orange/8 px-2.5 py-1.5 text-xs text-brand-orange">
+                        {meta[key].flag} {meta[key].label}
+                      </div>
+                      <div className="flex flex-col">
+                        <button type="button" disabled={idx === 0}
+                          onClick={() => { const l = [...currentLines]; [l[idx-1], l[idx]] = [l[idx], l[idx-1]]; set('langBothLines', l) }}
+                          className="h-4 w-4 text-[10px] text-white/30 hover:text-white disabled:opacity-15 leading-none">▲</button>
+                        <button type="button" disabled={idx === currentLines.length - 1}
+                          onClick={() => { const l = [...currentLines]; [l[idx], l[idx+1]] = [l[idx+1], l[idx]]; set('langBothLines', l) }}
+                          className="h-4 w-4 text-[10px] text-white/30 hover:text-white disabled:opacity-15 leading-none">▼</button>
+                      </div>
+                      <button type="button" disabled={currentLines.length <= 1}
+                        onClick={() => { const l = currentLines.filter((k) => k !== key); set('langBothLines', l) }}
+                        className="text-white/25 hover:text-red-400 text-xs transition disabled:opacity-15">✕</button>
+                    </div>
+                  ))}
+                  {inactive.map((key) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="w-4 shrink-0" />
+                      <div className="flex-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/25">
+                        {meta[key].flag} {meta[key].label}
+                      </div>
+                      <div className="w-4 shrink-0" />
+                      <button type="button"
+                        onClick={() => set('langBothLines', [...currentLines, key])}
+                        className="text-white/30 hover:text-emerald-400 text-sm font-bold transition">+</button>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             {/* ── Allergen label language ── */}
             <div className="space-y-2">

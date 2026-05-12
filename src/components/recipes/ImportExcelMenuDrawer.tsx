@@ -94,9 +94,9 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
         name: row.name,
         description: row.description,
         name_el: row.name_el ?? null,
-        description_el: null,
+        description_el: row.description_el ?? null,
         name_bg: row.name_bg ?? null,
-        description_bg: null,
+        description_bg: row.description_bg ?? null,
         price: row.price,
         available: true,
         tags: [],
@@ -176,6 +176,10 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [translateDone, setTranslateDone] = useState(false)
   const [translateDoneMsg, setTranslateDoneMsg] = useState('')
 
+  const [translatingDesc, setTranslatingDesc] = useState(false)
+  const [translateDescDone, setTranslateDescDone] = useState(false)
+  const [translateDescDoneMsg, setTranslateDescDoneMsg] = useState('')
+
   // Auto-trigger AI fill when entering preview if any selected row is missing a description
   useEffect(() => {
     if (step !== 'preview' || autoFillTriggeredRef.current) return
@@ -211,6 +215,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setTranslating(false)
     setTranslateDone(false)
     setTranslateDoneMsg('')
+    setTranslatingDesc(false)
+    setTranslateDescDone(false)
+    setTranslateDescDoneMsg('')
     autoFillTriggeredRef.current = false
   }
 
@@ -414,6 +421,44 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       setError(err instanceof Error ? err.message : 'Μετάφραση απέτυχε — έλεγξε τη σύνδεση')
     } finally {
       setTranslating(false)
+    }
+  }
+
+  async function handleTranslateDescriptions() {
+    const indices = Array.from(selected).filter((i) => rows[i].description?.trim() && !rows[i].description_el)
+    if (indices.length === 0) {
+      setTranslateDescDoneMsg('Όλες οι περιγραφές έχουν ήδη μεταφραστεί')
+      setTranslateDescDone(true)
+      setTimeout(() => setTranslateDescDone(false), 2500)
+      return
+    }
+    setTranslatingDesc(true)
+    setTranslateDescDone(false)
+    setError(null)
+    try {
+      const CHUNK = 15
+      const updatedRows = [...rows]
+      for (let c = 0; c < indices.length; c += CHUNK) {
+        const chunk = indices.slice(c, c + CHUNK)
+        const items = chunk.map((i) => ({ name: rows[i].name, description: rows[i].description ?? null }))
+        const translations = await translateMenuItems(items)
+        chunk.forEach((rowIdx, j) => {
+          const t = translations[j]
+          updatedRows[rowIdx] = {
+            ...updatedRows[rowIdx],
+            description_el: updatedRows[rowIdx].description_el ?? t.description_el ?? null,
+            description_bg: updatedRows[rowIdx].description_bg ?? t.description_bg ?? null,
+          }
+        })
+      }
+      setRows(updatedRows)
+      setTranslateDescDoneMsg(`Μεταφράστηκαν ${indices.length} περιγραφές ✓`)
+      setTranslateDescDone(true)
+      setTimeout(() => setTranslateDescDone(false), 4000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Μετάφραση απέτυχε — έλεγξε τη σύνδεση')
+    } finally {
+      setTranslatingDesc(false)
     }
   }
 
@@ -757,7 +802,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
             <button
               type="button"
               onClick={() => void handleTranslateNames()}
-              disabled={translating || aiFillingRows}
+              disabled={translating || translatingDesc || aiFillingRows}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sky-400/40 bg-sky-400/5 px-4 py-2.5 text-sm font-medium text-sky-300 transition hover:border-sky-400 hover:bg-sky-400/10 disabled:opacity-60 disabled:pointer-events-none"
             >
               {translating ? (
@@ -774,6 +819,33 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                 <>
                   <Languages className="h-4 w-4" />
                   Μετάφραση ονομάτων → Αγγλικά + Βουλγαρικά
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Translate descriptions button */}
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleTranslateDescriptions()}
+              disabled={translatingDesc || translating || aiFillingRows}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-400/5 px-4 py-2.5 text-sm font-medium text-violet-300 transition hover:border-violet-400 hover:bg-violet-400/10 disabled:opacity-60 disabled:pointer-events-none"
+            >
+              {translatingDesc ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Μετάφραση περιγραφών…
+                </>
+              ) : translateDescDone ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  {translateDescDoneMsg}
+                </>
+              ) : (
+                <>
+                  <Languages className="h-4 w-4" />
+                  Μετάφραση περιγραφών → Αγγλικά + Βουλγαρικά
                 </>
               )}
             </button>

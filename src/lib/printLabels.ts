@@ -19,6 +19,7 @@ export interface LabelSettings {
   showTags: boolean
   showPrice: boolean
   language: 'en' | 'el' | 'bg' | 'both'
+  langBothLines: Array<'source' | 'en' | 'bg'>
   allergenLang: 'en' | 'el' | 'bg' | 'both'
   allergenIconSet: 'default' | 'custom'
   allergenSize: 'small' | 'medium' | 'large'
@@ -397,11 +398,14 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
 
   const nameHtml = settings.language === 'both'
     ? (() => {
-        const secondaries = [item.name_el, item.name_bg].filter(Boolean)
+        const lines = (settings.langBothLines?.length ? settings.langBothLines : ['en', 'source'])
+          .map((k) => k === 'source' ? item.name : k === 'en' ? item.name_el : item.name_bg)
+          .filter(Boolean) as string[]
+        if (lines.length === 0) lines.push(item.name)
         return `<div class="label-name-both">
   <div class="label-name-lines">
-    <div class="label-name-primary">${item.name}</div>
-    ${secondaries.map((t) => `<div class="label-name-tr">${t}</div>`).join('')}
+    <div class="label-name-primary">${lines[0]}</div>
+    ${lines.slice(1).map((t) => `<div class="label-name-tr">${t}</div>`).join('')}
   </div>
   ${price}
 </div>`
