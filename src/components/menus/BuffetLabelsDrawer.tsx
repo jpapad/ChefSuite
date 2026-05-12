@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   showPrice: true,
   language: 'en',
   allergenLang: 'both',
+  allergenIconSet: 'default',
   showAllergenLegend: false,
   showQr: false,
 })
@@ -497,6 +498,26 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 ))}
               </div>
             </div>
+
+            {/* ── Allergen icon set ── */}
+            {settings.showAllergens && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Εικονίδια αλλεργιογόνων</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['default', 'custom'] as const).map((v) => (
+                    <button key={v} type="button" onClick={() => set('allergenIconSet', v)}
+                      className={cn(
+                        'rounded-xl border px-3 py-2 text-xs font-medium transition text-center',
+                        settings.allergenIconSet === v
+                          ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                          : 'border-glass-border text-white/50 hover:text-white hover:bg-white/5',
+                      )}>
+                      {v === 'default' ? 'Προεπιλεγμένα (SVG)' : 'Προσαρμοσμένα'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ── Toggles ── */}
             <div className="rounded-xl border border-glass-border divide-y divide-glass-border overflow-hidden">

@@ -19,6 +19,7 @@ export interface LabelSettings {
   showPrice: boolean
   language: 'en' | 'el' | 'bg' | 'both'
   allergenLang: 'en' | 'el' | 'bg' | 'both'
+  allergenIconSet: 'default' | 'custom'
   showAllergenLegend: boolean
   showQr: boolean
 }
@@ -81,6 +82,15 @@ const ALLERGEN_BG: Record<string, string> = {
 
 const ALL_ALLERGEN_KEYS = Object.keys(ALLERGEN_EN)
 
+// Custom PNG icon filenames (served from /allergen-icons/)
+const CUSTOM_ALLERGEN_IMG: Partial<Record<string, string>> = {
+  gluten:    'gluten.png',
+  dairy:     'no-milk.png',
+  nuts:      'nuts.png',
+  shellfish: 'crustacean.png',
+  molluscs:  'molluscs.png',
+}
+
 // Inline SVG paths for each allergen (viewBox 0 0 24 24)
 const ALLERGEN_SVG_PATH: Record<string, string> = {
   gluten:    `<rect x="11.3" y="8" width="1.4" height="13" rx="0.7"/><ellipse cx="12" cy="5.5" rx="2.5" ry="3.5"/><ellipse cx="8.5" cy="11" rx="2" ry="3" transform="rotate(-30 8.5 11)"/><ellipse cx="15.5" cy="11" rx="2" ry="3" transform="rotate(30 15.5 11)"/><ellipse cx="9" cy="15.5" rx="1.8" ry="2.5" transform="rotate(-20 9 15.5)"/><ellipse cx="15" cy="15.5" rx="1.8" ry="2.5" transform="rotate(20 15 15.5)"/>`,
@@ -110,20 +120,28 @@ function allergenLabel(key: string, lang: 'en' | 'el' | 'bg' | 'both'): string {
   return `${en} / ${el}`
 }
 
-function allergenSvgEl(key: string, size: string): string {
-  const path = ALLERGEN_SVG_PATH[key.toLowerCase()]
+function allergenIconEl(key: string, size: string, useCustom = false): string {
+  const k = key.toLowerCase()
+  if (useCustom) {
+    const filename = CUSTOM_ALLERGEN_IMG[k]
+    if (filename) {
+      const origin = window.location.origin
+      return `<img src="${origin}/allergen-icons/${filename}" width="${size}" height="${size}" style="display:inline-block;vertical-align:middle;flex-shrink:0;object-fit:contain" alt="" />`
+    }
+  }
+  const path = ALLERGEN_SVG_PATH[k]
   if (!path) return ''
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="${size}" height="${size}" style="display:inline-block;vertical-align:middle;flex-shrink:0">${path}</svg>`
 }
 
-function allergenBadgeHtml(key: string, sm: boolean, lang: 'en' | 'el' | 'bg' | 'both'): string {
+function allergenBadgeHtml(key: string, sm: boolean, lang: 'en' | 'el' | 'bg' | 'both', useCustomIcons = false): string {
   const label    = allergenLabel(key, lang)
   const iconSize = sm ? '10px' : '13px'
   const fontSize = sm ? '5.5pt' : '7pt'
-  return `<span class="allergen">${allergenSvgEl(key, iconSize)}<span style="font-size:${fontSize}">${label}</span></span>`
+  return `<span class="allergen">${allergenIconEl(key, iconSize, useCustomIcons)}<span style="font-size:${fontSize}">${label}</span></span>`
 }
 
-function buildAllergenLegendHtml(lang: 'en' | 'el' | 'bg' | 'both', presentKeys: string[]): string {
+function buildAllergenLegendHtml(lang: 'en' | 'el' | 'bg' | 'both', presentKeys: string[], useCustomIcons = false): string {
   const title =
     lang === 'en' ? 'Allergen Information' :
     lang === 'el' ? 'Αλλεργιογόνα' :
@@ -147,7 +165,7 @@ function buildAllergenLegendHtml(lang: 'en' | 'el' | 'bg' | 'both', presentKeys:
     const isPresent = presentKeys.map((p) => p.toLowerCase()).includes(k)
     const rowBg     = isPresent ? '#fff7ed' : 'white'
     const border    = isPresent ? 'border-left:3px solid #c2410c' : 'border-left:3px solid transparent'
-    const icon      = allergenSvgEl(k, '18px')
+    const icon      = allergenIconEl(k, '18px', useCustomIcons)
     const enCell = lang === 'en' || lang === 'both'
       ? `<td style="padding:2.5mm 4mm;font-size:9pt;color:#222">${ALLERGEN_EN[k]}</td>` : ''
     const elCell = lang === 'el' || lang === 'both'
@@ -292,7 +310,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
 
 function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, d: Dims, qrDataUrl?: string): string {
   const allergenBadges = settings.showAllergens && recipe?.allergens?.length
-    ? recipe.allergens.map((a) => allergenBadgeHtml(a, d.w <= 100, settings.allergenLang)).join('')
+    ? recipe.allergens.map((a) => allergenBadgeHtml(a, d.w <= 100, settings.allergenLang, settings.allergenIconSet === 'custom')).join('')
     : ''
 
   const tags = settings.showTags && item.tags?.length
@@ -389,7 +407,7 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
     // Open legend in a second tab that auto-prints after labels
     const legendWin = window.open('', '_blank', 'width=900,height=700')
     if (legendWin) {
-      legendWin.document.write(buildAllergenLegendHtml(settings.allergenLang, presentKeys))
+      legendWin.document.write(buildAllergenLegendHtml(settings.allergenLang, presentKeys, settings.allergenIconSet === 'custom'))
       legendWin.document.close()
       legendWin.focus()
       setTimeout(() => legendWin.print(), 500)

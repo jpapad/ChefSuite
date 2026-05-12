@@ -54,6 +54,22 @@ async function callGemini(prompt: string): Promise<string> {
   return raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
 }
 
+interface ClaudeResponse {
+  content?: Array<{ type: string; text?: string }>
+  error?: { type: string; message: string }
+}
+
+async function callClaude(prompt: string, maxTokens = 4096): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: { prompt, max_tokens: maxTokens },
+  })
+  if (error) throw new Error(error.message)
+  const resp = data as ClaudeResponse
+  if (resp.error) throw new Error(resp.error.message)
+  const text = resp.content?.find((c) => c.type === 'text')?.text ?? ''
+  return text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
+}
+
 // Known unit aliases → normalised form
 const UNIT_MAP: Record<string, string> = {
   g: 'g', gr: 'g', γρ: 'g', γραμ: 'g', gram: 'g', grams: 'g',
@@ -680,12 +696,10 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
   })
 
   try {
-    const raw = await callGemini(prompt)
+    const raw = await callClaude(prompt)
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) throw new Error('Expected array')
-    // Pad or trim to match input length
-    const results = titles.map((_, i) => parsed[i] !== undefined ? parseSuggestion(parsed[i]) : empty())
-    return results
+    return titles.map((_, i) => parsed[i] !== undefined ? parseSuggestion(parsed[i]) : empty())
   } catch {
     throw new Error('AI batch suggestion failed.')
   }
