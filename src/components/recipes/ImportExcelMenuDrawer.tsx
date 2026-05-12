@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import {
   FileSpreadsheet, Loader2, ArrowLeft, Check, AlertCircle,
-  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles, Languages,
+  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles, Languages, Pencil,
 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
+import { Input } from '../ui/Input'
+import { Textarea } from '../ui/Textarea'
 import { cn } from '../../lib/cn'
 import {
   parseExcelFile, suggestColumnMapping, applyMapping,
@@ -189,6 +191,13 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     total: number; withNameEl: number; withDescEl: number; withNameBg: number; withAllergens: number
   } | null>(null)
 
+  // Single-row edit
+  const [editingRowIdx, setEditingRowIdx] = useState<number | null>(null)
+  const [editValues, setEditValues] = useState<ExcelMenuRow | null>(null)
+  const [detailLang, setDetailLang] = useState<'gr' | 'en' | 'bg'>('gr')
+  const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set())
+  const [savingRow, setSavingRow] = useState(false)
+
 
   function reset() {
     setStep('upload')
@@ -220,6 +229,11 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setTranslateDescDoneMsg('')
     setImportProgress(null)
     setImportResult(null)
+    setEditingRowIdx(null)
+    setEditValues(null)
+    setDetailLang('gr')
+    setSavedIndices(new Set())
+    setSavingRow(false)
   }
 
   function handleClose() {
@@ -523,6 +537,52 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     }
   }
 
+  function openRowForEdit(i: number) {
+    setEditValues({ ...rows[i] })
+    setEditingRowIdx(i)
+    setDetailLang('gr')
+    setError(null)
+  }
+
+  async function handleSaveSingleRow() {
+    if (editingRowIdx === null || !editValues) return
+    setSavingRow(true)
+    setError(null)
+    try {
+      const imported: ImportedRecipe = {
+        title: editValues.name,
+        description: editValues.description ?? null,
+        instructions: editValues.instructions ?? (editValues.ingredients ? `Ingredients:\n${editValues.ingredients}` : null),
+        allergens: editValues.allergens,
+        cost_per_portion: null,
+        ingredients: [],
+        extractedIngredients: [],
+        category: editValues.category,
+        difficulty: editValues.difficulty,
+        prep_time: editValues.prep_time,
+        cook_time: editValues.cook_time,
+        servings: editValues.servings,
+        name_el: editValues.name_el,
+        description_el: editValues.description_el,
+        name_bg: editValues.name_bg,
+        description_bg: editValues.description_bg,
+      }
+      // Update the row in the list so the preview reflects edits
+      const updatedRows = [...rows]
+      updatedRows[editingRowIdx] = { ...editValues }
+      setRows(updatedRows)
+
+      await onBatchImport([imported], () => {})
+      setSavedIndices((prev) => new Set([...prev, editingRowIdx]))
+      setEditingRowIdx(null)
+      setEditValues(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Αποτυχία αποθήκευσης συνταγής')
+    } finally {
+      setSavingRow(false)
+    }
+  }
+
   function handleOpenBuffetLabels() {
     const selectedRows = rows.filter((_, i) => selected.has(i))
     const { menu, recipes } = buildSyntheticMenu(selectedRows)
@@ -806,7 +866,127 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       )}
 
       {/* ── Step 3: Preview + Action ── */}
-      {step === 'preview' && (
+      {step === 'preview' && editingRowIdx !== null && editValues !== null && (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => { setEditingRowIdx(null); setEditValues(null); setError(null) }}
+            className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Πίσω στη λίστα
+          </button>
+
+          <div className="rounded-xl border border-white/10 bg-white/3 px-4 py-3">
+            <p className="text-xs text-white/40 mb-1">Επεξεργασία γραμμής</p>
+            <p className="font-semibold text-white">{editValues.name}</p>
+          </div>
+
+          {/* Language tabs */}
+          <div className="flex rounded-lg border border-white/10 overflow-hidden w-fit">
+            {(['gr', 'en', 'bg'] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setDetailLang(lang)}
+                className={cn(
+                  'px-4 py-1.5 text-xs font-medium transition',
+                  detailLang === lang ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70',
+                )}
+              >
+                {lang === 'gr' ? '🇬🇷 EΛ' : lang === 'en' ? '🇬🇧 EN' : '🇧🇬 BG'}
+              </button>
+            ))}
+          </div>
+
+          {detailLang === 'gr' && (
+            <div className="space-y-3">
+              <Input
+                name="name_gr"
+                label="Όνομα (Ελληνικά)"
+                value={editValues.name}
+                onChange={(e) => setEditValues((v) => v ? { ...v, name: e.target.value } : v)}
+              />
+              <Textarea
+                name="description_gr"
+                label="Περιγραφή (Ελληνικά)"
+                rows={3}
+                value={editValues.description ?? ''}
+                onChange={(e) => setEditValues((v) => v ? { ...v, description: e.target.value || null } : v)}
+              />
+            </div>
+          )}
+          {detailLang === 'en' && (
+            <div className="space-y-3">
+              <Input
+                name="name_en"
+                label="Όνομα (Αγγλικά)"
+                placeholder="English name…"
+                value={editValues.name_el ?? ''}
+                onChange={(e) => setEditValues((v) => v ? { ...v, name_el: e.target.value || null } : v)}
+              />
+              <Textarea
+                name="description_en"
+                label="Περιγραφή (Αγγλικά)"
+                rows={3}
+                placeholder="English description…"
+                value={editValues.description_el ?? ''}
+                onChange={(e) => setEditValues((v) => v ? { ...v, description_el: e.target.value || null } : v)}
+              />
+            </div>
+          )}
+          {detailLang === 'bg' && (
+            <div className="space-y-3">
+              <Input
+                name="name_bg"
+                label="Όνομα (Βουλγαρικά)"
+                placeholder="Βουλγαρικό όνομα…"
+                value={editValues.name_bg ?? ''}
+                onChange={(e) => setEditValues((v) => v ? { ...v, name_bg: e.target.value || null } : v)}
+              />
+              <Textarea
+                name="description_bg"
+                label="Περιγραφή (Βουλγαρικά)"
+                rows={3}
+                placeholder="Βουλγαρική περιγραφή…"
+                value={editValues.description_bg ?? ''}
+                onChange={(e) => setEditValues((v) => v ? { ...v, description_bg: e.target.value || null } : v)}
+              />
+            </div>
+          )}
+
+          {editValues.allergens.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <span className="text-xs text-white/40 self-center">Αλλεργιογόνα:</span>
+              {editValues.allergens.map((a) => (
+                <span key={a} className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-300">{a}</span>
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            className="w-full"
+            disabled={savingRow || !editValues.name.trim()}
+            onClick={() => void handleSaveSingleRow()}
+          >
+            {savingRow ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Αποθήκευση…</>
+            ) : (
+              <><Check className="h-4 w-4 mr-2" />Αποθήκευση ως Συνταγή</>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {step === 'preview' && editingRowIdx === null && (
         <div className="space-y-5">
 
           {/* Duplicate summary banner */}
@@ -927,36 +1107,51 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
           </div>
 
           {/* Row list */}
-          <ul className="glass rounded-xl divide-y divide-glass-border max-h-80 overflow-y-auto">
+          <ul className="glass rounded-xl divide-y divide-glass-border max-h-96 overflow-y-auto">
             {rows.map((row, i) => {
               const dupReason = duplicates.get(i)
+              const isSaved = savedIndices.has(i)
               return (
                 <li
                   key={i}
-                  onClick={() => toggleRow(i)}
                   className={cn(
-                    'flex items-start gap-3 px-4 py-3 cursor-pointer transition',
-                    selected.has(i) ? 'bg-emerald-500/5' : 'opacity-40',
+                    'flex items-start gap-3 px-4 py-3 transition',
+                    isSaved ? 'opacity-50' : selected.has(i) ? 'bg-emerald-500/5' : 'opacity-40',
                   )}
                 >
-                  <div className={cn(
-                    'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition',
-                    selected.has(i) ? 'border-emerald-400 bg-emerald-400' : 'border-white/30',
-                  )}>
-                    {selected.has(i) && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-                  </div>
+                  {/* Checkbox — toggles selection */}
+                  <button
+                    type="button"
+                    onClick={() => !isSaved && toggleRow(i)}
+                    className="mt-0.5 shrink-0"
+                    disabled={isSaved}
+                  >
+                    <div className={cn(
+                      'h-4 w-4 rounded border-2 transition flex items-center justify-center',
+                      isSaved ? 'border-emerald-400/40 bg-emerald-400/20'
+                        : selected.has(i) ? 'border-emerald-400 bg-emerald-400' : 'border-white/30',
+                    )}>
+                      {(selected.has(i) || isSaved) && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                    </div>
+                  </button>
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm text-white truncate">{row.name}</span>
                       {row.price != null && (
                         <span className="text-xs text-white/50 shrink-0">€{row.price.toFixed(2)}</span>
                       )}
-                      {dupReason === 'existing' && (
+                      {isSaved && (
+                        <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] text-emerald-300 shrink-0">
+                          ✓ Αποθηκεύτηκε
+                        </span>
+                      )}
+                      {!isSaved && dupReason === 'existing' && (
                         <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[10px] text-amber-300 shrink-0">
                           Υπάρχει ήδη
                         </span>
                       )}
-                      {dupReason === 'infile' && (
+                      {!isSaved && dupReason === 'infile' && (
                         <span className="rounded-full bg-orange-500/20 border border-orange-500/40 px-2 py-0.5 text-[10px] text-orange-300 shrink-0">
                           Διπλότυπο στο αρχείο
                         </span>
@@ -1004,6 +1199,18 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                       </div>
                     )}
                   </div>
+
+                  {/* Edit button */}
+                  {!isSaved && (
+                    <button
+                      type="button"
+                      onClick={() => openRowForEdit(i)}
+                      title="Επεξεργασία & αποθήκευση"
+                      className="mt-0.5 shrink-0 rounded-lg border border-white/10 p-1.5 text-white/30 hover:border-white/30 hover:text-white/80 transition"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </li>
               )
             })}
