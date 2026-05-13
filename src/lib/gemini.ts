@@ -460,21 +460,33 @@ export interface TranslatedItemExtra {
   name_sk: string | null
   name_pl: string | null
   name_cs: string | null
+  desc_sl: string | null
+  desc_sr: string | null
+  desc_sk: string | null
+  desc_pl: string | null
+  desc_cs: string | null
 }
 
-const FALLBACK_EXTRA: TranslatedItemExtra = { name_sl: null, name_sr: null, name_sk: null, name_pl: null, name_cs: null }
+const FALLBACK_EXTRA: TranslatedItemExtra = {
+  name_sl: null, name_sr: null, name_sk: null, name_pl: null, name_cs: null,
+  desc_sl: null, desc_sr: null, desc_sk: null, desc_pl: null, desc_cs: null,
+}
 
 export async function translateMenuItemsExtra(
-  items: Array<{ name: string; name_el?: string | null }>,
+  items: Array<{ name: string; name_el?: string | null; description?: string | null }>,
 ): Promise<TranslatedItemExtra[]> {
   if (items.length === 0) return []
   const itemsBlock = items
-    .map((it, i) => `${i + 1}. "${it.name_el ?? it.name}"`)
+    .map((it, i) => {
+      const nameSource = it.name_el ?? it.name
+      const desc = it.description
+      return `${i + 1}. name: "${nameSource}"${desc ? ` | description: "${desc.slice(0, 120)}"` : ''}`
+    })
     .join('\n')
 
   const prompt = `You are a professional menu translator for a restaurant app.
 
-Translate each dish name below into Slovenian, Serbian, Slovak, Polish, and Czech.
+Translate each dish name and description into Slovenian, Serbian, Slovak, Polish, and Czech.
 Keep culinary terms authentic and natural — not word-for-word literal translations.
 The source may be in English or Greek.
 
@@ -484,17 +496,23 @@ ${itemsBlock}
 Return ONLY a valid JSON array with one object per item (same order):
 [
   {
-    "name_sl": "Slovenian translation",
-    "name_sr": "Serbian translation (in Cyrillic)",
-    "name_sk": "Slovak translation",
-    "name_pl": "Polish translation",
-    "name_cs": "Czech translation"
+    "name_sl": "Slovenian name",
+    "name_sr": "Serbian name (Cyrillic)",
+    "name_sk": "Slovak name",
+    "name_pl": "Polish name",
+    "name_cs": "Czech name",
+    "desc_sl": "Slovenian description or null if no description",
+    "desc_sr": "Serbian description (Cyrillic) or null",
+    "desc_sk": "Slovak description or null",
+    "desc_pl": "Polish description or null",
+    "desc_cs": "Czech description or null"
   }
 ]
 
 Rules:
-- Dish names must sound natural on a restaurant menu in each target language
+- Dish names and descriptions must sound natural on a restaurant menu
 - Use Cyrillic script for Serbian
+- If no description was provided, set all desc_* fields to null
 - Do NOT include markdown or any text outside the JSON array`
 
   const raw = await callClaude(prompt)
@@ -510,6 +528,11 @@ Rules:
       name_sk: typeof o.name_sk === 'string' ? o.name_sk : null,
       name_pl: typeof o.name_pl === 'string' ? o.name_pl : null,
       name_cs: typeof o.name_cs === 'string' ? o.name_cs : null,
+      desc_sl: typeof o.desc_sl === 'string' ? o.desc_sl : null,
+      desc_sr: typeof o.desc_sr === 'string' ? o.desc_sr : null,
+      desc_sk: typeof o.desc_sk === 'string' ? o.desc_sk : null,
+      desc_pl: typeof o.desc_pl === 'string' ? o.desc_pl : null,
+      desc_cs: typeof o.desc_cs === 'string' ? o.desc_cs : null,
     }
   })
 }
