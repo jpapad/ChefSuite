@@ -4,30 +4,36 @@ import { useSearchParams } from 'react-router-dom'
 interface DishPayload {
   n: string     // primary name (Greek fallback)
   nb?: string   // Bulgarian
-  ns?: string   // Slovenian
+  nuk?: string  // Ukrainian
+  nro?: string  // Romanian
+  nmd?: string  // Moldovan
   nsr?: string  // Serbian
   nsk?: string  // Slovak
   npl?: string  // Polish
   ncs?: string  // Czech
   de?: string   // English description (fallback)
   db?: string   // Bulgarian description
-  ds?: string   // Slovenian description
+  duk?: string  // Ukrainian description
+  dro?: string  // Romanian description
+  dmd?: string  // Moldovan description
   dsr?: string  // Serbian description
   dsk?: string  // Slovak description
   dpl?: string  // Polish description
   dcs?: string  // Czech description
 }
 
-type Lang = 'el' | 'bg' | 'sl' | 'sr' | 'sk' | 'pl' | 'cs'
+type Lang = 'el' | 'bg' | 'uk' | 'ro' | 'md' | 'sr' | 'sk' | 'pl' | 'cs'
 
 const LANG_META: Record<Lang, { flag: string; label: string; native: string }> = {
-  el:  { flag: '🇬🇷', label: 'Greek',      native: 'Ελληνικά'   },
-  bg:  { flag: '🇧🇬', label: 'Bulgarian',  native: 'Български'  },
-  sl:  { flag: '🇸🇮', label: 'Slovenian',  native: 'Slovenščina'},
-  sr:  { flag: '🇷🇸', label: 'Serbian',    native: 'Српски'     },
-  sk:  { flag: '🇸🇰', label: 'Slovak',     native: 'Slovenčina' },
-  pl:  { flag: '🇵🇱', label: 'Polish',     native: 'Polski'     },
-  cs:  { flag: '🇨🇿', label: 'Czech',      native: 'Čeština'    },
+  el:  { flag: '🇬🇷', label: 'Greek',      native: 'Ελληνικά'      },
+  bg:  { flag: '🇧🇬', label: 'Bulgarian',  native: 'Български'     },
+  uk:  { flag: '🇺🇦', label: 'Ukrainian',  native: 'Українська'    },
+  ro:  { flag: '🇷🇴', label: 'Romanian',   native: 'Română'        },
+  md:  { flag: '🇲🇩', label: 'Moldovan',   native: 'Moldovenească' },
+  sr:  { flag: '🇷🇸', label: 'Serbian',    native: 'Српски'        },
+  sk:  { flag: '🇸🇰', label: 'Slovak',     native: 'Slovenčina'    },
+  pl:  { flag: '🇵🇱', label: 'Polish',     native: 'Polski'        },
+  cs:  { flag: '🇨🇿', label: 'Czech',      native: 'Čeština'       },
 }
 
 function decode(raw: string): DishPayload | null {
@@ -49,7 +55,9 @@ export default function DishInfo() {
     if (!payload) return []
     const langs: Lang[] = []
     if (payload.nb)  langs.push('bg')
-    if (payload.ns)  langs.push('sl')
+    if (payload.nuk) langs.push('uk')
+    if (payload.nro) langs.push('ro')
+    if (payload.nmd) langs.push('md')
     if (payload.nsr) langs.push('sr')
     if (payload.nsk) langs.push('sk')
     if (payload.npl) langs.push('pl')
@@ -61,7 +69,9 @@ export default function DishInfo() {
   const defaultLang = useMemo<Lang>(() => {
     if (!payload) return 'el'
     if (payload.nb)  return 'bg'
-    if (payload.ns)  return 'sl'
+    if (payload.nuk) return 'uk'
+    if (payload.nro) return 'ro'
+    if (payload.nmd) return 'md'
     if (payload.nsr) return 'sr'
     if (payload.nsk) return 'sk'
     if (payload.npl) return 'pl'
@@ -88,7 +98,9 @@ export default function DishInfo() {
 
   const name =
     lang === 'bg' ? (payload.nb  ?? payload.n) :
-    lang === 'sl' ? (payload.ns  ?? payload.n) :
+    lang === 'uk' ? (payload.nuk ?? payload.n) :
+    lang === 'ro' ? (payload.nro ?? payload.n) :
+    lang === 'md' ? (payload.nmd ?? payload.n) :
     lang === 'sr' ? (payload.nsr ?? payload.n) :
     lang === 'sk' ? (payload.nsk ?? payload.n) :
     lang === 'pl' ? (payload.npl ?? payload.n) :
@@ -97,7 +109,9 @@ export default function DishInfo() {
 
   const desc =
     lang === 'bg' ? (payload.db  ?? payload.de ?? null) :
-    lang === 'sl' ? (payload.ds  ?? payload.de ?? null) :
+    lang === 'uk' ? (payload.duk ?? payload.de ?? null) :
+    lang === 'ro' ? (payload.dro ?? payload.de ?? null) :
+    lang === 'md' ? (payload.dmd ?? payload.de ?? null) :
     lang === 'sr' ? (payload.dsr ?? payload.de ?? null) :
     lang === 'sk' ? (payload.dsk ?? payload.de ?? null) :
     lang === 'pl' ? (payload.dpl ?? payload.de ?? null) :

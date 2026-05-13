@@ -97,14 +97,18 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   useEffect(() => {
     const map = new Map<string, TranslatedItemExtra>()
     for (const { item } of allItems) {
-      if (item.name_sl || item.name_sr || item.name_sk || item.name_pl || item.name_cs) {
+      if (item.name_uk || item.name_ro || item.name_md || item.name_sr || item.name_sk || item.name_pl || item.name_cs) {
         map.set(item.id, {
-          name_sl: item.name_sl ?? null,
+          name_uk: item.name_uk ?? null,
+          name_ro: item.name_ro ?? null,
+          name_md: item.name_md ?? null,
           name_sr: item.name_sr ?? null,
           name_sk: item.name_sk ?? null,
           name_pl: item.name_pl ?? null,
           name_cs: item.name_cs ?? null,
-          desc_sl: null,
+          desc_uk: null,
+          desc_ro: null,
+          desc_md: null,
           desc_sr: null,
           desc_sk: null,
           desc_pl: null,
@@ -136,13 +140,17 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         // n = Greek name as fallback; worker language names below
         const payload: Record<string, string> = { n: item.name.slice(0, 60) }
         const nameBg  = item.name_bg  ?? recipe?.name_bg
-        const ns  = extra?.name_sl ?? item.name_sl
+        const nuk = extra?.name_uk ?? item.name_uk
+        const nro = extra?.name_ro ?? item.name_ro
+        const nmd = extra?.name_md ?? item.name_md
         const nsr = extra?.name_sr ?? item.name_sr
         const nsk = extra?.name_sk ?? item.name_sk
         const npl = extra?.name_pl ?? item.name_pl
         const ncs = extra?.name_cs ?? item.name_cs
         if (nameBg) payload.nb  = nameBg.slice(0, 60)
-        if (ns)     payload.ns  = ns.slice(0, 60)
+        if (nuk)    payload.nuk = nuk.slice(0, 60)
+        if (nro)    payload.nro = nro.slice(0, 60)
+        if (nmd)    payload.nmd = nmd.slice(0, 60)
         if (nsr)    payload.nsr = nsr.slice(0, 60)
         if (nsk)    payload.nsk = nsk.slice(0, 60)
         if (npl)    payload.npl = npl.slice(0, 60)
@@ -150,11 +158,13 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         // English description kept as fallback for all worker language descriptions
         const de = trunc(item.description_el ?? recipe?.description_el); if (de) payload.de = de
         const db = trunc(item.description_bg ?? recipe?.description_bg); if (db) payload.db = db
-        const ds  = extra?.desc_sl  ? extra.desc_sl.slice(0, 100)  : undefined; if (ds)  payload.ds  = ds
-        const dsr = extra?.desc_sr  ? extra.desc_sr.slice(0, 100)  : undefined; if (dsr) payload.dsr = dsr
-        const dsk = extra?.desc_sk  ? extra.desc_sk.slice(0, 100)  : undefined; if (dsk) payload.dsk = dsk
-        const dpl = extra?.desc_pl  ? extra.desc_pl.slice(0, 100)  : undefined; if (dpl) payload.dpl = dpl
-        const dcs = extra?.desc_cs  ? extra.desc_cs.slice(0, 100)  : undefined; if (dcs) payload.dcs = dcs
+        const duk = extra?.desc_uk ? extra.desc_uk.slice(0, 100) : undefined; if (duk) payload.duk = duk
+        const dro = extra?.desc_ro ? extra.desc_ro.slice(0, 100) : undefined; if (dro) payload.dro = dro
+        const dmd = extra?.desc_md ? extra.desc_md.slice(0, 100) : undefined; if (dmd) payload.dmd = dmd
+        const dsr = extra?.desc_sr ? extra.desc_sr.slice(0, 100) : undefined; if (dsr) payload.dsr = dsr
+        const dsk = extra?.desc_sk ? extra.desc_sk.slice(0, 100) : undefined; if (dsk) payload.dsk = dsk
+        const dpl = extra?.desc_pl ? extra.desc_pl.slice(0, 100) : undefined; if (dpl) payload.dpl = dpl
+        const dcs = extra?.desc_cs ? extra.desc_cs.slice(0, 100) : undefined; if (dcs) payload.dcs = dcs
         const url = `${origin}/dish?d=${encodeURIComponent(btoa(encodeURIComponent(JSON.stringify(payload))))}`
         const dataUrl = await QRCode.toDataURL(url, {
           width: 400,
@@ -242,7 +252,9 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
       await Promise.all(
         allItems.map(({ item }, i) =>
           supabase.from('menu_items').update({
-            name_sl: results[i].name_sl,
+            name_uk: results[i].name_uk,
+            name_ro: results[i].name_ro,
+            name_md: results[i].name_md,
             name_sr: results[i].name_sr,
             name_sk: results[i].name_sk,
             name_pl: results[i].name_pl,
@@ -734,7 +746,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 <QrCode className="h-3.5 w-3.5" />
                 <span>
                   {qrMap.size} QR codes ready — 🇧🇬
-                  {extraTranslateDone && ' 🇸🇮 🇷🇸 🇸🇰 🇵🇱 🇨🇿'}
+                  {extraTranslateDone && ' 🇺🇦 🇷🇴 🇲🇩 🇷🇸 🇸🇰 🇵🇱 🇨🇿'}
                 </span>
               </div>
             )}
@@ -746,7 +758,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                   🌍 Μεταφράσεις QR σε επιπλέον γλώσσες
                 </p>
                 <p className="text-[11px] text-white/30 leading-relaxed">
-                  🇸🇮 Σλοβενικά · 🇷🇸 Σερβικά · 🇸🇰 Σλοβακικά · 🇵🇱 Πολωνικά · 🇨🇿 Τσεχικά
+                  🇺🇦 Ουκρανικά · 🇷🇴 Ρουμανικά · 🇲🇩 Μολδαβικά · 🇷🇸 Σερβικά · 🇸🇰 Σλοβακικά · 🇵🇱 Πολωνικά · 🇨🇿 Τσεχικά
                 </p>
                 {extraTranslateError && (
                   <p className="text-xs text-red-400">{extraTranslateError}</p>

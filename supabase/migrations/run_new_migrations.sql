@@ -370,3 +370,7 @@ alter table public.menu_items
   add column if not exists name_sk text,
   add column if not exists name_pl text,
   add column if not exists name_cs text;
+
+-- ── 0057: Menu item Moldovan name ────────────────────────────────────────────
+alter table public.menu_items
+  add column if not exists name_md text;
