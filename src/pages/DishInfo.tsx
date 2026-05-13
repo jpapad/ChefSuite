@@ -51,7 +51,10 @@ export default function DishInfo() {
 
   if (!payload) {
     return (
-      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center p-6">
+      <div
+        style={{ '--app-white': '255 255 255' } as React.CSSProperties}
+        className="min-h-screen bg-[#0f1117] flex items-center justify-center p-6"
+      >
         <div className="text-center space-y-3">
           <p className="text-4xl">🍽️</p>
           <p className="text-white text-base font-medium">Μη έγκυρο QR code</p>
@@ -74,7 +77,10 @@ export default function DishInfo() {
   const currentLang = available.includes(lang) ? lang : 'el'
 
   return (
-    <div className="min-h-screen bg-[#0f1117] flex flex-col items-center px-4 py-10">
+    <div
+      style={{ '--app-white': '255 255 255' } as React.CSSProperties}
+      className="min-h-screen bg-[#0f1117] flex flex-col items-center px-4 py-10"
+    >
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="inline-flex items-center gap-2 text-white/30 text-xs tracking-widest uppercase">
