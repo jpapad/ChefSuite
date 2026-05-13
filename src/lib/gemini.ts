@@ -472,10 +472,9 @@ const FALLBACK_EXTRA: TranslatedItemExtra = {
   desc_sl: null, desc_sr: null, desc_sk: null, desc_pl: null, desc_cs: null,
 }
 
-export async function translateMenuItemsExtra(
+async function translateExtraBatch(
   items: Array<{ name: string; name_el?: string | null; description?: string | null }>,
 ): Promise<TranslatedItemExtra[]> {
-  if (items.length === 0) return []
   const itemsBlock = items
     .map((it, i) => {
       const nameSource = it.name_el ?? it.name
@@ -515,7 +514,7 @@ Rules:
 - If no description was provided, set all desc_* fields to null
 - Do NOT include markdown or any text outside the JSON array`
 
-  const raw = await callClaude(prompt)
+  const raw = await callClaude(prompt, 16000)
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch { return items.map(() => FALLBACK_EXTRA) }
   if (!Array.isArray(parsed)) return items.map(() => FALLBACK_EXTRA)
@@ -535,6 +534,19 @@ Rules:
       desc_cs: typeof o.desc_cs === 'string' ? o.desc_cs : null,
     }
   })
+}
+
+export async function translateMenuItemsExtra(
+  items: Array<{ name: string; name_el?: string | null; description?: string | null }>,
+): Promise<TranslatedItemExtra[]> {
+  if (items.length === 0) return []
+  const BATCH = 8
+  const results: TranslatedItemExtra[] = []
+  for (let i = 0; i < items.length; i += BATCH) {
+    const batchResults = await translateExtraBatch(items.slice(i, i + BATCH))
+    results.push(...batchResults)
+  }
+  return results
 }
 
 export async function generateDescriptions(names: string[]): Promise<(string | null)[]> {
