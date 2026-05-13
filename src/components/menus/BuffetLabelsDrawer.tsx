@@ -223,11 +223,14 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     setExtraTranslateError(null)
     try {
       const results = await translateMenuItemsExtra(
-        allItems.map(({ item }) => ({
-          name: item.name,
-          name_el: item.name_el,
-          description: item.description_el ?? item.description ?? null,
-        }))
+        allItems.map(({ item }) => {
+          const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
+          return {
+            name: item.name,
+            name_el: item.name_el ?? recipe?.name_el ?? null,
+            description: item.description_el ?? recipe?.description_el ?? item.description ?? null,
+          }
+        })
       )
       const newMap = new Map<string, TranslatedItemExtra>()
       for (let i = 0; i < allItems.length; i++) {
@@ -252,7 +255,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     } finally {
       setTranslatingExtra(false)
     }
-  }, [allItems])
+  }, [allItems, recipeMap])
 
   // ── Logo constraints based on current dims ─────────────────────────────────
 
