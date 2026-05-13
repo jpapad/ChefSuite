@@ -163,9 +163,9 @@ function allergenIconEl(key: string, size: string, useCustom = false): string {
 }
 
 const ALLERGEN_SIZE_MAP = {
-  small:  { icon: '9px',  font: '5pt'   },
-  medium: { icon: '13px', font: '7pt'   },
-  large:  { icon: '18px', font: '9pt'   },
+  small:  { icon: '13px', font: '7pt'  },
+  medium: { icon: '18px', font: '9pt'  },
+  large:  { icon: '24px', font: '12pt' },
 }
 
 function allergenBadgeHtml(
@@ -295,7 +295,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
     body { font-family: ${settings.fontFamily || 'Georgia, serif'}; background: white }
     .label {
       position: relative;
-      border: 1px solid #333; border-radius: 3mm;
+      border: 1px solid #333; border-radius: 0;
       padding: ${sm ? '3mm' : '6mm'};
       display: flex; flex-direction: column;
       gap: ${sm ? '2mm' : '4mm'};
@@ -306,8 +306,8 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       position: absolute;
       bottom: ${sm ? '2mm' : '3mm'};
       right: ${sm ? '2mm' : '3mm'};
-      width: ${sm ? '18mm' : '28mm'};
-      height: ${sm ? '18mm' : '28mm'};
+      width: ${sm ? '25mm' : '38mm'};
+      height: ${sm ? '25mm' : '38mm'};
       image-rendering: crisp-edges;
       opacity: 0.9;
     }
@@ -468,7 +468,8 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
   <style>
     ${labelCss(settings, d)}
     @page { size: A4; margin: 10mm }
-    .grid { display: flex; flex-wrap: wrap; gap: ${d.gapMm}mm }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm }
+    .label { width: 100% !important; height: auto !important; min-height: ${d.h}mm; }
   </style>
 </head>
 <body>

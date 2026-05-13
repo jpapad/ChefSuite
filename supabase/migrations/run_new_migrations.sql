@@ -364,3 +364,9 @@ alter table public.menu_items
   add column if not exists name_uk text,
   add column if not exists name_tr text,
   add column if not exists name_sr text;
+
+-- ── 0056: Menu item Slovak, Polish, Czech names ───────────────────────────────
+alter table public.menu_items
+  add column if not exists name_sk text,
+  add column if not exists name_pl text,
+  add column if not exists name_cs text;

@@ -455,14 +455,14 @@ Rules:
 // ── Extra-language Translation (RO, SL, UK, TR, SR) ──────────────────────────
 
 export interface TranslatedItemExtra {
-  name_ro: string | null
   name_sl: string | null
-  name_uk: string | null
-  name_tr: string | null
   name_sr: string | null
+  name_sk: string | null
+  name_pl: string | null
+  name_cs: string | null
 }
 
-const FALLBACK_EXTRA: TranslatedItemExtra = { name_ro: null, name_sl: null, name_uk: null, name_tr: null, name_sr: null }
+const FALLBACK_EXTRA: TranslatedItemExtra = { name_sl: null, name_sr: null, name_sk: null, name_pl: null, name_cs: null }
 
 export async function translateMenuItemsExtra(
   items: Array<{ name: string; name_el?: string | null }>,
@@ -474,7 +474,7 @@ export async function translateMenuItemsExtra(
 
   const prompt = `You are a professional menu translator for a restaurant app.
 
-Translate each dish name below into Romanian, Slovenian, Ukrainian, Turkish, and Serbian.
+Translate each dish name below into Slovenian, Serbian, Slovak, Polish, and Czech.
 Keep culinary terms authentic and natural — not word-for-word literal translations.
 The source may be in English or Greek.
 
@@ -484,17 +484,17 @@ ${itemsBlock}
 Return ONLY a valid JSON array with one object per item (same order):
 [
   {
-    "name_ro": "Romanian translation",
     "name_sl": "Slovenian translation",
-    "name_uk": "Ukrainian translation (in Cyrillic)",
-    "name_tr": "Turkish translation",
-    "name_sr": "Serbian translation (in Cyrillic)"
+    "name_sr": "Serbian translation (in Cyrillic)",
+    "name_sk": "Slovak translation",
+    "name_pl": "Polish translation",
+    "name_cs": "Czech translation"
   }
 ]
 
 Rules:
 - Dish names must sound natural on a restaurant menu in each target language
-- Use Cyrillic script for Ukrainian and Serbian
+- Use Cyrillic script for Serbian
 - Do NOT include markdown or any text outside the JSON array`
 
   const raw = await callClaude(prompt)
@@ -505,11 +505,11 @@ Rules:
   return (parsed as unknown[]).map((item) => {
     const o = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}
     return {
-      name_ro: typeof o.name_ro === 'string' ? o.name_ro : null,
       name_sl: typeof o.name_sl === 'string' ? o.name_sl : null,
-      name_uk: typeof o.name_uk === 'string' ? o.name_uk : null,
-      name_tr: typeof o.name_tr === 'string' ? o.name_tr : null,
       name_sr: typeof o.name_sr === 'string' ? o.name_sr : null,
+      name_sk: typeof o.name_sk === 'string' ? o.name_sk : null,
+      name_pl: typeof o.name_pl === 'string' ? o.name_pl : null,
+      name_cs: typeof o.name_cs === 'string' ? o.name_cs : null,
     }
   })
 }

@@ -2,31 +2,27 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 interface DishPayload {
-  n: string    // primary (Greek)
-  ne?: string  // English
-  nb?: string  // Bulgarian
-  nr?: string  // Romanian (also Moldovan)
-  ns?: string  // Slovenian
-  nu?: string  // Ukrainian
-  nt?: string  // Turkish
-  nsr?: string // Serbian
-  d?: string   // description primary
-  de?: string  // description EN
-  db?: string  // description BG
+  n: string     // primary name (Greek fallback)
+  nb?: string   // Bulgarian
+  ns?: string   // Slovenian
+  nsr?: string  // Serbian
+  nsk?: string  // Slovak
+  npl?: string  // Polish
+  ncs?: string  // Czech
+  de?: string   // English description (fallback for all langs)
+  db?: string   // Bulgarian description
 }
 
-type Lang = 'el' | 'en' | 'bg' | 'ro' | 'sl' | 'uk' | 'md' | 'tr' | 'sr'
+type Lang = 'el' | 'bg' | 'sl' | 'sr' | 'sk' | 'pl' | 'cs'
 
 const LANG_META: Record<Lang, { flag: string; label: string; native: string }> = {
   el:  { flag: '🇬🇷', label: 'Greek',      native: 'Ελληνικά'   },
-  en:  { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', label: 'English',    native: 'English'    },
   bg:  { flag: '🇧🇬', label: 'Bulgarian',  native: 'Български'  },
-  ro:  { flag: '🇷🇴', label: 'Romanian',   native: 'Română'     },
   sl:  { flag: '🇸🇮', label: 'Slovenian',  native: 'Slovenščina'},
-  uk:  { flag: '🇺🇦', label: 'Ukrainian',  native: 'Українська' },
-  md:  { flag: '🇲🇩', label: 'Moldovan',   native: 'Română'     },
-  tr:  { flag: '🇹🇷', label: 'Turkish',    native: 'Türkçe'     },
   sr:  { flag: '🇷🇸', label: 'Serbian',    native: 'Српски'     },
+  sk:  { flag: '🇸🇰', label: 'Slovak',     native: 'Slovenčina' },
+  pl:  { flag: '🇵🇱', label: 'Polish',     native: 'Polski'     },
+  cs:  { flag: '🇨🇿', label: 'Czech',      native: 'Čeština'    },
 }
 
 function decode(raw: string): DishPayload | null {
@@ -46,21 +42,26 @@ export default function DishInfo() {
 
   const available = useMemo<Lang[]>(() => {
     if (!payload) return []
-    const langs: Lang[] = ['el']
-    if (payload.ne) langs.push('en')
-    if (payload.nb) langs.push('bg')
-    if (payload.nr) { langs.push('ro'); langs.push('md') }
-    if (payload.ns) langs.push('sl')
-    if (payload.nu) langs.push('uk')
-    if (payload.nt) langs.push('tr')
+    const langs: Lang[] = []
+    if (payload.nb)  langs.push('bg')
+    if (payload.ns)  langs.push('sl')
     if (payload.nsr) langs.push('sr')
+    if (payload.nsk) langs.push('sk')
+    if (payload.npl) langs.push('pl')
+    if (payload.ncs) langs.push('cs')
     return langs
   }, [payload])
 
-  // Default to English if available, otherwise Greek
+  // Default to first available worker language, fall back to Greek
   const defaultLang = useMemo<Lang>(() => {
     if (!payload) return 'el'
-    return payload.ne ? 'en' : 'el'
+    if (payload.nb)  return 'bg'
+    if (payload.ns)  return 'sl'
+    if (payload.nsr) return 'sr'
+    if (payload.nsk) return 'sk'
+    if (payload.npl) return 'pl'
+    if (payload.ncs) return 'cs'
+    return 'el'
   }, [payload])
 
   const [lang, setLang] = useState<Lang>(defaultLang)
@@ -81,24 +82,20 @@ export default function DishInfo() {
   }
 
   const name =
-    lang === 'en'  ? (payload.ne  ?? payload.n) :
-    lang === 'bg'  ? (payload.nb  ?? payload.n) :
-    lang === 'ro'  ? (payload.nr  ?? payload.n) :
-    lang === 'md'  ? (payload.nr  ?? payload.n) :
-    lang === 'sl'  ? (payload.ns  ?? payload.n) :
-    lang === 'uk'  ? (payload.nu  ?? payload.n) :
-    lang === 'tr'  ? (payload.nt  ?? payload.n) :
-    lang === 'sr'  ? (payload.nsr ?? payload.n) :
+    lang === 'bg' ? (payload.nb  ?? payload.n) :
+    lang === 'sl' ? (payload.ns  ?? payload.n) :
+    lang === 'sr' ? (payload.nsr ?? payload.n) :
+    lang === 'sk' ? (payload.nsk ?? payload.n) :
+    lang === 'pl' ? (payload.npl ?? payload.n) :
+    lang === 'cs' ? (payload.ncs ?? payload.n) :
     payload.n
 
+  // Descriptions: BG has own translation, all others fall back to English then Greek
   const desc =
-    lang === 'en'  ? (payload.de ?? payload.d ?? null) :
-    lang === 'bg'  ? (payload.db ?? payload.d ?? null) :
-    lang === 'ro' || lang === 'md' || lang === 'sl' || lang === 'uk' || lang === 'tr' || lang === 'sr'
-      ? (payload.de ?? payload.d ?? null) :
-    (payload.d ?? null)
+    lang === 'bg' ? (payload.db ?? payload.de ?? null) :
+    (payload.de ?? null)
 
-  const currentLang = available.includes(lang) ? lang : 'el'
+  const currentLang = available.includes(lang) ? lang : (available[0] ?? 'el')
 
   return (
     <div
