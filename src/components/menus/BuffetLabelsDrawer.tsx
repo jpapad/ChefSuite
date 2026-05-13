@@ -125,17 +125,20 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const trunc = (s: string | null | undefined, max = 100) =>
           s ? s.slice(0, max) : undefined
         const extra = extraNames.get(item.id)
+        const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
         const payload: Record<string, string> = { n: item.name.slice(0, 60) }
-        if (item.name_el) payload.ne = item.name_el.slice(0, 60)
-        if (item.name_bg) payload.nb = item.name_bg.slice(0, 60)
+        const nameEl = item.name_el ?? recipe?.name_el
+        const nameBg = item.name_bg ?? recipe?.name_bg
+        if (nameEl) payload.ne = nameEl.slice(0, 60)
+        if (nameBg) payload.nb = nameBg.slice(0, 60)
         const nr = extra?.name_ro ?? item.name_ro; if (nr) payload.nr = nr.slice(0, 60)
         const ns = extra?.name_sl ?? item.name_sl; if (ns) payload.ns = ns.slice(0, 60)
         const nu = extra?.name_uk ?? item.name_uk; if (nu) payload.nu = nu.slice(0, 60)
         const nt = extra?.name_tr ?? item.name_tr; if (nt) payload.nt = nt.slice(0, 60)
         const nsr = extra?.name_sr ?? item.name_sr; if (nsr) payload.nsr = nsr.slice(0, 60)
-        const d  = trunc(item.description);    if (d)  payload.d  = d
-        const de = trunc(item.description_el); if (de) payload.de = de
-        const db = trunc(item.description_bg); if (db) payload.db = db
+        const d  = trunc(item.description);                                   if (d)  payload.d  = d
+        const de = trunc(item.description_el ?? recipe?.description_el);      if (de) payload.de = de
+        const db = trunc(item.description_bg ?? recipe?.description_bg);      if (db) payload.db = db
         const url = `${origin}/dish?d=${encodeURIComponent(btoa(encodeURIComponent(JSON.stringify(payload))))}`
         const dataUrl = await QRCode.toDataURL(url, {
           width: 400,
@@ -149,7 +152,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     }).finally(() => {
       setGeneratingQr(false)
     })
-  }, [settings.showQr, allItems, extraNames])
+  }, [settings.showQr, allItems, extraNames, recipeMap])
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 

@@ -260,25 +260,29 @@ const TAG_SYMBOL: Record<string, string> = {
   spicy: '🌶️ Spicy', chefs_pick: '⭐ Chef\'s Pick',
 }
 
-function itemName(item: MenuItem, lang: LabelSettings['language']): string {
-  if (lang === 'el') return item.name_el ?? item.name
-  if (lang === 'bg') return item.name_bg ?? item.name
+function itemName(item: MenuItem, lang: LabelSettings['language'], recipe?: Recipe): string {
+  const nameEl = item.name_el ?? recipe?.name_el ?? null
+  const nameBg = item.name_bg ?? recipe?.name_bg ?? null
+  if (lang === 'en') return nameEl ?? item.name
+  if (lang === 'bg') return nameBg ?? item.name
   if (lang === 'both') {
     const parts = [item.name]
-    if (item.name_el) parts.push(item.name_el)
-    if (item.name_bg) parts.push(item.name_bg)
+    if (nameEl) parts.push(nameEl)
+    if (nameBg) parts.push(nameBg)
     return parts.join(' / ')
   }
   return item.name
 }
 
-function itemDesc(item: MenuItem, lang: LabelSettings['language']): string | null {
-  if (lang === 'el') return item.description_el ?? item.description
-  if (lang === 'bg') return item.description_bg ?? item.description
+function itemDesc(item: MenuItem, lang: LabelSettings['language'], recipe?: Recipe): string | null {
+  const descEl = item.description_el ?? recipe?.description_el ?? null
+  const descBg = item.description_bg ?? recipe?.description_bg ?? null
+  if (lang === 'en') return descEl ?? item.description
+  if (lang === 'bg') return descBg ?? item.description
   if (lang === 'both') {
     const parts = [item.description].filter(Boolean)
-    if (item.description_el) parts.push(item.description_el)
-    if (item.description_bg) parts.push(item.description_bg)
+    if (descEl) parts.push(descEl)
+    if (descBg) parts.push(descBg)
     return parts.join(' / ') || null
   }
   return item.description
@@ -375,7 +379,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
     ? `<div class="tags">${item.tags.map((t) => TAG_SYMBOL[t] ?? t).join('  ')}</div>`
     : ''
 
-  const desc  = settings.showDescription ? itemDesc(item, settings.language) : null
+  const desc  = settings.showDescription ? itemDesc(item, settings.language, recipe) : null
   const price = settings.showPrice && item.price != null
     ? `<span class="price">€${item.price.toFixed(2)}</span>` : ''
 
@@ -399,7 +403,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
   const nameHtml = settings.language === 'both'
     ? (() => {
         const lines = (settings.langBothLines?.length ? settings.langBothLines : ['en', 'source'])
-          .map((k) => k === 'source' ? item.name : k === 'en' ? item.name_el : item.name_bg)
+          .map((k) => k === 'source' ? item.name : k === 'en' ? (item.name_el ?? recipe?.name_el) : (item.name_bg ?? recipe?.name_bg))
           .filter(Boolean) as string[]
         if (lines.length === 0) lines.push(item.name)
         return `<div class="label-name-both">
@@ -410,7 +414,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
   ${price}
 </div>`
       })()
-    : `<div class="label-name">${itemName(item, settings.language)}${price}</div>`
+    : `<div class="label-name">${itemName(item, settings.language, recipe)}${price}</div>`
 
   return `
 <div class="label" style="width:${d.w}mm;height:${d.h}mm">
