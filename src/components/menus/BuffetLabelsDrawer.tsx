@@ -111,6 +111,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     if (map.size > 0) setExtraTranslateDone(true)
   }, [allItems])
 
+  const recipeMap = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes])
+
   // Generate QR data URLs for each item
   useEffect(() => {
     if (!settings.showQr) {
@@ -155,8 +157,6 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   }, [settings.showQr, allItems, extraNames, recipeMap])
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-
-  const recipeMap = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes])
 
   const selectedItems = useMemo(
     () => allItems.filter((fi) => selectedIds.has(fi.item.id)).map((fi) => fi.item),
