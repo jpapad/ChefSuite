@@ -455,6 +455,7 @@ Rules:
 // ── Extra-language Translation (RO, SL, UK, TR, SR) ──────────────────────────
 
 export interface TranslatedItemExtra {
+  name_bg: string | null
   name_uk: string | null
   name_ro: string | null
   name_md: string | null
@@ -462,6 +463,7 @@ export interface TranslatedItemExtra {
   name_sk: string | null
   name_pl: string | null
   name_cs: string | null
+  desc_bg: string | null
   desc_uk: string | null
   desc_ro: string | null
   desc_md: string | null
@@ -472,8 +474,8 @@ export interface TranslatedItemExtra {
 }
 
 const FALLBACK_EXTRA: TranslatedItemExtra = {
-  name_uk: null, name_ro: null, name_md: null, name_sr: null, name_sk: null, name_pl: null, name_cs: null,
-  desc_uk: null, desc_ro: null, desc_md: null, desc_sr: null, desc_sk: null, desc_pl: null, desc_cs: null,
+  name_bg: null, name_uk: null, name_ro: null, name_md: null, name_sr: null, name_sk: null, name_pl: null, name_cs: null,
+  desc_bg: null, desc_uk: null, desc_ro: null, desc_md: null, desc_sr: null, desc_sk: null, desc_pl: null, desc_cs: null,
 }
 
 async function translateExtraBatch(
@@ -489,7 +491,7 @@ async function translateExtraBatch(
 
   const prompt = `You are a professional menu translator for a restaurant app.
 
-Translate each dish name and description into Ukrainian, Romanian, Moldovan Romanian, Serbian, Slovak, Polish, and Czech.
+Translate each dish name and description into Bulgarian, Ukrainian, Romanian, Moldovan Romanian, Serbian, Slovak, Polish, and Czech.
 Keep culinary terms authentic and natural — not word-for-word literal translations.
 The source may be in English or Greek.
 
@@ -499,6 +501,7 @@ ${itemsBlock}
 Return ONLY a valid JSON array with one object per item (same order):
 [
   {
+    "name_bg": "Bulgarian name (Cyrillic)",
     "name_uk": "Ukrainian name (Cyrillic)",
     "name_ro": "Romanian name",
     "name_md": "Moldovan Romanian name (same language as Romanian)",
@@ -506,6 +509,7 @@ Return ONLY a valid JSON array with one object per item (same order):
     "name_sk": "Slovak name",
     "name_pl": "Polish name",
     "name_cs": "Czech name",
+    "desc_bg": "Bulgarian description (Cyrillic) or null if no description",
     "desc_uk": "Ukrainian description (Cyrillic) or null if no description",
     "desc_ro": "Romanian description or null",
     "desc_md": "Moldovan Romanian description or null",
@@ -518,7 +522,7 @@ Return ONLY a valid JSON array with one object per item (same order):
 
 Rules:
 - Dish names and descriptions must sound natural on a restaurant menu
-- Use Cyrillic script for Ukrainian and Serbian
+- Use Cyrillic script for Bulgarian, Ukrainian, and Serbian
 - Moldovan Romanian is the same language as Romanian — produce identical translations
 - If no description was provided, set all desc_* fields to null
 - Do NOT include markdown or any text outside the JSON array`
@@ -531,6 +535,7 @@ Rules:
   return (parsed as unknown[]).map((item) => {
     const o = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}
     return {
+      name_bg: typeof o.name_bg === 'string' ? o.name_bg : null,
       name_uk: typeof o.name_uk === 'string' ? o.name_uk : null,
       name_ro: typeof o.name_ro === 'string' ? o.name_ro : null,
       name_md: typeof o.name_md === 'string' ? o.name_md : null,
@@ -538,6 +543,7 @@ Rules:
       name_sk: typeof o.name_sk === 'string' ? o.name_sk : null,
       name_pl: typeof o.name_pl === 'string' ? o.name_pl : null,
       name_cs: typeof o.name_cs === 'string' ? o.name_cs : null,
+      desc_bg: typeof o.desc_bg === 'string' ? o.desc_bg : null,
       desc_uk: typeof o.desc_uk === 'string' ? o.desc_uk : null,
       desc_ro: typeof o.desc_ro === 'string' ? o.desc_ro : null,
       desc_md: typeof o.desc_md === 'string' ? o.desc_md : null,

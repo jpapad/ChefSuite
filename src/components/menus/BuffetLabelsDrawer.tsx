@@ -97,8 +97,9 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   useEffect(() => {
     const map = new Map<string, TranslatedItemExtra>()
     for (const { item } of allItems) {
-      if (item.name_uk || item.name_ro || item.name_md || item.name_sr || item.name_sk || item.name_pl || item.name_cs) {
+      if (item.name_bg || item.name_uk || item.name_ro || item.name_md || item.name_sr || item.name_sk || item.name_pl || item.name_cs) {
         map.set(item.id, {
+          name_bg: item.name_bg ?? null,
           name_uk: item.name_uk ?? null,
           name_ro: item.name_ro ?? null,
           name_md: item.name_md ?? null,
@@ -106,6 +107,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
           name_sk: item.name_sk ?? null,
           name_pl: item.name_pl ?? null,
           name_cs: item.name_cs ?? null,
+          desc_bg: item.description_bg ?? null,
           desc_uk: null,
           desc_ro: null,
           desc_md: null,
@@ -139,7 +141,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
         // n = Greek name as fallback; worker language names below
         const payload: Record<string, string> = { n: item.name.slice(0, 60) }
-        const nameBg  = item.name_bg  ?? recipe?.name_bg
+        const nameBg = extra?.name_bg ?? item.name_bg ?? recipe?.name_bg
         const nuk = extra?.name_uk ?? item.name_uk
         const nro = extra?.name_ro ?? item.name_ro
         const nmd = extra?.name_md ?? item.name_md
@@ -155,9 +157,9 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         if (nsk)    payload.nsk = nsk.slice(0, 60)
         if (npl)    payload.npl = npl.slice(0, 60)
         if (ncs)    payload.ncs = ncs.slice(0, 60)
-        // English description kept as fallback for all worker language descriptions
+        // English description as fallback; translated descriptions override per language
         const de = trunc(item.description_el ?? recipe?.description_el); if (de) payload.de = de
-        const db = trunc(item.description_bg ?? recipe?.description_bg); if (db) payload.db = db
+        const db = trunc(extra?.desc_bg ?? item.description_bg ?? recipe?.description_bg); if (db) payload.db = db
         const duk = extra?.desc_uk ? extra.desc_uk.slice(0, 100) : undefined; if (duk) payload.duk = duk
         const dro = extra?.desc_ro ? extra.desc_ro.slice(0, 100) : undefined; if (dro) payload.dro = dro
         const dmd = extra?.desc_md ? extra.desc_md.slice(0, 100) : undefined; if (dmd) payload.dmd = dmd
@@ -252,6 +254,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
       await Promise.all(
         allItems.map(({ item }, i) =>
           supabase.from('menu_items').update({
+            name_bg: results[i].name_bg,
+            description_bg: results[i].desc_bg,
             name_uk: results[i].name_uk,
             name_ro: results[i].name_ro,
             name_md: results[i].name_md,
@@ -745,8 +749,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
               <div className="flex items-center gap-2 text-xs text-emerald-400/70">
                 <QrCode className="h-3.5 w-3.5" />
                 <span>
-                  {qrMap.size} QR codes ready — 🇧🇬
-                  {extraTranslateDone && ' 🇺🇦 🇷🇴 🇲🇩 🇷🇸 🇸🇰 🇵🇱 🇨🇿'}
+                  {qrMap.size} QR codes ready
+                  {extraTranslateDone && ' 🇧🇬 🇺🇦 🇷🇴 🇲🇩 🇷🇸 🇸🇰 🇵🇱 🇨🇿'}
                 </span>
               </div>
             )}
@@ -758,7 +762,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                   🌍 Μεταφράσεις QR σε επιπλέον γλώσσες
                 </p>
                 <p className="text-[11px] text-white/30 leading-relaxed">
-                  🇺🇦 Ουκρανικά · 🇷🇴 Ρουμανικά · 🇲🇩 Μολδαβικά · 🇷🇸 Σερβικά · 🇸🇰 Σλοβακικά · 🇵🇱 Πολωνικά · 🇨🇿 Τσεχικά
+                  🇧🇬 Βουλγαρικά · 🇺🇦 Ουκρανικά · 🇷🇴 Ρουμανικά · 🇲🇩 Μολδαβικά · 🇷🇸 Σερβικά · 🇸🇰 Σλοβακικά · 🇵🇱 Πολωνικά · 🇨🇿 Τσεχικά
                 </p>
                 {extraTranslateError && (
                   <p className="text-xs text-red-400">{extraTranslateError}</p>
