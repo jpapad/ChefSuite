@@ -104,6 +104,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
           name_sk: item.name_sk ?? null,
           name_pl: item.name_pl ?? null,
           name_cs: item.name_cs ?? null,
+          desc_sl: null,
+          desc_sr: null,
+          desc_sk: null,
+          desc_pl: null,
+          desc_cs: null,
         })
       }
     }
@@ -145,6 +150,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         // English description kept as fallback for all worker language descriptions
         const de = trunc(item.description_el ?? recipe?.description_el); if (de) payload.de = de
         const db = trunc(item.description_bg ?? recipe?.description_bg); if (db) payload.db = db
+        const ds  = extra?.desc_sl  ? extra.desc_sl.slice(0, 100)  : undefined; if (ds)  payload.ds  = ds
+        const dsr = extra?.desc_sr  ? extra.desc_sr.slice(0, 100)  : undefined; if (dsr) payload.dsr = dsr
+        const dsk = extra?.desc_sk  ? extra.desc_sk.slice(0, 100)  : undefined; if (dsk) payload.dsk = dsk
+        const dpl = extra?.desc_pl  ? extra.desc_pl.slice(0, 100)  : undefined; if (dpl) payload.dpl = dpl
+        const dcs = extra?.desc_cs  ? extra.desc_cs.slice(0, 100)  : undefined; if (dcs) payload.dcs = dcs
         const url = `${origin}/dish?d=${encodeURIComponent(btoa(encodeURIComponent(JSON.stringify(payload))))}`
         const dataUrl = await QRCode.toDataURL(url, {
           width: 400,
@@ -213,7 +223,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     setExtraTranslateError(null)
     try {
       const results = await translateMenuItemsExtra(
-        allItems.map(({ item }) => ({ name: item.name, name_el: item.name_el }))
+        allItems.map(({ item }) => ({
+          name: item.name,
+          name_el: item.name_el,
+          description: item.description_el ?? item.description ?? null,
+        }))
       )
       const newMap = new Map<string, TranslatedItemExtra>()
       for (let i = 0; i < allItems.length; i++) {
