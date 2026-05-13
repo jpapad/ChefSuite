@@ -9,8 +9,13 @@ interface DishPayload {
   nsk?: string  // Slovak
   npl?: string  // Polish
   ncs?: string  // Czech
-  de?: string   // English description (fallback for all langs)
+  de?: string   // English description (fallback)
   db?: string   // Bulgarian description
+  ds?: string   // Slovenian description
+  dsr?: string  // Serbian description
+  dsk?: string  // Slovak description
+  dpl?: string  // Polish description
+  dcs?: string  // Czech description
 }
 
 type Lang = 'el' | 'bg' | 'sl' | 'sr' | 'sk' | 'pl' | 'cs'
@@ -90,9 +95,13 @@ export default function DishInfo() {
     lang === 'cs' ? (payload.ncs ?? payload.n) :
     payload.n
 
-  // Descriptions: BG has own translation, all others fall back to English then Greek
   const desc =
-    lang === 'bg' ? (payload.db ?? payload.de ?? null) :
+    lang === 'bg' ? (payload.db  ?? payload.de ?? null) :
+    lang === 'sl' ? (payload.ds  ?? payload.de ?? null) :
+    lang === 'sr' ? (payload.dsr ?? payload.de ?? null) :
+    lang === 'sk' ? (payload.dsk ?? payload.de ?? null) :
+    lang === 'pl' ? (payload.dpl ?? payload.de ?? null) :
+    lang === 'cs' ? (payload.dcs ?? payload.de ?? null) :
     (payload.de ?? null)
 
   const currentLang = available.includes(lang) ? lang : (available[0] ?? 'el')
@@ -111,30 +120,32 @@ export default function DishInfo() {
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 overflow-hidden backdrop-blur">
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
 
-        {/* Language picker */}
+        {/* Language picker — separate overflow-hidden wrapper so scroll isn't blocked */}
         {available.length > 1 && (
-          <div className="flex border-b border-white/10">
-            {available.map((l) => {
-              const meta = LANG_META[l]
-              return (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLang(l)}
-                  className={[
-                    'flex-1 flex flex-col items-center gap-0.5 py-3 px-2 text-xs font-medium transition',
-                    currentLang === l
-                      ? 'bg-emerald-500/15 text-emerald-300 border-b-2 border-emerald-400'
-                      : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-                  ].join(' ')}
-                >
-                  <span className="text-lg leading-none">{meta.flag}</span>
-                  <span>{meta.native}</span>
-                </button>
-              )
-            })}
+          <div className="overflow-hidden rounded-t-2xl border-b border-white/10">
+            <div className="flex overflow-x-scroll scrollbar-none">
+              {available.map((l) => {
+                const meta = LANG_META[l]
+                return (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setLang(l)}
+                    className={[
+                      'flex-shrink-0 flex flex-col items-center gap-0.5 py-3 px-4 text-xs font-medium transition',
+                      currentLang === l
+                        ? 'bg-emerald-500/15 text-emerald-300 border-b-2 border-emerald-400'
+                        : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                    ].join(' ')}
+                  >
+                    <span className="text-lg leading-none">{meta.flag}</span>
+                    <span>{meta.native}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
 
