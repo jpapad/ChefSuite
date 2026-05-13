@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   FileSpreadsheet, Loader2, ArrowLeft, Check, AlertCircle,
-  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles, Languages, Pencil,
+  ChevronRight, Tag, UtensilsCrossed, Layers, CopyX, Sparkles, Languages, Pencil, ShieldAlert,
 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
@@ -186,6 +186,10 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [translateDescDone, setTranslateDescDone] = useState(false)
   const [translateDescDoneMsg, setTranslateDescDoneMsg] = useState('')
 
+  const [fillingAllergens, setFillingAllergens] = useState(false)
+  const [fillAllergensDone, setFillAllergensDone] = useState(false)
+  const [fillAllergensDoneMsg, setFillAllergensDoneMsg] = useState('')
+
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null)
   const [importResult, setImportResult] = useState<{
     total: number; withNameEl: number; withDescEl: number; withNameBg: number; withAllergens: number
@@ -227,6 +231,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setTranslatingDesc(false)
     setTranslateDescDone(false)
     setTranslateDescDoneMsg('')
+    setFillingAllergens(false)
+    setFillAllergensDone(false)
+    setFillAllergensDoneMsg('')
     setImportProgress(null)
     setImportResult(null)
     setEditingRowIdx(null)
@@ -534,6 +541,44 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       setError(err instanceof Error ? err.message : 'Αποτυχία εισαγωγής — έλεγξε τη σύνδεση')
     } finally {
       setImportProgress(null)
+    }
+  }
+
+  async function handleFillAllergens() {
+    const indices = Array.from(selected).filter((i) => rows[i].allergens.length === 0)
+    if (indices.length === 0) {
+      setFillAllergensDoneMsg('Όλα τα πιάτα έχουν ήδη αλλεργιογόνα')
+      setFillAllergensDone(true)
+      setTimeout(() => setFillAllergensDone(false), 2500)
+      return
+    }
+    setFillingAllergens(true)
+    setFillAllergensDone(false)
+    setError(null)
+    try {
+      const CHUNK = 20
+      const updatedRows = [...rows]
+      let filledCount = 0
+      for (let c = 0; c < indices.length; c += CHUNK) {
+        const chunk = indices.slice(c, c + CHUNK)
+        const titles = chunk.map((i) => rows[i].name)
+        const suggestions = await suggestMultipleRecipeDetails(titles)
+        chunk.forEach((rowIdx, j) => {
+          const s = suggestions[j]
+          if (s.allergens.length > 0) {
+            updatedRows[rowIdx] = { ...updatedRows[rowIdx], allergens: s.allergens }
+            filledCount++
+          }
+        })
+      }
+      setRows(updatedRows)
+      setFillAllergensDoneMsg(`Συμπληρώθηκαν αλλεργιογόνα για ${filledCount} πιάτα ✓`)
+      setFillAllergensDone(true)
+      setTimeout(() => setFillAllergensDone(false), 4000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Αποτυχία συμπλήρωσης αλλεργιογόνων')
+    } finally {
+      setFillingAllergens(false)
     }
   }
 
@@ -1071,7 +1116,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
             <button
               type="button"
               onClick={() => void handleTranslateDescriptions()}
-              disabled={translatingDesc || translating || aiFillingRows}
+              disabled={translatingDesc || translating || aiFillingRows || fillingAllergens}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-400/5 px-4 py-2.5 text-sm font-medium text-violet-300 transition hover:border-violet-400 hover:bg-violet-400/10 disabled:opacity-60 disabled:pointer-events-none"
             >
               {translatingDesc ? (
@@ -1088,6 +1133,33 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                 <>
                   <Languages className="h-4 w-4" />
                   Μετάφραση / δημιουργία περιγραφών (Αγγλικά)
+                </>
+              )}
+            </button>
+          )}
+
+          {/* AI Allergens button */}
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleFillAllergens()}
+              disabled={fillingAllergens || aiFillingRows || translating || translatingDesc}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400/40 bg-amber-400/5 px-4 py-2.5 text-sm font-medium text-amber-300 transition hover:border-amber-400 hover:bg-amber-400/10 disabled:opacity-60 disabled:pointer-events-none"
+            >
+              {fillingAllergens ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  AI ανάλυση αλλεργιογόνων…
+                </>
+              ) : fillAllergensDone ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  {fillAllergensDoneMsg}
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="h-4 w-4" />
+                  AI Αλλεργιογόνα για κενά πιάτα ({Array.from(selected).filter((i) => rows[i]?.allergens.length === 0).length} χωρίς)
                 </>
               )}
             </button>
