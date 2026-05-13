@@ -5,17 +5,28 @@ interface DishPayload {
   n: string    // primary (Greek)
   ne?: string  // English
   nb?: string  // Bulgarian
+  nr?: string  // Romanian (also Moldovan)
+  ns?: string  // Slovenian
+  nu?: string  // Ukrainian
+  nt?: string  // Turkish
+  nsr?: string // Serbian
   d?: string   // description primary
   de?: string  // description EN
   db?: string  // description BG
 }
 
-type Lang = 'el' | 'en' | 'bg'
+type Lang = 'el' | 'en' | 'bg' | 'ro' | 'sl' | 'uk' | 'md' | 'tr' | 'sr'
 
 const LANG_META: Record<Lang, { flag: string; label: string; native: string }> = {
-  el: { flag: '🇬🇷', label: 'Greek',     native: 'Ελληνικά'  },
-  en: { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', label: 'English',   native: 'English'   },
-  bg: { flag: '🇧🇬', label: 'Bulgarian', native: 'Български' },
+  el:  { flag: '🇬🇷', label: 'Greek',      native: 'Ελληνικά'   },
+  en:  { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', label: 'English',    native: 'English'    },
+  bg:  { flag: '🇧🇬', label: 'Bulgarian',  native: 'Български'  },
+  ro:  { flag: '🇷🇴', label: 'Romanian',   native: 'Română'     },
+  sl:  { flag: '🇸🇮', label: 'Slovenian',  native: 'Slovenščina'},
+  uk:  { flag: '🇺🇦', label: 'Ukrainian',  native: 'Українська' },
+  md:  { flag: '🇲🇩', label: 'Moldovan',   native: 'Română'     },
+  tr:  { flag: '🇹🇷', label: 'Turkish',    native: 'Türkçe'     },
+  sr:  { flag: '🇷🇸', label: 'Serbian',    native: 'Српски'     },
 }
 
 function decode(raw: string): DishPayload | null {
@@ -38,6 +49,11 @@ export default function DishInfo() {
     const langs: Lang[] = ['el']
     if (payload.ne) langs.push('en')
     if (payload.nb) langs.push('bg')
+    if (payload.nr) { langs.push('ro'); langs.push('md') }
+    if (payload.ns) langs.push('sl')
+    if (payload.nu) langs.push('uk')
+    if (payload.nt) langs.push('tr')
+    if (payload.nsr) langs.push('sr')
     return langs
   }, [payload])
 
@@ -65,13 +81,21 @@ export default function DishInfo() {
   }
 
   const name =
-    lang === 'en' ? (payload.ne ?? payload.n) :
-    lang === 'bg' ? (payload.nb ?? payload.n) :
+    lang === 'en'  ? (payload.ne  ?? payload.n) :
+    lang === 'bg'  ? (payload.nb  ?? payload.n) :
+    lang === 'ro'  ? (payload.nr  ?? payload.n) :
+    lang === 'md'  ? (payload.nr  ?? payload.n) :
+    lang === 'sl'  ? (payload.ns  ?? payload.n) :
+    lang === 'uk'  ? (payload.nu  ?? payload.n) :
+    lang === 'tr'  ? (payload.nt  ?? payload.n) :
+    lang === 'sr'  ? (payload.nsr ?? payload.n) :
     payload.n
 
   const desc =
-    lang === 'en' ? (payload.de ?? payload.d ?? null) :
-    lang === 'bg' ? (payload.db ?? payload.d ?? null) :
+    lang === 'en'  ? (payload.de ?? payload.d ?? null) :
+    lang === 'bg'  ? (payload.db ?? payload.d ?? null) :
+    lang === 'ro' || lang === 'md' || lang === 'sl' || lang === 'uk' || lang === 'tr' || lang === 'sr'
+      ? (payload.de ?? payload.d ?? null) :
     (payload.d ?? null)
 
   const currentLang = available.includes(lang) ? lang : 'el'

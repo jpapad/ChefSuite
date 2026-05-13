@@ -468,6 +468,11 @@ export interface MenuItem {
   description_el: string | null
   name_bg: string | null
   description_bg: string | null
+  name_ro: string | null
+  name_sl: string | null
+  name_uk: string | null
+  name_tr: string | null
+  name_sr: string | null
   price: number | null
   available: boolean
   tags: MenuItemTag[]
@@ -475,8 +480,8 @@ export interface MenuItem {
   created_at: ISODateString
 }
 
-export type MenuItemInsert = Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'tags'> & { section_id: UUID }
-export type MenuItemUpdate = Partial<Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'tags'>>
+export type MenuItemInsert = Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'name_ro' | 'name_sl' | 'name_uk' | 'name_tr' | 'name_sr' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'tags'> & { section_id: UUID }
+export type MenuItemUpdate = Partial<Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'name_ro' | 'name_sl' | 'name_uk' | 'name_tr' | 'name_sr' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'tags'>>
 
 export interface MenuSectionWithItems extends MenuSection {
   items: MenuItem[]

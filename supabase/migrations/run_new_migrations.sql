@@ -356,3 +356,11 @@ alter table public.recipes
   add column if not exists description_el text,
   add column if not exists name_bg        text,
   add column if not exists description_bg text;
+
+-- ── 0055: Menu item extra language names (RO, SL, UK, TR, SR) ────────────────
+alter table public.menu_items
+  add column if not exists name_ro text,
+  add column if not exists name_sl text,
+  add column if not exists name_uk text,
+  add column if not exists name_tr text,
+  add column if not exists name_sr text;

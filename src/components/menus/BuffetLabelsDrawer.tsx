@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import QRCode from 'qrcode'
-import { AlignCenter, AlignLeft, AlignRight, Loader2, Printer, QrCode, Save, Tag, Trash2 } from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight, Globe, Loader2, Printer, QrCode, Save, Tag, Trash2 } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { ImageUpload } from '../ui/ImageUpload'
@@ -9,6 +9,8 @@ import { cn } from '../../lib/cn'
 import { buildPreviewHtml, getDims, LABEL_FONTS, previewIframeHeight, printLabels } from '../../lib/printLabels'
 import type { LabelSettings, LabelSize, LabelSizePreset } from '../../lib/printLabels'
 import type { MenuWithSections, MenuItem, Recipe } from '../../types/database.types'
+import { supabase } from '../../lib/supabase'
+import { translateMenuItemsExtra, type TranslatedItemExtra } from '../../lib/gemini'
 
 // ── Custom preset persistence ────────────────────────────────────────────────
 
@@ -75,6 +77,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   const [presetName, setPresetName] = useState('')
   const [qrMap, setQrMap] = useState<Map<string, string>>(new Map())
   const [generatingQr, setGeneratingQr] = useState(false)
+  // Extra-language translations (RO/SL/UK/TR/SR) — loaded from DB or freshly translated
+  const [extraNames, setExtraNames] = useState<Map<string, TranslatedItemExtra>>(new Map())
+  const [translatingExtra, setTranslatingExtra] = useState(false)
+  const [extraTranslateDone, setExtraTranslateDone] = useState(false)
+  const [extraTranslateError, setExtraTranslateError] = useState<string | null>(null)
 
   // Sync logo default when menu prop changes
   useEffect(() => {
@@ -84,6 +91,24 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   // Re-select all items when menu changes
   useEffect(() => {
     setSelectedIds(new Set(allItems.map((fi) => fi.item.id)))
+  }, [allItems])
+
+  // Seed extraNames from DB values already on the items
+  useEffect(() => {
+    const map = new Map<string, TranslatedItemExtra>()
+    for (const { item } of allItems) {
+      if (item.name_ro || item.name_sl || item.name_uk || item.name_tr || item.name_sr) {
+        map.set(item.id, {
+          name_ro: item.name_ro ?? null,
+          name_sl: item.name_sl ?? null,
+          name_uk: item.name_uk ?? null,
+          name_tr: item.name_tr ?? null,
+          name_sr: item.name_sr ?? null,
+        })
+      }
+    }
+    setExtraNames(map)
+    if (map.size > 0) setExtraTranslateDone(true)
   }, [allItems])
 
   // Generate QR data URLs for each item
@@ -99,9 +124,15 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         // Keep payload short: truncate descriptions to reduce QR density
         const trunc = (s: string | null | undefined, max = 100) =>
           s ? s.slice(0, max) : undefined
+        const extra = extraNames.get(item.id)
         const payload: Record<string, string> = { n: item.name.slice(0, 60) }
         if (item.name_el) payload.ne = item.name_el.slice(0, 60)
         if (item.name_bg) payload.nb = item.name_bg.slice(0, 60)
+        const nr = extra?.name_ro ?? item.name_ro; if (nr) payload.nr = nr.slice(0, 60)
+        const ns = extra?.name_sl ?? item.name_sl; if (ns) payload.ns = ns.slice(0, 60)
+        const nu = extra?.name_uk ?? item.name_uk; if (nu) payload.nu = nu.slice(0, 60)
+        const nt = extra?.name_tr ?? item.name_tr; if (nt) payload.nt = nt.slice(0, 60)
+        const nsr = extra?.name_sr ?? item.name_sr; if (nsr) payload.nsr = nsr.slice(0, 60)
         const d  = trunc(item.description);    if (d)  payload.d  = d
         const de = trunc(item.description_el); if (de) payload.de = de
         const db = trunc(item.description_bg); if (db) payload.db = db
@@ -118,7 +149,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     }).finally(() => {
       setGeneratingQr(false)
     })
-  }, [settings.showQr, allItems])
+  }, [settings.showQr, allItems, extraNames])
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -167,6 +198,40 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   function applyPreset(p: CustomPreset) {
     setSettings((s) => ({ ...s, size: 'custom', customW: p.w, customH: p.h }))
   }
+
+  // ── Extra-language translation ─────────────────────────────────────────────
+
+  const handleTranslateExtra = useCallback(async () => {
+    setTranslatingExtra(true)
+    setExtraTranslateError(null)
+    try {
+      const results = await translateMenuItemsExtra(
+        allItems.map(({ item }) => ({ name: item.name, name_el: item.name_el }))
+      )
+      const newMap = new Map<string, TranslatedItemExtra>()
+      for (let i = 0; i < allItems.length; i++) {
+        newMap.set(allItems[i].item.id, results[i])
+      }
+      setExtraNames(newMap)
+      setExtraTranslateDone(true)
+      // Persist to DB (best-effort)
+      await Promise.all(
+        allItems.map(({ item }, i) =>
+          supabase.from('menu_items').update({
+            name_ro: results[i].name_ro,
+            name_sl: results[i].name_sl,
+            name_uk: results[i].name_uk,
+            name_tr: results[i].name_tr,
+            name_sr: results[i].name_sr,
+          }).eq('id', item.id)
+        )
+      )
+    } catch (err) {
+      setExtraTranslateError(err instanceof Error ? err.message : 'Translation failed')
+    } finally {
+      setTranslatingExtra(false)
+    }
+  }, [allItems])
 
   // ── Logo constraints based on current dims ─────────────────────────────────
 
@@ -643,7 +708,42 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
             {settings.showQr && !generatingQr && qrMap.size > 0 && (
               <div className="flex items-center gap-2 text-xs text-emerald-400/70">
                 <QrCode className="h-3.5 w-3.5" />
-                <span>{qrMap.size} QR codes ready — scan to get description in 🇬🇷 🏴󠁧󠁢󠁥󠁮󠁧󠁿 🇧🇬</span>
+                <span>
+                  {qrMap.size} QR codes ready — 🇬🇷 🏴󠁧󠁢󠁥󠁮󠁧󠁿 🇧🇬
+                  {extraTranslateDone && ' 🇷🇴 🇸🇮 🇺🇦 🇲🇩 🇹🇷 🇷🇸'}
+                </span>
+              </div>
+            )}
+
+            {/* ── Extra-language translate button (visible when QR is on) ── */}
+            {settings.showQr && (
+              <div className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-2">
+                <p className="text-xs text-white/50">
+                  🌍 Μεταφράσεις QR σε επιπλέον γλώσσες
+                </p>
+                <p className="text-[11px] text-white/30 leading-relaxed">
+                  Ρουμανικά · Σλοβενικά · Ουκρανικά · Μολδαβικά · Τουρκικά · Σερβικά
+                </p>
+                {extraTranslateError && (
+                  <p className="text-xs text-red-400">{extraTranslateError}</p>
+                )}
+                <button
+                  type="button"
+                  disabled={translatingExtra}
+                  onClick={() => void handleTranslateExtra()}
+                  className={cn(
+                    'flex w-full items-center justify-center gap-2 rounded-lg border py-2 text-xs font-medium transition',
+                    extraTranslateDone
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                      : 'border-sky-500/30 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20',
+                    translatingExtra && 'opacity-60 pointer-events-none',
+                  )}
+                >
+                  {translatingExtra
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Μετάφραση…</>
+                    : <><Globe className="h-3.5 w-3.5" /> {extraTranslateDone ? '✓ Μεταφρασμένα — Ξαναμετάφραση' : 'AI Μετάφραση σε 6 γλώσσες'}</>
+                  }
+                </button>
               </div>
             )}
 
