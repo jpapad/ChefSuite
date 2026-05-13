@@ -41,13 +41,21 @@ export default function DishInfo() {
     return langs
   }, [payload])
 
-  const [lang, setLang] = useState<Lang>('en')
+  // Default to English if available, otherwise Greek
+  const defaultLang = useMemo<Lang>(() => {
+    if (!payload) return 'el'
+    return payload.ne ? 'en' : 'el'
+  }, [payload])
+
+  const [lang, setLang] = useState<Lang>(defaultLang)
 
   if (!payload) {
     return (
       <div className="min-h-screen bg-[#0f1117] flex items-center justify-center p-6">
-        <div className="text-center space-y-2">
-          <p className="text-white/40 text-sm">Invalid or expired QR code.</p>
+        <div className="text-center space-y-3">
+          <p className="text-4xl">🍽️</p>
+          <p className="text-white text-base font-medium">Μη έγκυρο QR code</p>
+          <p className="text-white/50 text-sm">Invalid or expired QR code.</p>
         </div>
       </div>
     )

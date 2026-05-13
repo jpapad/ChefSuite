@@ -105,7 +105,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const d  = trunc(item.description);    if (d)  payload.d  = d
         const de = trunc(item.description_el); if (de) payload.de = de
         const db = trunc(item.description_bg); if (db) payload.db = db
-        const url = `${origin}/dish?d=${btoa(encodeURIComponent(JSON.stringify(payload)))}`
+        const url = `${origin}/dish?d=${encodeURIComponent(btoa(encodeURIComponent(JSON.stringify(payload))))}`
         const dataUrl = await QRCode.toDataURL(url, {
           width: 400,
           margin: 2,
