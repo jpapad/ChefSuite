@@ -170,7 +170,10 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const dsk = extra?.desc_sk ? extra.desc_sk.slice(0, 100) : undefined; if (dsk) payload.dsk = dsk
         const dpl = extra?.desc_pl ? extra.desc_pl.slice(0, 100) : undefined; if (dpl) payload.dpl = dpl
         const dcs = extra?.desc_cs ? extra.desc_cs.slice(0, 100) : undefined; if (dcs) payload.dcs = dcs
-        const url = `${origin}/dish?d=${encodeURIComponent(btoa(encodeURIComponent(JSON.stringify(payload))))}`
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(payload))
+        let binary = ''
+        jsonBytes.forEach((b) => { binary += String.fromCharCode(b) })
+        const url = `${origin}/dish?d=${encodeURIComponent(btoa(binary))}`
         const dataUrl = await QRCode.toDataURL(url, {
           width: 400,
           margin: 2,
@@ -180,6 +183,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
       })
     ).then((pairs) => {
       setQrMap(new Map(pairs))
+    }).catch((err) => {
+      console.error('QR generation failed:', err)
     }).finally(() => {
       setGeneratingQr(false)
     })

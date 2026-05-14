@@ -35,9 +35,16 @@ const LANG_META: Record<Lang, { flag: string; label: string; native: string }> =
 
 function decode(raw: string): DishPayload | null {
   try {
-    return JSON.parse(decodeURIComponent(atob(raw))) as DishPayload
+    const binary = atob(raw)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return JSON.parse(new TextDecoder().decode(bytes)) as DishPayload
   } catch {
-    return null
+    try {
+      return JSON.parse(decodeURIComponent(atob(raw))) as DishPayload
+    } catch {
+      return null
+    }
   }
 }
 
