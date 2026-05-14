@@ -343,6 +343,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       justify-content: ${settings.nameAlign === 'center' ? 'center' : settings.nameAlign === 'right' ? 'flex-end' : 'space-between'}; gap: 3mm;
       text-align: ${settings.nameAlign};
       font-size: ${d.namePt}pt;
+      word-break: break-word; overflow-wrap: break-word;
       ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .label-name-both {
@@ -354,6 +355,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       display: flex; flex-direction: column;
       gap: ${sm ? '0.5mm' : '1mm'}; flex: 1; min-width: 0;
       text-align: ${settings.nameAlign};
+      word-break: break-word; overflow-wrap: break-word;
     }
     .label-name-primary {
       font-weight: bold; line-height: 1.2; color: #111;
