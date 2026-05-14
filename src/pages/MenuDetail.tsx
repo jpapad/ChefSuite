@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
   Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
-  Link2, Loader2, Search, AlertCircle,
+  Link2, Loader2, Search, AlertCircle, Download,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -123,6 +123,55 @@ export default function MenuDetail() {
 
   // ── Buffet labels ──────────────────────────────────────────────────────────
   const [labelsDrawerOpen, setLabelsDrawerOpen] = useState(false)
+
+  // ── Canva CSV export ───────────────────────────────────────────────────────
+  function exportCanvaCsv() {
+    if (!menu) return
+    const recipeMap = new Map(recipes.map((r) => [r.id, r]))
+    const headers = [
+      'section', 'name', 'name_en', 'name_bg', 'name_uk', 'name_ro',
+      'name_sr', 'name_sk', 'name_pl', 'name_cs',
+      'description', 'description_en', 'description_bg',
+      'price', 'allergens', 'tags',
+    ]
+    const escape = (v: string | null | undefined) => {
+      const s = v ?? ''
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"`
+        : s
+    }
+    const rows = menu.sections.flatMap((section) =>
+      section.items.map((item) => {
+        const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
+        return [
+          escape(section.name),
+          escape(item.name),
+          escape(item.name_el ?? recipe?.name_el ?? ''),
+          escape(item.name_bg ?? recipe?.name_bg ?? ''),
+          escape(item.name_uk ?? ''),
+          escape(item.name_ro ?? ''),
+          escape(item.name_sr ?? ''),
+          escape(item.name_sk ?? ''),
+          escape(item.name_pl ?? ''),
+          escape(item.name_cs ?? ''),
+          escape(item.description ?? ''),
+          escape(item.description_el ?? recipe?.description_el ?? ''),
+          escape(item.description_bg ?? recipe?.description_bg ?? ''),
+          escape(item.price != null ? item.price.toFixed(2) : ''),
+          escape((recipe?.allergens ?? []).join(', ')),
+          escape((item.tags ?? []).join(', ')),
+        ].join(',')
+      })
+    )
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${menu.name.replace(/[^a-z0-9]/gi, '_')}_canva.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   // ── Prep from menu drawer ──────────────────────────────────────────────────
   const [prepDrawerOpen, setPrepDrawerOpen] = useState(false)
@@ -431,6 +480,9 @@ export default function MenuDetail() {
             </Button>
             <Button variant="secondary" leftIcon={<Tag className="h-4 w-4" />} onClick={() => setLabelsDrawerOpen(true)}>
               {t('menus.labels.button')}
+            </Button>
+            <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />} onClick={exportCanvaCsv}>
+              Export για Canva
             </Button>
             <Button variant="secondary" leftIcon={<Link2 className="h-4 w-4" />} onClick={openLinkRecipes}>
               Link Recipes
