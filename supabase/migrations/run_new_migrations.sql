@@ -374,3 +374,7 @@ alter table public.menu_items
 -- ── 0057: Menu item Moldovan name ────────────────────────────────────────────
 alter table public.menu_items
   add column if not exists name_md text;
+
+-- ── 0058: Menu item extra descriptions (JSONB for UK, RO, SR, SK, PL, CS) ───
+alter table public.menu_items
+  add column if not exists descriptions_extra jsonb;

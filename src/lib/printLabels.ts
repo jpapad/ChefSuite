@@ -27,6 +27,7 @@ export interface LabelSettings {
   showQr: boolean
   qrSizeMm: number        // QR code size in mm (default 35)
   labelsPerRow: 1 | 2 | 3 | 4
+  langStyles: Record<'source' | 'en' | 'bg', { bold: boolean; italic: boolean; sizeScale: number }>
 }
 
 export const LABEL_FONTS: { label: string; value: string }[] = [
@@ -404,14 +405,31 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
 
   const nameHtml = settings.language === 'both'
     ? (() => {
-        const lines = (settings.langBothLines?.length ? settings.langBothLines : ['en', 'source'])
-          .map((k) => k === 'source' ? item.name : k === 'en' ? (item.name_el ?? recipe?.name_el) : (item.name_bg ?? recipe?.name_bg))
-          .filter(Boolean) as string[]
-        if (lines.length === 0) lines.push(item.name)
+        type LK = 'source' | 'en' | 'bg'
+        const keys = (settings.langBothLines?.length ? settings.langBothLines : ['en', 'source']) as LK[]
+        const lines = keys
+          .map((k) => ({
+            k,
+            text: k === 'source' ? item.name : k === 'en' ? (item.name_el ?? recipe?.name_el ?? null) : (item.name_bg ?? recipe?.name_bg ?? null),
+          }))
+          .filter((l): l is { k: LK; text: string } => !!l.text)
+        if (lines.length === 0) lines.push({ k: 'source', text: item.name })
+        const defaultStyles: LabelSettings['langStyles'] = {
+          source: { bold: true,  italic: false, sizeScale: 1.0 },
+          en:     { bold: true,  italic: false, sizeScale: 1.0 },
+          bg:     { bold: false, italic: true,  sizeScale: 0.8 },
+        }
+        const stylesMap = settings.langStyles ?? defaultStyles
         return `<div class="label-name-both">
   <div class="label-name-lines">
-    <div class="label-name-primary">${lines[0]}</div>
-    ${lines.slice(1).map((t) => `<div class="label-name-tr">${t}</div>`).join('')}
+    ${lines.map((l, idx) => {
+      const st = stylesMap[l.k] ?? defaultStyles[l.k]
+      const fw  = st.bold   ? 'bold'   : 'normal'
+      const fs  = st.italic ? 'italic' : 'normal'
+      const sz  = Math.round(d.namePt * st.sizeScale)
+      const col = idx === 0 ? '#111' : '#555'
+      return `<div style="font-weight:${fw};font-style:${fs};font-size:${sz}pt;line-height:1.2;color:${col}">${l.text}</div>`
+    }).join('')}
   </div>
   ${price}
 </div>`

@@ -60,6 +60,11 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   showQr: false,
   qrSizeMm: 35,
   labelsPerRow: 3,
+  langStyles: {
+    source: { bold: true,  italic: false, sizeScale: 1.0 },
+    en:     { bold: true,  italic: false, sizeScale: 1.0 },
+    bg:     { bold: false, italic: true,  sizeScale: 0.8 },
+  },
 })
 
 export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
@@ -100,6 +105,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     const map = new Map<string, TranslatedItemExtra>()
     for (const { item } of allItems) {
       if (item.name_bg || item.name_uk || item.name_ro || item.name_sr || item.name_sk || item.name_pl || item.name_cs) {
+        const ed = (item.descriptions_extra ?? {}) as Record<string, string | null>
         map.set(item.id, {
           name_bg: item.name_bg ?? null,
           name_uk: item.name_uk ?? null,
@@ -109,12 +115,12 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
           name_pl: item.name_pl ?? null,
           name_cs: item.name_cs ?? null,
           desc_bg: item.description_bg ?? null,
-          desc_uk: null,
-          desc_ro: null,
-          desc_sr: null,
-          desc_sk: null,
-          desc_pl: null,
-          desc_cs: null,
+          desc_uk: ed.uk ?? null,
+          desc_ro: ed.ro ?? null,
+          desc_sr: ed.sr ?? null,
+          desc_sk: ed.sk ?? null,
+          desc_pl: ed.pl ?? null,
+          desc_cs: ed.cs ?? null,
         })
       }
     }
@@ -259,6 +265,14 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
             name_sk: results[i].name_sk,
             name_pl: results[i].name_pl,
             name_cs: results[i].name_cs,
+            descriptions_extra: {
+              uk: results[i].desc_uk,
+              ro: results[i].desc_ro,
+              sr: results[i].desc_sr,
+              sk: results[i].desc_sk,
+              pl: results[i].desc_pl,
+              cs: results[i].desc_cs,
+            },
           }).eq('id', item.id)
         )
       )
@@ -664,6 +678,41 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                         className="text-white/30 hover:text-emerald-400 text-sm font-bold transition">+</button>
                     </div>
                   ))}
+                </div>
+
+                {/* Per-language font style */}
+                <div className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-2">
+                  <p className="text-xs text-white/50">Στυλ γραμματοσειράς ανά γλώσσα</p>
+                  {currentLines.map((key) => {
+                    const st = settings.langStyles?.[key] ?? { bold: key !== 'bg', italic: key === 'bg', sizeScale: key === 'bg' ? 0.8 : 1.0 }
+                    const updateStyle = (patch: Partial<typeof st>) =>
+                      set('langStyles', { ...settings.langStyles, [key]: { ...st, ...patch } })
+                    return (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="w-16 shrink-0 text-[11px] text-white/40">{meta[key].flag} {meta[key].label}</span>
+                        {/* Bold */}
+                        <button type="button" onClick={() => updateStyle({ bold: !st.bold })}
+                          className={cn('h-6 w-7 rounded text-xs font-bold border transition',
+                            st.bold ? 'border-brand-orange bg-brand-orange/15 text-brand-orange' : 'border-glass-border text-white/30 hover:text-white')}>
+                          B
+                        </button>
+                        {/* Italic */}
+                        <button type="button" onClick={() => updateStyle({ italic: !st.italic })}
+                          className={cn('h-6 w-7 rounded text-xs border transition italic',
+                            st.italic ? 'border-brand-orange bg-brand-orange/15 text-brand-orange' : 'border-glass-border text-white/30 hover:text-white')}>
+                          I
+                        </button>
+                        {/* Size scale */}
+                        <div className="flex items-center gap-1 ml-auto">
+                          <button type="button" onClick={() => updateStyle({ sizeScale: Math.max(0.5, +(st.sizeScale - 0.1).toFixed(1)) })}
+                            className="h-6 w-6 rounded border border-glass-border text-white/40 hover:text-white text-xs transition">−</button>
+                          <span className="w-8 text-center text-[11px] text-white/60 font-mono">{Math.round(st.sizeScale * 100)}%</span>
+                          <button type="button" onClick={() => updateStyle({ sizeScale: Math.min(1.5, +(st.sizeScale + 0.1).toFixed(1)) })}
+                            className="h-6 w-6 rounded border border-glass-border text-white/40 hover:text-white text-xs transition">+</button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })()}
