@@ -173,6 +173,44 @@ export default function MenuDetail() {
     URL.revokeObjectURL(url)
   }
 
+  // ── Quick-add multiple recipes to a section ───────────────────────────────
+  const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null)
+  const [quickAddSelected, setQuickAddSelected] = useState<Set<string>>(new Set())
+  const [quickAddSearch, setQuickAddSearch] = useState('')
+  const [addingQuick, setAddingQuick] = useState(false)
+
+  function openQuickAdd(sectionId: string) {
+    setQuickAddSelected(new Set())
+    setQuickAddSearch('')
+    setQuickAddSectionId(sectionId)
+  }
+
+  async function confirmQuickAdd() {
+    if (!quickAddSectionId || quickAddSelected.size === 0) return
+    setAddingQuick(true)
+    try {
+      for (const recipeId of quickAddSelected) {
+        const recipe = recipes.find((r) => r.id === recipeId)
+        if (!recipe) continue
+        await addItem(quickAddSectionId, {
+          name: recipe.title,
+          description: recipe.description ?? null,
+          name_el: recipe.name_el ?? null,
+          description_el: recipe.description_el ?? null,
+          name_bg: recipe.name_bg ?? null,
+          description_bg: recipe.description_bg ?? null,
+          price: recipe.selling_price ?? null,
+          available: true,
+          recipe_id: recipe.id,
+          tags: [],
+        })
+      }
+      setQuickAddSectionId(null)
+    } finally {
+      setAddingQuick(false)
+    }
+  }
+
   // ── Bulk link recipes (section level) ─────────────────────────────────────
   const [bulkLinkSectionId, setBulkLinkSectionId] = useState<string | null>(null)
   const [bulkLinks, setBulkLinks] = useState<Map<string, string | null>>(new Map())
@@ -762,10 +800,18 @@ export default function MenuDetail() {
               })}
             </div>
 
-            <button type="button" onClick={() => openAddItem(section.id)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-glass-border px-3 py-2 text-sm text-white/40 hover:text-white hover:border-white/30 hover:bg-white/5 transition">
-              <Plus className="h-4 w-4" />{t('menus.detail.addItem')}
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => openAddItem(section.id)}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-dashed border-glass-border px-3 py-2 text-sm text-white/40 hover:text-white hover:border-white/30 hover:bg-white/5 transition">
+                <Plus className="h-4 w-4" />{t('menus.detail.addItem')}
+              </button>
+              <button type="button" onClick={() => openQuickAdd(section.id)}
+                title="Προσθήκη από βιβλιοθήκη συνταγών"
+                className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-sky-500/30 px-3 py-2 text-sm text-sky-400/60 hover:text-sky-300 hover:border-sky-400/50 hover:bg-sky-500/5 transition">
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Από βιβλιοθήκη</span>
+              </button>
+            </div>
           </GlassCard>
         ))}
       </div>
@@ -1470,6 +1516,86 @@ export default function MenuDetail() {
           `}</style>
         </div>
       )}
+
+      {/* ── Quick-add from library drawer ── */}
+      {(() => {
+        const section = menu?.sections.find((s) => s.id === quickAddSectionId)
+        const filtered = recipes.filter((r) =>
+          r.title.toLowerCase().includes(quickAddSearch.toLowerCase())
+        )
+        return (
+          <Drawer open={!!quickAddSectionId} onClose={() => { if (!addingQuick) setQuickAddSectionId(null) }}
+            title={`Από βιβλιοθήκη — ${section?.name ?? ''}`}>
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 pointer-events-none" />
+                <input type="text" placeholder="Αναζήτηση συνταγής…" value={quickAddSearch}
+                  onChange={(e) => setQuickAddSearch(e.target.value)}
+                  className="w-full rounded-xl border border-glass-border bg-glass px-4 py-2.5 pl-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50" />
+              </div>
+
+              {quickAddSelected.size > 0 && (
+                <div className="flex items-center justify-between rounded-xl border border-brand-orange/30 bg-brand-orange/10 px-3 py-2">
+                  <span className="text-sm text-brand-orange font-medium">{quickAddSelected.size} επιλεγμένες</span>
+                  <button type="button" onClick={() => setQuickAddSelected(new Set())}
+                    className="text-xs text-white/40 hover:text-white transition">Καθαρισμός</button>
+                </div>
+              )}
+
+              <div className="space-y-1 max-h-[50vh] overflow-y-auto pr-1">
+                {filtered.length === 0 && (
+                  <p className="text-sm text-white/40 text-center py-6">Δεν βρέθηκαν συνταγές</p>
+                )}
+                {filtered.map((recipe) => {
+                  const selected = quickAddSelected.has(recipe.id)
+                  return (
+                    <button key={recipe.id} type="button"
+                      onClick={() => setQuickAddSelected((prev) => {
+                        const next = new Set(prev)
+                        selected ? next.delete(recipe.id) : next.add(recipe.id)
+                        return next
+                      })}
+                      className={cn(
+                        'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition',
+                        selected
+                          ? 'border-brand-orange/40 bg-brand-orange/10'
+                          : 'border-glass-border hover:bg-white/5',
+                      )}>
+                      <div className={cn(
+                        'h-4 w-4 shrink-0 rounded border transition flex items-center justify-center',
+                        selected ? 'border-brand-orange bg-brand-orange' : 'border-white/20',
+                      )}>
+                        {selected && <span className="text-white text-[10px] leading-none">✓</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{recipe.title}</p>
+                        {recipe.description && (
+                          <p className="text-xs text-white/40 truncate">{recipe.description}</p>
+                        )}
+                      </div>
+                      {recipe.selling_price != null && (
+                        <span className="text-xs text-white/40 shrink-0">€{recipe.selling_price.toFixed(2)}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button type="button"
+                disabled={quickAddSelected.size === 0 || addingQuick}
+                onClick={() => void confirmQuickAdd()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-orange/40 bg-brand-orange/15 py-2.5 text-sm font-medium text-brand-orange hover:bg-brand-orange/25 disabled:opacity-40 transition">
+                {addingQuick
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Plus className="h-4 w-4" />}
+                {addingQuick
+                  ? 'Προσθήκη…'
+                  : `Προσθήκη ${quickAddSelected.size > 0 ? quickAddSelected.size : ''} συνταγ${quickAddSelected.size === 1 ? 'ής' : 'ών'}`}
+              </button>
+            </div>
+          </Drawer>
+        )
+      })()}
 
       {/* ── Bulk link recipes drawer ── */}
       {(() => {
