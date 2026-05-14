@@ -25,6 +25,8 @@ export interface LabelSettings {
   allergenSize: 'small' | 'medium' | 'large'
   showAllergenLegend: boolean
   showQr: boolean
+  qrSizeMm: number        // QR code size in mm (default 35)
+  labelsPerRow: 1 | 2 | 3 | 4
 }
 
 export const LABEL_FONTS: { label: string; value: string }[] = [
@@ -306,8 +308,8 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       position: absolute;
       bottom: ${sm ? '2mm' : '3mm'};
       right: ${sm ? '2mm' : '3mm'};
-      width: ${sm ? '25mm' : '38mm'};
-      height: ${sm ? '25mm' : '38mm'};
+      width: ${settings.qrSizeMm ?? 35}mm;
+      height: ${settings.qrSizeMm ?? 35}mm;
       image-rendering: crisp-edges;
       opacity: 0.9;
     }
@@ -468,7 +470,7 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
   <style>
     ${labelCss(settings, d)}
     @page { size: A4; margin: 10mm }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm }
+    .grid { display: grid; grid-template-columns: repeat(${settings.labelsPerRow ?? 3}, 1fr); gap: 5mm }
     .label { width: 100% !important; height: auto !important; min-height: ${d.h}mm; }
   </style>
 </head>

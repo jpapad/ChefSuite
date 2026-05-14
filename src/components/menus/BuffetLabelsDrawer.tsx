@@ -58,6 +58,8 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   allergenSize: 'medium',
   showAllergenLegend: false,
   showQr: false,
+  qrSizeMm: 35,
+  labelsPerRow: 3,
 })
 
 export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
@@ -97,12 +99,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   useEffect(() => {
     const map = new Map<string, TranslatedItemExtra>()
     for (const { item } of allItems) {
-      if (item.name_bg || item.name_uk || item.name_ro || item.name_md || item.name_sr || item.name_sk || item.name_pl || item.name_cs) {
+      if (item.name_bg || item.name_uk || item.name_ro || item.name_sr || item.name_sk || item.name_pl || item.name_cs) {
         map.set(item.id, {
           name_bg: item.name_bg ?? null,
           name_uk: item.name_uk ?? null,
           name_ro: item.name_ro ?? null,
-          name_md: item.name_md ?? null,
           name_sr: item.name_sr ?? null,
           name_sk: item.name_sk ?? null,
           name_pl: item.name_pl ?? null,
@@ -110,7 +111,6 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
           desc_bg: item.description_bg ?? null,
           desc_uk: null,
           desc_ro: null,
-          desc_md: null,
           desc_sr: null,
           desc_sk: null,
           desc_pl: null,
@@ -144,7 +144,6 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const nameBg = extra?.name_bg ?? item.name_bg ?? recipe?.name_bg
         const nuk = extra?.name_uk ?? item.name_uk
         const nro = extra?.name_ro ?? item.name_ro
-        const nmd = extra?.name_md ?? item.name_md
         const nsr = extra?.name_sr ?? item.name_sr
         const nsk = extra?.name_sk ?? item.name_sk
         const npl = extra?.name_pl ?? item.name_pl
@@ -152,7 +151,6 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         if (nameBg) payload.nb  = nameBg.slice(0, 60)
         if (nuk)    payload.nuk = nuk.slice(0, 60)
         if (nro)    payload.nro = nro.slice(0, 60)
-        if (nmd)    payload.nmd = nmd.slice(0, 60)
         if (nsr)    payload.nsr = nsr.slice(0, 60)
         if (nsk)    payload.nsk = nsk.slice(0, 60)
         if (npl)    payload.npl = npl.slice(0, 60)
@@ -162,7 +160,6 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const db = trunc(extra?.desc_bg ?? item.description_bg ?? recipe?.description_bg); if (db) payload.db = db
         const duk = extra?.desc_uk ? extra.desc_uk.slice(0, 100) : undefined; if (duk) payload.duk = duk
         const dro = extra?.desc_ro ? extra.desc_ro.slice(0, 100) : undefined; if (dro) payload.dro = dro
-        const dmd = extra?.desc_md ? extra.desc_md.slice(0, 100) : undefined; if (dmd) payload.dmd = dmd
         const dsr = extra?.desc_sr ? extra.desc_sr.slice(0, 100) : undefined; if (dsr) payload.dsr = dsr
         const dsk = extra?.desc_sk ? extra.desc_sk.slice(0, 100) : undefined; if (dsk) payload.dsk = dsk
         const dpl = extra?.desc_pl ? extra.desc_pl.slice(0, 100) : undefined; if (dpl) payload.dpl = dpl
@@ -258,7 +255,6 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
             description_bg: results[i].desc_bg,
             name_uk: results[i].name_uk,
             name_ro: results[i].name_ro,
-            name_md: results[i].name_md,
             name_sr: results[i].name_sr,
             name_sk: results[i].name_sk,
             name_pl: results[i].name_pl,
@@ -585,6 +581,25 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
               )}
             </div>
 
+            {/* ── Labels per row ── */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/70">Ετικέτες ανά σειρά (εκτύπωση)</label>
+              <div className="grid grid-cols-4 gap-2">
+                {([1, 2, 3, 4] as const).map((n) => (
+                  <button key={n} type="button" onClick={() => set('labelsPerRow', n)}
+                    className={cn(
+                      'rounded-xl border px-2 py-2 text-xs font-medium transition text-center',
+                      settings.labelsPerRow === n
+                        ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                        : 'border-glass-border text-white/50 hover:text-white hover:bg-white/5',
+                    )}
+                  >
+                    {n} {n === 1 ? 'στήλη' : 'στήλες'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* ── Language ── */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/70">{t('menus.labels.language')}</label>
@@ -738,6 +753,21 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
               ))}
             </div>
 
+            {/* ── QR size ── */}
+            {settings.showQr && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-white/60">
+                  <span>Μέγεθος QR</span>
+                  <span className="font-mono text-white/80">{settings.qrSizeMm} mm</span>
+                </div>
+                <input
+                  type="range" min={15} max={60} step={1} value={settings.qrSizeMm}
+                  onChange={(e) => set('qrSizeMm', +e.target.value)}
+                  className="w-full accent-brand-orange cursor-pointer"
+                />
+              </div>
+            )}
+
             {/* ── QR generating indicator ── */}
             {settings.showQr && generatingQr && (
               <div className="flex items-center gap-2 text-xs text-white/40">
@@ -750,7 +780,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 <QrCode className="h-3.5 w-3.5" />
                 <span>
                   {qrMap.size} QR codes ready
-                  {extraTranslateDone && ' 🇧🇬 🇺🇦 🇷🇴 🇲🇩 🇷🇸 🇸🇰 🇵🇱 🇨🇿'}
+                  {extraTranslateDone && ' 🇧🇬 🇺🇦 🇷🇴 🇷🇸 🇸🇰 🇵🇱 🇨🇿'}
                 </span>
               </div>
             )}
@@ -762,7 +792,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                   🌍 Μεταφράσεις QR σε επιπλέον γλώσσες
                 </p>
                 <p className="text-[11px] text-white/30 leading-relaxed">
-                  🇧🇬 Βουλγαρικά · 🇺🇦 Ουκρανικά · 🇷🇴 Ρουμανικά · 🇲🇩 Μολδαβικά · 🇷🇸 Σερβικά · 🇸🇰 Σλοβακικά · 🇵🇱 Πολωνικά · 🇨🇿 Τσεχικά
+                  🇧🇬 Βουλγαρικά · 🇺🇦 Ουκρανικά · 🇷🇴 Ρουμανικά · 🇷🇸 Σερβικά · 🇸🇰 Σλοβακικά · 🇵🇱 Πολωνικά · 🇨🇿 Τσεχικά
                 </p>
                 {extraTranslateError && (
                   <p className="text-xs text-red-400">{extraTranslateError}</p>
