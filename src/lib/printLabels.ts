@@ -430,7 +430,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
       const fw  = st.bold   ? 'bold'   : 'normal'
       const fs  = st.italic ? 'italic' : 'normal'
       const sz  = Math.round(d.namePt * st.sizeScale)
-      const col = idx === 0 ? '#111' : '#555'
+      const col = '#111'
       return `<div style="font-weight:${fw};font-style:${fs};font-size:${sz}pt;line-height:1.2;color:${col}">${l.text}</div>`
     }).join('')}
   </div>
