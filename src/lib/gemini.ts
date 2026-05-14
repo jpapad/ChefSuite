@@ -413,10 +413,16 @@ export async function translateMenuItems(
     .map((it, i) => `${i + 1}. name: "${it.name}"${it.description ? ` | description: "${it.description}"` : ''}`)
     .join('\n')
 
-  const prompt = `You are a professional menu translator for a restaurant management app.
+  const prompt = `You are an expert culinary translator for a 5-star hotel and resort buffet system.
 
 The source language is Greek. Translate each dish name and description into English and Bulgarian.
-Keep culinary terms authentic and natural — not word-for-word literal translations.
+
+Your translations must:
+- Sound completely natural on a professional hotel/restaurant menu — never word-for-word literal
+- Use formal menu register
+- For Bulgarian: use Cyrillic script and standard culinary vocabulary — avoid transliterations when a native term exists
+- For internationally recognised dishes (e.g. Μουσακάς, Τζατζίκι): use the name as commonly known in English/Bulgarian
+- Keep dish names concise; descriptions should be appetising and natural
 
 Items to translate (Greek source):
 ${itemsBlock}
@@ -426,14 +432,13 @@ Return ONLY a valid JSON array with one object per item (same order):
   {
     "name_el": "English translation of name",
     "description_el": "English translation of description, or null if no description",
-    "name_bg": "Bulgarian translation of name",
-    "description_bg": "Bulgarian translation of description, or null if no description"
+    "name_bg": "Bulgarian translation of name (Cyrillic)",
+    "description_bg": "Bulgarian translation of description (Cyrillic), or null if no description"
   }
 ]
 
 Rules:
 - If description is missing or very short, set its translations to null
-- Dish names must sound natural on a restaurant menu
 - Do NOT include markdown or any text outside the JSON array`
 
   const raw = await callClaude(prompt)
@@ -487,11 +492,18 @@ async function translateExtraBatch(
     })
     .join('\n')
 
-  const prompt = `You are a professional menu translator for a restaurant app.
+  const prompt = `You are an expert culinary translator for a 5-star hotel and resort buffet system.
 
-Translate each dish name and description into Bulgarian, Ukrainian, Romanian, Serbian, Slovak, Polish, and Czech.
-Keep culinary terms authentic and natural — not word-for-word literal translations.
-The source may be in English or Greek.
+These dish names and short descriptions appear on physical food labels at a buffet station. Hotel guests from Bulgaria, Ukraine, Romania, Serbia, Slovakia, Poland, and Czech Republic will read them.
+
+Your translations must:
+- Sound completely natural on a professional hotel/restaurant menu in the target language — never word-for-word literal
+- Use formal menu register (not casual or conversational)
+- Keep dish names short and punchy (buffet labels have limited space)
+- For Cyrillic languages (Bulgarian, Ukrainian, Serbian): use proper Cyrillic script and standard culinary vocabulary — avoid transliterations of English words when a native culinary term exists
+- For descriptions: maintain an appetising, descriptive tone and adapt idioms naturally to each language
+- For internationally recognised dishes (e.g. Moussaka, Tzatziki, Souvlaki): use the name as commonly known in the target country, with Cyrillic spelling where applicable
+- The source text may be in Greek or English
 
 Dishes to translate:
 ${itemsBlock}
@@ -517,8 +529,6 @@ Return ONLY a valid JSON array with one object per item (same order):
 ]
 
 Rules:
-- Dish names and descriptions must sound natural on a restaurant menu
-- Use Cyrillic script for Bulgarian, Ukrainian, and Serbian
 - If no description was provided, set all desc_* fields to null
 - Do NOT include markdown or any text outside the JSON array`
 
