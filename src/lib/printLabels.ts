@@ -427,7 +427,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
         const stylesMap = settings.langStyles ?? defaultStyles
         return `<div class="label-name-both">
   <div class="label-name-lines">
-    ${lines.map((l, idx) => {
+    ${lines.map((l) => {
       const st = stylesMap[l.k] ?? defaultStyles[l.k]
       const fw  = st.bold   ? 'bold'   : 'normal'
       const fs  = st.italic ? 'italic' : 'normal'
