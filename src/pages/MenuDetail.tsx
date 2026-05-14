@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
   Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
-  Link2, Loader2, Search, AlertCircle, Download,
+  Link2, Loader2, Search, AlertCircle, Download, BookOpen, ArrowRightLeft, Wand2,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -171,6 +171,122 @@ export default function MenuDetail() {
     a.download = `${menu.name.replace(/[^a-z0-9]/gi, '_')}_canva.csv`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  // ── Bulk link recipes (section level) ─────────────────────────────────────
+  const [bulkLinkSectionId, setBulkLinkSectionId] = useState<string | null>(null)
+  const [bulkLinks, setBulkLinks] = useState<Map<string, string | null>>(new Map())
+  const [bulkLinkSearch, setBulkLinkSearch] = useState<Map<string, string>>(new Map())
+  const [bulkOpenDrop, setBulkOpenDrop] = useState<string | null>(null)
+  const [savingBulkLinks, setSavingBulkLinks] = useState(false)
+
+  function openBulkLink(sectionId: string) {
+    const section = menu?.sections.find((s) => s.id === sectionId)
+    if (!section) return
+    const m = new Map<string, string | null>()
+    section.items.forEach((item) => m.set(item.id, item.recipe_id ?? null))
+    setBulkLinks(m)
+    setBulkLinkSearch(new Map())
+    setBulkOpenDrop(null)
+    setBulkLinkSectionId(sectionId)
+  }
+
+  function autoMatchBulk(sectionId: string) {
+    const section = menu?.sections.find((s) => s.id === sectionId)
+    if (!section) return
+    const m = new Map(bulkLinks)
+    section.items.forEach((item) => {
+      if (m.get(item.id)) return
+      const match = recipes.find((r) =>
+        r.title.toLowerCase() === (item.name_el ?? item.name).toLowerCase() ||
+        r.title.toLowerCase() === item.name.toLowerCase()
+      )
+      if (match) m.set(item.id, match.id)
+    })
+    setBulkLinks(m)
+  }
+
+  async function saveBulkLinks() {
+    if (!bulkLinkSectionId || !menu) return
+    const section = menu.sections.find((s) => s.id === bulkLinkSectionId)
+    if (!section) return
+    setSavingBulkLinks(true)
+    try {
+      await Promise.all(
+        section.items
+          .filter((item) => (item.recipe_id ?? null) !== (bulkLinks.get(item.id) ?? null))
+          .map((item) => updateItem(item.id, bulkLinkSectionId, { recipe_id: bulkLinks.get(item.id) ?? null }))
+      )
+      setBulkLinkSectionId(null)
+    } finally {
+      setSavingBulkLinks(false)
+    }
+  }
+
+  // ── Transfer section to another menu ──────────────────────────────────────
+  const [transferSectionId, setTransferSectionId] = useState<string | null>(null)
+  const [availableMenus, setAvailableMenus] = useState<{ id: string; name: string }[]>([])
+  const [transferTargetId, setTransferTargetId] = useState('')
+  const [transferMode, setTransferMode] = useState<'copy' | 'move'>('copy')
+  const [transferring, setTransferring] = useState(false)
+  const [transferError, setTransferError] = useState<string | null>(null)
+
+  async function openTransfer(sectionId: string) {
+    setTransferError(null)
+    setTransferTargetId('')
+    setTransferMode('copy')
+    setTransferSectionId(sectionId)
+    const { data } = await supabase
+      .from('menus')
+      .select('id, name')
+      .neq('id', id ?? '')
+      .order('name')
+    setAvailableMenus((data ?? []) as { id: string; name: string }[])
+  }
+
+  async function confirmTransfer() {
+    if (!transferSectionId || !transferTargetId || !menu) return
+    const section = menu.sections.find((s) => s.id === transferSectionId)
+    if (!section) return
+    setTransferring(true)
+    setTransferError(null)
+    try {
+      const { data: existing } = await supabase
+        .from('menu_sections')
+        .select('sort_order')
+        .eq('menu_id', transferTargetId)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+      const nextOrder = ((existing as { sort_order: number }[] | null)?.[0]?.sort_order ?? -1) + 1
+      const { data: newSection, error: sErr } = await supabase
+        .from('menu_sections')
+        .insert({ menu_id: transferTargetId, name: section.name, sort_order: nextOrder })
+        .select()
+        .single()
+      if (sErr || !newSection) throw sErr ?? new Error('Section creation failed')
+      if (section.items.length > 0) {
+        const { error: iErr } = await supabase.from('menu_items').insert(
+          section.items.map((item, idx) => ({
+            section_id: (newSection as { id: string }).id,
+            name: item.name, description: item.description,
+            name_el: item.name_el, description_el: item.description_el,
+            name_bg: item.name_bg, description_bg: item.description_bg,
+            name_uk: item.name_uk, name_ro: item.name_ro, name_sr: item.name_sr,
+            name_sk: item.name_sk, name_pl: item.name_pl, name_cs: item.name_cs,
+            name_md: item.name_md, descriptions_extra: item.descriptions_extra,
+            price: item.price, available: item.available,
+            recipe_id: item.recipe_id, tags: item.tags, sort_order: idx,
+          }))
+        )
+        if (iErr) throw iErr
+      }
+      if (transferMode === 'move') await removeSection(transferSectionId)
+      setTransferSectionId(null)
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : 'Transfer failed')
+    } finally {
+      setTransferring(false)
+    }
   }
 
   // ── Prep from menu drawer ──────────────────────────────────────────────────
@@ -543,6 +659,16 @@ export default function MenuDetail() {
                     {icon}
                   </button>
                 ))}
+                <button type="button" onClick={() => openBulkLink(section.id)} aria-label="Μαζική σύνδεση συνταγών"
+                  title="Μαζική σύνδεση συνταγών"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10 transition">
+                  <BookOpen className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => void openTransfer(section.id)} aria-label="Μεταφορά τμήματος"
+                  title="Μεταφορά/Αντιγραφή σε άλλο μενού"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-sky-400 hover:bg-sky-500/10 transition">
+                  <ArrowRightLeft className="h-4 w-4" />
+                </button>
                 <button type="button" onClick={() => openEditSection(section)} aria-label={t('common.edit')}
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition">
                   <Pencil className="h-4 w-4" />
@@ -1342,6 +1468,141 @@ export default function MenuDetail() {
               body { font-family: serif; }
             }
           `}</style>
+        </div>
+      )}
+
+      {/* ── Bulk link recipes drawer ── */}
+      {(() => {
+        const section = menu?.sections.find((s) => s.id === bulkLinkSectionId)
+        return (
+          <Drawer open={!!bulkLinkSectionId} onClose={() => { if (!savingBulkLinks) setBulkLinkSectionId(null) }}
+            title={`Σύνδεση Συνταγών — ${section?.name ?? ''}`}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-white/50">Επέλεξε συνταγή για κάθε πιάτο</p>
+                <button type="button" onClick={() => autoMatchBulk(bulkLinkSectionId!)}
+                  className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 transition">
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Auto-match
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {section?.items.map((item) => {
+                  const linkedId = bulkLinks.get(item.id) ?? null
+                  const linked = linkedId ? recipes.find((r) => r.id === linkedId) : null
+                  const search = bulkLinkSearch.get(item.id) ?? ''
+                  const filtered = recipes.filter((r) =>
+                    r.title.toLowerCase().includes(search.toLowerCase())
+                  ).slice(0, 6)
+                  const isOpen = bulkOpenDrop === item.id
+                  return (
+                    <div key={item.id} className="rounded-xl border border-glass-border p-3 space-y-1.5">
+                      <p className="text-sm font-medium text-white">{item.name}</p>
+                      <div className="relative">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
+                            <input
+                              type="text"
+                              placeholder={linked ? linked.title : 'Αναζήτηση συνταγής…'}
+                              value={isOpen ? search : ''}
+                              onFocus={() => {
+                                setBulkOpenDrop(item.id)
+                                setBulkLinkSearch((m) => new Map(m).set(item.id, ''))
+                              }}
+                              onChange={(e) => setBulkLinkSearch((m) => new Map(m).set(item.id, e.target.value))}
+                              className="w-full rounded-lg border border-glass-border bg-glass px-3 py-1.5 pl-8 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50"
+                            />
+                          </div>
+                          {linkedId && (
+                            <button type="button" onClick={() => setBulkLinks((m) => new Map(m).set(item.id, null))}
+                              className="text-white/30 hover:text-red-400 transition text-xs shrink-0">✕</button>
+                          )}
+                        </div>
+                        {isOpen && (
+                          <div className="absolute z-50 mt-1 w-full rounded-xl border border-glass-border bg-[#1a1a2e] shadow-xl overflow-hidden">
+                            {filtered.length === 0
+                              ? <p className="px-3 py-2 text-xs text-white/40">Δεν βρέθηκε</p>
+                              : filtered.map((r) => (
+                                <button key={r.id} type="button"
+                                  onMouseDown={() => {
+                                    setBulkLinks((m) => new Map(m).set(item.id, r.id))
+                                    setBulkOpenDrop(null)
+                                  }}
+                                  className="flex w-full items-center px-3 py-2 text-xs text-white/80 hover:bg-white/5 transition text-left">
+                                  {r.title}
+                                </button>
+                              ))
+                            }
+                          </div>
+                        )}
+                      </div>
+                      {linked && !isOpen && (
+                        <p className="text-[11px] text-emerald-400/70">✓ {linked.title}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <button type="button" disabled={savingBulkLinks} onClick={() => void saveBulkLinks()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-orange/40 bg-brand-orange/15 py-2.5 text-sm font-medium text-brand-orange hover:bg-brand-orange/25 disabled:opacity-50 transition">
+                {savingBulkLinks ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Αποθήκευση
+              </button>
+            </div>
+          </Drawer>
+        )
+      })()}
+
+      {/* ── Transfer section modal ── */}
+      {transferSectionId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !transferring) setTransferSectionId(null) }}>
+          <div className="w-full max-w-sm rounded-2xl border border-glass-border bg-[#1a1a2e] p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white">Μεταφορά Τμήματος</h3>
+              <button type="button" onClick={() => { if (!transferring) setTransferSectionId(null) }}
+                className="text-white/40 hover:text-white transition"><X className="h-4 w-4" /></button>
+            </div>
+            <p className="text-sm text-white/60">
+              Τμήμα: <span className="text-white font-medium">{menu?.sections.find((s) => s.id === transferSectionId)?.name}</span>
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-white/50">Προορισμός μενού</label>
+              <select value={transferTargetId} onChange={(e) => setTransferTargetId(e.target.value)}
+                className="w-full rounded-xl border border-glass-border bg-glass px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange/50">
+                <option value="">Επέλεξε μενού…</option>
+                {availableMenus.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              {(['copy', 'move'] as const).map((mode) => (
+                <button key={mode} type="button" onClick={() => setTransferMode(mode)}
+                  className={cn(
+                    'flex-1 rounded-xl border py-2 text-sm font-medium transition',
+                    transferMode === mode
+                      ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                      : 'border-glass-border text-white/50 hover:text-white hover:bg-white/5',
+                  )}>
+                  {mode === 'copy' ? 'Αντιγραφή' : 'Μετακίνηση'}
+                </button>
+              ))}
+            </div>
+
+            {transferError && <p className="text-xs text-red-400">{transferError}</p>}
+
+            <button type="button" disabled={!transferTargetId || transferring} onClick={() => void confirmTransfer()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/40 bg-sky-500/15 py-2.5 text-sm font-medium text-sky-300 hover:bg-sky-500/25 disabled:opacity-40 transition">
+              {transferring ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRightLeft className="h-4 w-4" />}
+              {transferMode === 'copy' ? 'Αντιγραφή' : 'Μετακίνηση'}
+            </button>
+          </div>
         </div>
       )}
     </div>
