@@ -343,10 +343,12 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       justify-content: ${settings.nameAlign === 'center' ? 'center' : settings.nameAlign === 'right' ? 'flex-end' : 'space-between'}; gap: 3mm;
       text-align: ${settings.nameAlign};
       font-size: ${d.namePt}pt;
+      ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .label-name-both {
       flex: 1; display: flex; align-items: flex-start;
       justify-content: space-between; gap: 3mm;
+      ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .label-name-lines {
       display: flex; flex-direction: column;
@@ -368,8 +370,9 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       -webkit-line-clamp: ${sm ? 2 : 3};
       -webkit-box-orient: vertical; overflow: hidden;
       font-size: ${d.descPt}pt;
+      ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
-    .tags { font-size: ${sm ? '6pt' : '8pt'}; color: #555; font-family: Arial, sans-serif; margin-top: auto; }
+    .tags { font-size: ${sm ? '6pt' : '8pt'}; color: #555; font-family: Arial, sans-serif; margin-top: auto; ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''} }
   `
 }
 
