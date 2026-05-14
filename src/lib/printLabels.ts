@@ -27,6 +27,7 @@ export interface LabelSettings {
   showQr: boolean
   qrSizeMm: number        // QR code size in mm (default 35)
   labelsPerRow: 1 | 2 | 3 | 4
+  descSizeScale: number   // multiplier for description font size (default 1.0)
   langStyles: Record<'source' | 'en' | 'bg', { bold: boolean; italic: boolean; sizeScale: number }>
 }
 
@@ -371,7 +372,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       display: -webkit-box;
       -webkit-line-clamp: ${sm ? 2 : 3};
       -webkit-box-orient: vertical; overflow: hidden;
-      font-size: ${d.descPt}pt;
+      font-size: ${Math.round(d.descPt * (settings.descSizeScale ?? 1))}pt;
       ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .tags { font-size: ${sm ? '6pt' : '8pt'}; color: #555; font-family: Arial, sans-serif; margin-top: auto; ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''} }

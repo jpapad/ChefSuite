@@ -60,6 +60,7 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   showQr: false,
   qrSizeMm: 35,
   labelsPerRow: 3,
+  descSizeScale: 1.0,
   langStyles: {
     source: { bold: true,  italic: false, sizeScale: 1.0 },
     en:     { bold: true,  italic: false, sizeScale: 1.0 },
@@ -808,6 +809,22 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 </label>
               ))}
             </div>
+
+            {/* ── Description size ── */}
+            {settings.showDescription && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-white/70">Μέγεθος περιγραφής</span>
+                <div className="flex items-center gap-1">
+                  <button type="button"
+                    onClick={() => set('descSizeScale', Math.max(0.5, +((settings.descSizeScale ?? 1) - 0.1).toFixed(1)))}
+                    className="h-6 w-6 rounded border border-glass-border text-white/40 hover:text-white text-xs transition">−</button>
+                  <span className="w-10 text-center text-[11px] text-white/60 font-mono">{Math.round((settings.descSizeScale ?? 1) * 100)}%</span>
+                  <button type="button"
+                    onClick={() => set('descSizeScale', Math.min(2.0, +((settings.descSizeScale ?? 1) + 0.1).toFixed(1)))}
+                    className="h-6 w-6 rounded border border-glass-border text-white/40 hover:text-white text-xs transition">+</button>
+                </div>
+              </div>
+            )}
 
             {/* ── QR size ── */}
             {settings.showQr && (
