@@ -645,6 +645,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 bg:     { label: 'Βουλγαρικά', flag: '🇧🇬' },
               }
               return (
+                <>
                 <div className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-1.5">
                   <p className="text-xs text-white/50 mb-2">Σειρά γλωσσών στην ετικέτα</p>
                   {currentLines.map((key, idx) => (
@@ -714,6 +715,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                     )
                   })}
                 </div>
+                </>
               )
             })()}
 
