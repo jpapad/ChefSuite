@@ -100,6 +100,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   const [translatingExtra, setTranslatingExtra] = useState(false)
   const [extraTranslateDone, setExtraTranslateDone] = useState(false)
   const [extraTranslateError, setExtraTranslateError] = useState<string | null>(null)
+  const [removingBg, setRemovingBg] = useState(false)
+  const [bgRemoveError, setBgRemoveError] = useState<string | null>(null)
 
   // Sync logo default when menu prop changes
   useEffect(() => {
@@ -210,6 +212,28 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
   function set<K extends keyof LabelSettings>(key: K, value: LabelSettings[K]) {
     setSettings((s) => ({ ...s, [key]: value }))
+  }
+
+  async function handleRemoveBg() {
+    if (!settings.logoUrl) return
+    setRemovingBg(true)
+    setBgRemoveError(null)
+    try {
+      const { removeBackground } = await import('@imgly/background-removal')
+      let source: Blob | string = settings.logoUrl
+      if (settings.logoUrl.startsWith('http') || settings.logoUrl.startsWith('//')) {
+        const resp = await fetch(settings.logoUrl)
+        source = await resp.blob()
+      }
+      const result = await removeBackground(source, {
+        publicPath: `https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/`,
+      })
+      set('logoUrl', URL.createObjectURL(result))
+    } catch (err) {
+      setBgRemoveError(err instanceof Error ? err.message : 'Αποτυχία αφαίρεσης φόντου')
+    } finally {
+      setRemovingBg(false)
+    }
   }
 
   function toggleItem(id: string) {
@@ -439,6 +463,29 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Background removal */}
+                  <div className="pt-1 border-t border-white/10 space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={handleRemoveBg}
+                      disabled={removingBg}
+                      className={cn(
+                        'flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition',
+                        removingBg
+                          ? 'border-glass-border text-white/30 cursor-not-allowed'
+                          : 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10',
+                      )}
+                    >
+                      {removingBg
+                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Επεξεργασία…</>
+                        : '✨ Αφαίρεση φόντου'
+                      }
+                    </button>
+                    {bgRemoveError && (
+                      <p className="text-xs text-red-400">{bgRemoveError}</p>
+                    )}
                   </div>
                 </div>
               )}
