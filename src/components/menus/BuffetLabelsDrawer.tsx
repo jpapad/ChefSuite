@@ -59,6 +59,16 @@ const DEFAULT_SETTINGS = (logoUrl: string | null): LabelSettings => ({
   showAllergenLegend: false,
   showQr: false,
   qrSizeMm: 35,
+  qrBorder: false,
+  qrBorderColor: '#333333',
+  qrBorderWidth: 1,
+  qrBorderRadius: 2,
+  qrBorderPadding: 2,
+  qrLabel: '',
+  qrLabelPos: 'below' as const,
+  qrLabelSize: 7,
+  qrLabelColor: '#555555',
+  qrLabelAlign: 'center' as const,
   labelsPerRow: 3,
   descSizeScale: 1.0,
   langStyles: {
@@ -838,6 +848,107 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                   onChange={(e) => set('qrSizeMm', +e.target.value)}
                   className="w-full accent-brand-orange cursor-pointer"
                 />
+              </div>
+            )}
+
+            {/* ── QR border ── */}
+            {settings.showQr && (
+              <div className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-3">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-xs text-white/60">Πλαίσιο γύρω από QR</span>
+                  <button type="button"
+                    onClick={() => set('qrBorder', !settings.qrBorder)}
+                    className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0',
+                      settings.qrBorder ? 'bg-brand-orange' : 'bg-white/20')}>
+                    <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white-fixed transition-transform',
+                      settings.qrBorder ? 'translate-x-[18px]' : 'translate-x-[3px]')} />
+                  </button>
+                </label>
+                {settings.qrBorder && (
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-white/50">Χρώμα</span>
+                      <input type="color" value={settings.qrBorderColor}
+                        onChange={(e) => set('qrBorderColor', e.target.value)}
+                        className="h-7 w-12 cursor-pointer rounded border border-glass-border bg-transparent" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] text-white/50">
+                        <span>Πάχος</span><span className="font-mono">{settings.qrBorderWidth}px</span>
+                      </div>
+                      <input type="range" min={1} max={6} step={1} value={settings.qrBorderWidth}
+                        onChange={(e) => set('qrBorderWidth', +e.target.value)}
+                        className="w-full accent-brand-orange cursor-pointer" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] text-white/50">
+                        <span>Γωνίες</span><span className="font-mono">{settings.qrBorderRadius}mm</span>
+                      </div>
+                      <input type="range" min={0} max={6} step={1} value={settings.qrBorderRadius}
+                        onChange={(e) => set('qrBorderRadius', +e.target.value)}
+                        className="w-full accent-brand-orange cursor-pointer" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] text-white/50">
+                        <span>Εσωτερικό padding</span><span className="font-mono">{settings.qrBorderPadding}mm</span>
+                      </div>
+                      <input type="range" min={1} max={6} step={1} value={settings.qrBorderPadding}
+                        onChange={(e) => set('qrBorderPadding', +e.target.value)}
+                        className="w-full accent-brand-orange cursor-pointer" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── QR scan label ── */}
+            {settings.showQr && (
+              <div className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-3">
+                <p className="text-xs text-white/60">Μήνυμα δίπλα στο QR</p>
+                <input type="text" placeholder='π.χ. "Scan me" ή "📷 Σκανάρετε"'
+                  value={settings.qrLabel}
+                  onChange={(e) => set('qrLabel', e.target.value)}
+                  className="w-full rounded-lg border border-glass-border bg-glass px-3 py-2 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-brand-orange/50" />
+                {settings.qrLabel && (
+                  <div className="space-y-2.5">
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['above', 'below'] as const).map((pos) => (
+                        <button key={pos} type="button" onClick={() => set('qrLabelPos', pos)}
+                          className={cn('rounded-lg border py-1.5 text-[11px] font-medium transition',
+                            settings.qrLabelPos === pos
+                              ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                              : 'border-glass-border text-white/40 hover:text-white')}>
+                          {pos === 'above' ? '↑ Πάνω' : '↓ Κάτω'}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-white/50">Χρώμα</span>
+                      <input type="color" value={settings.qrLabelColor}
+                        onChange={(e) => set('qrLabelColor', e.target.value)}
+                        className="h-7 w-12 cursor-pointer rounded border border-glass-border bg-transparent" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] text-white/50">
+                        <span>Μέγεθος</span><span className="font-mono">{settings.qrLabelSize}pt</span>
+                      </div>
+                      <input type="range" min={5} max={14} step={1} value={settings.qrLabelSize}
+                        onChange={(e) => set('qrLabelSize', +e.target.value)}
+                        className="w-full accent-brand-orange cursor-pointer" />
+                    </div>
+                    <div className="flex gap-2">
+                      {(['left', 'center', 'right'] as const).map((align) => (
+                        <button key={align} type="button" onClick={() => set('qrLabelAlign', align)}
+                          className={cn('flex-1 rounded-lg border py-1.5 text-[11px] transition',
+                            settings.qrLabelAlign === align
+                              ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
+                              : 'border-glass-border text-white/40 hover:text-white')}>
+                          {align === 'left' ? '⬤ ←' : align === 'center' ? '→⬤←' : '→ ⬤'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

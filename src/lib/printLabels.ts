@@ -25,9 +25,19 @@ export interface LabelSettings {
   allergenSize: 'small' | 'medium' | 'large'
   showAllergenLegend: boolean
   showQr: boolean
-  qrSizeMm: number        // QR code size in mm (default 35)
+  qrSizeMm: number
+  qrBorder: boolean
+  qrBorderColor: string
+  qrBorderWidth: number
+  qrBorderRadius: number
+  qrBorderPadding: number
+  qrLabel: string
+  qrLabelPos: 'above' | 'below'
+  qrLabelSize: number
+  qrLabelColor: string
+  qrLabelAlign: 'left' | 'center' | 'right'
   labelsPerRow: 1 | 2 | 3 | 4
-  descSizeScale: number   // multiplier for description font size (default 1.0)
+  descSizeScale: number
   langStyles: Record<'source' | 'en' | 'bg', { bold: boolean; italic: boolean; sizeScale: number }>
 }
 
@@ -306,14 +316,32 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       break-inside: avoid; page-break-inside: avoid;
       overflow: hidden;
     }
-    .label-qr {
+    .label-qr-wrap {
       position: absolute;
       bottom: ${sm ? '2mm' : '3mm'};
       right: ${sm ? '2mm' : '3mm'};
+      display: flex; flex-direction: column; align-items: center;
+      ${settings.qrBorder ? `
+        border: ${settings.qrBorderWidth ?? 1}px solid ${settings.qrBorderColor ?? '#333'};
+        border-radius: ${settings.qrBorderRadius ?? 2}mm;
+        padding: ${settings.qrBorderPadding ?? 2}mm;
+      ` : ''}
+    }
+    .label-qr {
       width: ${settings.qrSizeMm ?? 35}mm;
       height: ${settings.qrSizeMm ?? 35}mm;
       image-rendering: crisp-edges;
       opacity: 0.9;
+      display: block;
+    }
+    .label-qr-msg {
+      font-size: ${settings.qrLabelSize ?? 7}pt;
+      color: ${settings.qrLabelColor ?? '#555'};
+      text-align: ${settings.qrLabelAlign ?? 'center'};
+      font-family: ${settings.fontFamily || 'Georgia, serif'};
+      width: ${settings.qrSizeMm ?? 35}mm;
+      padding: 1mm 0;
+      line-height: 1.2;
     }
     .label-header {
       display: flex; align-items: flex-start;
@@ -406,7 +434,16 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
   }
 
   const qrEl = settings.showQr && qrDataUrl
-    ? `<img src="${qrDataUrl}" class="label-qr" alt="" />`
+    ? (() => {
+        const msgEl = settings.qrLabel
+          ? `<div class="label-qr-msg">${settings.qrLabel}</div>`
+          : ''
+        return `<div class="label-qr-wrap">
+  ${settings.qrLabelPos === 'above' ? msgEl : ''}
+  <img src="${qrDataUrl}" class="label-qr" alt="" />
+  ${settings.qrLabelPos !== 'above' ? msgEl : ''}
+</div>`
+      })()
     : ''
 
   const nameHtml = settings.language === 'both'
