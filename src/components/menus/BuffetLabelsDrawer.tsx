@@ -225,9 +225,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         const resp = await fetch(settings.logoUrl)
         source = await resp.blob()
       }
-      const result = await removeBackground(source, {
-        publicPath: `https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/`,
-      })
+      const result = await removeBackground(source)
       set('logoUrl', URL.createObjectURL(result))
     } catch (err) {
       setBgRemoveError(err instanceof Error ? err.message : 'Αποτυχία αφαίρεσης φόντου')
