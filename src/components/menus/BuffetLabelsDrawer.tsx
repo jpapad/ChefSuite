@@ -324,8 +324,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   // ── Logo constraints based on current dims ─────────────────────────────────
 
   const dims = useMemo(() => getDims(settings), [settings])
-  const logoWMax = Math.max(20, Math.min(80, dims.w - 10))
-  const logoHMax = Math.max(10, Math.min(40, dims.h - 15))
+  const logoWMax = Math.max(20, Math.min(160, dims.w - 5))
+  const logoHMax = Math.max(10, Math.min(80, dims.h - 10))
 
   // ── Preview iframe ─────────────────────────────────────────────────────────
 

@@ -356,7 +356,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       display: flex; flex-wrap: wrap; gap: 1.5mm;
       justify-content: flex-end; max-width: 60%;
     }
-    .logo { max-width: ${settings.logoMaxW}mm; max-height: ${settings.logoMaxH}mm; object-fit: contain; }
+    .logo { width: ${settings.logoMaxW}mm; max-height: ${settings.logoMaxH}mm; object-fit: contain; object-position: left center; }
     .logo-placeholder { width: 1px }
     .allergens { display: flex; flex-wrap: wrap; gap: 1.5mm; justify-content: flex-end }
     .allergen {
