@@ -6,7 +6,10 @@ import { useAuth } from '../../contexts/AuthContext'
 const MAX_BYTES = 10 * 1024 * 1024 // 10 MB
 const MAX_DIM = 2400 // max width/height after resize
 
-function toJpeg(file: File): Promise<File> {
+function resizeImage(file: File): Promise<File> {
+  const isPng = file.type === 'image/png'
+  const mimeOut = isPng ? 'image/png' : 'image/jpeg'
+  const extOut  = isPng ? 'png' : 'jpg'
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
@@ -23,14 +26,19 @@ function toJpeg(file: File): Promise<File> {
       canvas.height = h
       const ctx = canvas.getContext('2d')
       if (!ctx) { reject(new Error('Canvas not available')); return }
+      if (!isPng) {
+        // fill white so JPEG has no black areas from transparent pixels
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, w, h)
+      }
       ctx.drawImage(img, 0, 0, w, h)
       canvas.toBlob(
         (blob) => {
           if (!blob) { reject(new Error('Conversion failed')); return }
-          resolve(new File([blob], 'image.jpg', { type: 'image/jpeg' }))
+          resolve(new File([blob], `image.${extOut}`, { type: mimeOut }))
         },
-        'image/jpeg',
-        0.92,
+        mimeOut,
+        isPng ? undefined : 0.92,
       )
     }
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not load image')) }
@@ -66,11 +74,12 @@ export function ImageUpload({ value, onChange, bucket, label, aspectClass = 'h-3
     setUploading(true)
     setError(null)
     try {
-      const converted = await toJpeg(file)
-      const path = `${profile.team_id}/${crypto.randomUUID()}.jpg`
+      const converted = await resizeImage(file)
+      const ext = converted.type === 'image/png' ? 'png' : 'jpg'
+      const path = `${profile.team_id}/${crypto.randomUUID()}.${ext}`
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(path, converted, { upsert: true, contentType: 'image/jpeg' })
+        .upload(path, converted, { upsert: true, contentType: converted.type })
       if (uploadError) throw uploadError
       const { data } = supabase.storage.from(bucket).getPublicUrl(path)
       onChange(data.publicUrl)
