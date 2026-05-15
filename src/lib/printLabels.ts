@@ -345,20 +345,14 @@ function labelCss(settings: LabelSettings, d: Dims): string {
     }
     .label-header {
       display: flex; align-items: flex-start;
-      justify-content: space-between; gap: 3mm;
-    }
-    .label-header-center {
-      position: relative;
-      display: flex; justify-content: center; width: 100%;
-    }
-    .allergens-overlay {
-      position: absolute; right: 0; top: 0;
-      display: flex; flex-wrap: wrap; gap: 1.5mm;
-      justify-content: flex-end; max-width: 60%;
+      justify-content: ${settings.logoAlign === 'center' ? 'center' : settings.logoAlign === 'right' ? 'flex-end' : 'flex-start'}; gap: 3mm;
     }
     .logo { width: ${settings.logoMaxW}mm; max-height: ${settings.logoMaxH}mm; object-fit: contain; object-position: left center; }
     .logo-placeholder { width: 1px }
-    .allergens { display: flex; flex-wrap: wrap; gap: 1.5mm; justify-content: flex-end }
+    .allergens {
+      display: flex; flex-wrap: wrap; gap: 1.5mm;
+      ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
+    }
     .allergen {
       background: #fee2e2; color: #991b1b;
       border: 0.5px solid #fca5a5; border-radius: 1.5mm;
@@ -424,14 +418,10 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
     ? `<img src="${settings.logoUrl}" class="logo" alt="logo" />`
     : '<div class="logo-placeholder"></div>'
 
-  let headerHtml: string
-  if (settings.logoAlign === 'center') {
-    headerHtml = `<div class="label-header-center"><div class="allergens-overlay">${allergenBadges}</div>${logoEl}</div>`
-  } else if (settings.logoAlign === 'right') {
-    headerHtml = `<div class="label-header"><div class="allergens">${allergenBadges}</div>${logoEl}</div>`
-  } else {
-    headerHtml = `<div class="label-header">${logoEl}<div class="allergens">${allergenBadges}</div></div>`
-  }
+  const headerHtml = `<div class="label-header">${logoEl}</div>`
+  const allergenRowHtml = allergenBadges
+    ? `<div class="allergens">${allergenBadges}</div>`
+    : ''
 
   const qrEl = settings.showQr && qrDataUrl
     ? (() => {
@@ -482,6 +472,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
   return `
 <div class="label" style="width:${d.w}mm;height:${d.h}mm">
   ${headerHtml}
+  ${allergenRowHtml}
   ${nameHtml}
   ${desc ? `<div class="label-desc">${desc}</div>` : ''}
   ${tags}
