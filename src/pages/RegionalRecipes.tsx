@@ -36,6 +36,7 @@ export default function RegionalRecipes() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [count, setCount] = useState(12)
   const [loading, setLoading] = useState(false)
+  const [loadingMsg, setLoadingMsg] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<RegionalRecipe[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -46,13 +47,14 @@ export default function RegionalRecipes() {
   async function handleGenerate() {
     if (!selectedRegion) return
     setLoading(true)
+    setLoadingMsg('')
     setError(null)
     setResults([])
     setSelected(new Set())
     setImportDone(false)
     setExpandedIdx(null)
     try {
-      const recipes = await generateRegionalRecipes(selectedRegion, count)
+      const recipes = await generateRegionalRecipes(selectedRegion, count, setLoadingMsg)
       setResults(recipes)
       setSelected(new Set(recipes.map((_, i) => i)))
     } catch (err) {
@@ -193,9 +195,9 @@ export default function RegionalRecipes() {
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <Loader2 className="h-10 w-10 text-brand-orange animate-spin" />
           <p className="text-white/60 text-sm">
-            Αναζήτηση αυθεντικών πιάτων από {selectedRegion} στο διαδίκτυο…<br />
-            <span className="text-white/30 text-xs">Βήμα 1: Google Search → πραγματικά πιάτα · Βήμα 2: Πλήρεις συνταγές (~40 δευτ.)</span>
+            {loadingMsg || `Αναζήτηση αυθεντικών συνταγών από ${selectedRegion}…`}
           </p>
+          <p className="text-white/30 text-xs">Φόρτωση πραγματικών συνταγών από το διαδίκτυο</p>
         </div>
       )}
 

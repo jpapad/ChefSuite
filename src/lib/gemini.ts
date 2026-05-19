@@ -13,8 +13,9 @@ Return ONLY the JSON object, no markdown, no explanation.`
 
 interface GeminiResponse {
   candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>
+    content?: { parts?: Array<{ text?: string }> }
+    groundingMetadata?: {
+      groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>
     }
   }>
   error?: { message: string }
@@ -891,104 +892,147 @@ export interface RegionalRecipe {
   category: string | null
 }
 
-// Step 1a: Search real dish names via Google Search grounding (Gemini)
-async function searchRegionalDishNamesWithGoogle(region: string, count: number): Promise<string[]> {
-  const json = await callGeminiRaw({
-    contents: [{
-      parts: [{ text: `Ποια είναι τα ${count} πιο γνωστά και αυθεντικά παραδοσιακά πιάτα της περιοχής ${region} στην Ελλάδα; Γράψε ΜΟΝΟ τα ονόματα των πιάτων στα Ελληνικά, ένα ανά γραμμή, χωρίς αρίθμηση, χωρίς περιγραφές, χωρίς άλλο κείμενο.` }],
-    }],
-    tools: [{ google_search: {} }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
-  })
-  if (json.error) throw new Error(json.error.message)
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-  return text
-    .split('\n')
-    .map((l: string) => l.replace(/^[\d\.\-\*\•\s]+/, '').trim())
-    .filter((l: string) => l.length > 2 && !l.includes(':'))
-    .slice(0, count)
-}
+const _RECIPE_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
+const _RECIPE_CATS      = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
+const _SKIP_DOMAINS     = ['facebook.com','instagram.com','youtube.com','wikipedia.org','twitter.com','tiktok.com','google.com','pinterest.com']
 
-// Step 1b: Fallback — Claude lists well-known traditional dishes by region
-async function searchRegionalDishNamesWithClaude(region: string, count: number): Promise<string[]> {
-  const raw = await callClaude(
-    `List exactly ${count} well-known, historically documented traditional dishes from the ${region} region of Greece. Return ONLY the Greek dish names, one per line, no numbers, no descriptions, no other text.`,
-    800,
-  )
-  return raw
-    .split('\n')
-    .map((l) => l.replace(/^[\d\.\-\*\•\s]+/, '').trim())
-    .filter((l) => l.length > 2 && !l.includes(':'))
-    .slice(0, count)
-}
+// Collect recipe page URLs via multiple Gemini Google Search grounding calls
+async function collectRecipeUrls(region: string, needed: number): Promise<string[]> {
+  const queries = [
+    `παραδοσιακές συνταγές ${region} Ελλάδα`,
+    `κουζίνα ${region} αυθεντικές συνταγές πιάτα`,
+    `τοπικά παραδοσιακά πιάτα ${region} μαγειρική`,
+  ]
+  const seen = new Set<string>()
+  const urls: string[] = []
 
-// Step 1: Try Google Search, fall back to Claude on rate limit
-async function searchRegionalDishNames(region: string, count: number): Promise<string[]> {
-  try {
-    const names = await searchRegionalDishNamesWithGoogle(region, count)
-    if (names.length > 0) return names
-    // Empty result — fall through to Claude
-  } catch {
-    // Rate limit or other Gemini error — fall through to Claude
-  }
-  return searchRegionalDishNamesWithClaude(region, count)
-}
-
-// Step 2: Generate full recipe details for real dish names via Claude
-export async function generateRegionalRecipes(region: string, count: number): Promise<RegionalRecipe[]> {
-  const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
-  const VALID_CATS = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
-
-  // Step 1: get verified dish names from Google Search
-  const dishNames = await searchRegionalDishNames(region, count)
-  if (dishNames.length === 0) throw new Error('Δεν βρέθηκαν συνταγές για αυτή την περιοχή')
-
-  const namesBlock = dishNames.map((n, i) => `${i + 1}. ${n}`).join('\n')
-
-  // Step 2: generate full recipes for those real dishes
-  const prompt = `You are a professional Greek chef and culinary expert. Below is a list of authentic traditional dishes from the ${region} region of Greece. For each dish, generate the complete recipe details.
-
-Dishes:
-${namesBlock}
-
-Respond with ONLY a valid JSON array (same order), no markdown, no explanation:
-[
-  {
-    "title": "exact Greek dish name as given",
-    "name_el": "English name",
-    "description": "1-2 sentence appetising description in Greek mentioning regional character",
-    "description_el": "1-2 sentence appetising description in English",
-    "ingredients": "Full ingredients list in Greek, one ingredient per line with quantities (e.g. '500γρ αρνί κομμένο σε κύβους')",
-    "instructions": "Numbered step-by-step cooking instructions in Greek",
-    "allergens": ["only from: gluten,dairy,eggs,fish,shellfish,nuts,peanuts,soy,sesame,celery,mustard,sulphites,lupin,molluscs"],
-    "prep_time": 20,
-    "cook_time": 45,
-    "servings": 4,
-    "category": "one of: appetizer,soup,salad,main,side,sauce,bread,dessert,beverage"
-  }
-]`
-
-  const raw = await callClaude(prompt, 14000)
-  const parsed = JSON.parse(raw) as unknown
-  if (!Array.isArray(parsed)) throw new Error(`Expected JSON array, got: ${raw.slice(0, 200)}`)
-
-  return dishNames.map((title, i): RegionalRecipe => {
-    const x = ((parsed as object[])[i] ?? {}) as Record<string, unknown>
-    const allergens = Array.isArray(x.allergens)
-      ? (x.allergens as string[]).filter((a) => VALID_ALLERGENS.has(a))
-      : []
-    return {
-      title,
-      name_el:        typeof x.name_el        === 'string' ? x.name_el        : null,
-      description:    typeof x.description    === 'string' ? x.description    : null,
-      description_el: typeof x.description_el === 'string' ? x.description_el : null,
-      ingredients:    typeof x.ingredients    === 'string' ? x.ingredients    : null,
-      instructions:   typeof x.instructions   === 'string' ? x.instructions   : null,
-      allergens,
-      prep_time:  typeof x.prep_time  === 'number' ? x.prep_time  : null,
-      cook_time:  typeof x.cook_time  === 'number' ? x.cook_time  : null,
-      servings:   typeof x.servings   === 'number' ? x.servings   : null,
-      category:   typeof x.category   === 'string' && VALID_CATS.has(x.category) ? x.category : null,
+  for (const q of queries) {
+    if (urls.length >= needed + 5) break
+    try {
+      const json = await callGeminiRaw({
+        contents: [{ parts: [{ text: q }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 300 },
+      })
+      const chunks = json.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []
+      for (const chunk of chunks) {
+        const url = chunk.web?.uri
+        if (!url || seen.has(url)) continue
+        try {
+          const host = new URL(url).hostname
+          if (_SKIP_DOMAINS.some((d) => host.includes(d))) continue
+        } catch { continue }
+        seen.add(url)
+        urls.push(url)
+      }
+    } catch {
+      // Rate limit or grounding error — continue with remaining queries
     }
-  })
+  }
+  return urls
+}
+
+// Strip HTML tags/scripts/styles down to plain readable text
+function stripHtml(html: string, maxChars = 7000): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, maxChars)
+}
+
+// Extract one recipe from raw page text via Claude
+async function extractRecipeFromText(text: string, region: string): Promise<RegionalRecipe | null> {
+  const prompt = `Extract the main recipe from this Greek webpage text. Region context: ${region}, Greece.
+
+Page text:
+${text}
+
+Return ONLY a JSON object (no markdown, no code block). If no recipe is found return the string: null
+{
+  "title": "recipe name in Greek",
+  "name_el": "recipe name in English",
+  "description": "1-2 sentence description in Greek",
+  "description_el": "1-2 sentence description in English",
+  "ingredients": "full ingredients list in Greek, one per line with quantities",
+  "instructions": "numbered step-by-step cooking instructions in Greek",
+  "allergens": ["from: gluten,dairy,eggs,fish,shellfish,nuts,peanuts,soy,sesame,celery,mustard,sulphites,lupin,molluscs"],
+  "prep_time": 15,
+  "cook_time": 30,
+  "servings": 4,
+  "category": "one of: appetizer,soup,salad,main,side,sauce,bread,dessert,beverage"
+}`
+
+  try {
+    const raw = await callClaude(prompt, 3000)
+    const trimmed = raw.trim()
+    if (trimmed === 'null' || trimmed === '') return null
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>
+    if (!parsed.title) return null
+    return {
+      title:          String(parsed.title),
+      name_el:        typeof parsed.name_el        === 'string' ? parsed.name_el        : null,
+      description:    typeof parsed.description    === 'string' ? parsed.description    : null,
+      description_el: typeof parsed.description_el === 'string' ? parsed.description_el : null,
+      ingredients:    typeof parsed.ingredients    === 'string' ? parsed.ingredients    : null,
+      instructions:   typeof parsed.instructions   === 'string' ? parsed.instructions   : null,
+      allergens: Array.isArray(parsed.allergens)
+        ? (parsed.allergens as string[]).filter((a) => _RECIPE_ALLERGENS.has(a))
+        : [],
+      prep_time: typeof parsed.prep_time === 'number' ? parsed.prep_time : null,
+      cook_time: typeof parsed.cook_time === 'number' ? parsed.cook_time : null,
+      servings:  typeof parsed.servings  === 'number' ? parsed.servings  : null,
+      category:  typeof parsed.category  === 'string' && _RECIPE_CATS.has(parsed.category) ? parsed.category : null,
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function generateRegionalRecipes(
+  region: string,
+  count: number,
+  onProgress?: (msg: string) => void,
+): Promise<RegionalRecipe[]> {
+  onProgress?.('Αναζήτηση αυθεντικών συνταγών στο διαδίκτυο…')
+
+  // Phase 1: collect recipe page URLs from Google Search grounding
+  const urls = await collectRecipeUrls(region, count)
+  if (urls.length === 0) {
+    throw new Error('Δεν βρέθηκαν σελίδες συνταγών. Δοκίμασε ξανά σε λίγο.')
+  }
+
+  // Phase 2: fetch each page and extract recipe
+  const recipes: RegionalRecipe[] = []
+  const limit = Math.min(urls.length, count)
+
+  for (let i = 0; i < limit; i++) {
+    onProgress?.(`Φόρτωση συνταγής ${i + 1} από ${limit}…`)
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-url', { body: { url: urls[i] } })
+      if (error || !(data as { html?: string })?.html) continue
+
+      const text = stripHtml((data as { html: string }).html)
+      if (text.length < 200) continue
+
+      const recipe = await extractRecipeFromText(text, region)
+      if (recipe) recipes.push(recipe)
+    } catch {
+      // Skip unreachable / blocked pages silently
+    }
+  }
+
+  if (recipes.length === 0) {
+    throw new Error('Δεν ήταν δυνατή η εξαγωγή συνταγών. Δοκίμασε άλλη περιοχή ή ξανά.')
+  }
+
+  return recipes
 }
