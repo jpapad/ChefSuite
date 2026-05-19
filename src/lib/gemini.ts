@@ -896,12 +896,11 @@ const _RECIPE_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','n
 const _RECIPE_CATS      = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
 const _SKIP_DOMAINS     = ['facebook.com','instagram.com','youtube.com','wikipedia.org','twitter.com','tiktok.com','google.com','pinterest.com']
 
-// Collect recipe page URLs via multiple Gemini Google Search grounding calls
-async function collectRecipeUrls(region: string, needed: number): Promise<string[]> {
+// Tier 1: collect URLs via Gemini Google Search grounding
+async function collectViaGrounding(region: string, needed: number): Promise<string[]> {
   const queries = [
     `παραδοσιακές συνταγές ${region} Ελλάδα`,
     `κουζίνα ${region} αυθεντικές συνταγές πιάτα`,
-    `τοπικά παραδοσιακά πιάτα ${region} μαγειρική`,
   ]
   const seen = new Set<string>()
   const urls: string[] = []
@@ -914,6 +913,7 @@ async function collectRecipeUrls(region: string, needed: number): Promise<string
         tools: [{ google_search: {} }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 300 },
       })
+      if (json.error) continue
       const chunks = json.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []
       for (const chunk of chunks) {
         const url = chunk.web?.uri
@@ -925,11 +925,58 @@ async function collectRecipeUrls(region: string, needed: number): Promise<string
         seen.add(url)
         urls.push(url)
       }
-    } catch {
-      // Rate limit or grounding error — continue with remaining queries
-    }
+    } catch { continue }
   }
   return urls
+}
+
+// Tier 2: fallback — search DuckDuckGo HTML and extract result URLs
+async function collectViaDDG(region: string, needed: number): Promise<string[]> {
+  const queries = [
+    `παραδοσιακές συνταγές ${region}`,
+    `${region} συνταγή παραδοσιακή ελληνική μαγειρική`,
+  ]
+  const seen = new Set<string>()
+  const urls: string[] = []
+
+  for (const q of queries) {
+    if (urls.length >= needed + 5) break
+    try {
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}&kl=gr-el`
+      const { data, error } = await supabase.functions.invoke('fetch-url', { body: { url: ddgUrl } })
+      if (error || !(data as { html?: string })?.html) continue
+
+      const html = (data as { html: string }).html
+      // DDG HTML result links contain: href="/l/?uddg=<encoded-url>&..."
+      for (const m of html.matchAll(/uddg=([^&"'\s]+)/g)) {
+        try {
+          const url = decodeURIComponent(m[1])
+          if (!url.startsWith('http') || seen.has(url)) continue
+          const host = new URL(url).hostname
+          if (_SKIP_DOMAINS.some((d) => host.includes(d))) continue
+          seen.add(url)
+          urls.push(url)
+        } catch { continue }
+      }
+    } catch { continue }
+  }
+  return urls
+}
+
+// Collect recipe page URLs: try Gemini grounding, fall back to DuckDuckGo
+async function collectRecipeUrls(region: string, needed: number): Promise<string[]> {
+  const groundingUrls = await collectViaGrounding(region, needed)
+  if (groundingUrls.length >= 3) return groundingUrls
+
+  const ddgUrls = await collectViaDDG(region, needed)
+
+  // Merge, keeping grounding results first
+  const seen = new Set(groundingUrls)
+  const merged = [...groundingUrls]
+  for (const url of ddgUrls) {
+    if (!seen.has(url)) { seen.add(url); merged.push(url) }
+  }
+  return merged
 }
 
 // Strip HTML tags/scripts/styles down to plain readable text
