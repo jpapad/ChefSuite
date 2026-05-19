@@ -192,7 +192,10 @@ export default function RegionalRecipes() {
       {loading && (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <Loader2 className="h-10 w-10 text-brand-orange animate-spin" />
-          <p className="text-white/60 text-sm">Το AI αναζητά παραδοσιακές συνταγές από {selectedRegion}…<br /><span className="text-white/30 text-xs">Αυτό μπορεί να πάρει ~30 δευτερόλεπτα</span></p>
+          <p className="text-white/60 text-sm">
+            Αναζήτηση αυθεντικών πιάτων από {selectedRegion} στο διαδίκτυο…<br />
+            <span className="text-white/30 text-xs">Βήμα 1: Google Search → πραγματικά πιάτα · Βήμα 2: Πλήρεις συνταγές (~40 δευτ.)</span>
+          </p>
         </div>
       )}
 
