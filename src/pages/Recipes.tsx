@@ -15,6 +15,7 @@ import {
 import { ImportRecipeDrawer } from '../components/recipes/ImportRecipeDrawer'
 import { ScanRecipeDrawer } from '../components/recipes/ScanRecipeDrawer'
 import { ImportExcelMenuDrawer } from '../components/recipes/ImportExcelMenuDrawer'
+import { BulkAIUpdateDrawer } from '../components/recipes/BulkAIUpdateDrawer'
 import { RecipeVersionHistory } from '../components/recipes/RecipeVersionHistory'
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../hooks/useInventory'
@@ -37,6 +38,7 @@ export default function Recipes() {
   const [importDrawerOpen, setImportDrawerOpen] = useState(false)
   const [scanDrawerOpen, setScanDrawerOpen] = useState(false)
   const [excelMenuDrawerOpen, setExcelMenuDrawerOpen] = useState(false)
+  const [bulkAIUpdateOpen, setBulkAIUpdateOpen] = useState(false)
   const [editing, setEditing] = useState<Recipe | null>(null)
   const [viewing, setViewing] = useState<Recipe | null>(null)
   const [saving, setSaving] = useState(false)
@@ -290,6 +292,15 @@ export default function Recipes() {
               >
                 Import Excel Menu
               </Button>
+              {recipes.length > 0 && (
+                <Button
+                  variant="secondary"
+                  leftIcon={<Sparkles className="h-5 w-5" />}
+                  onClick={() => setBulkAIUpdateOpen(true)}
+                >
+                  Bulk AI Update
+                </Button>
+              )}
               <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
                 {t('recipes.newRecipe')}
               </Button>
@@ -479,6 +490,13 @@ export default function Recipes() {
         onBatchImport={onBatchImport}
         onBatchUpdate={onBatchUpdate}
         existingTitles={recipes.map((r) => r.title)}
+      />
+
+      <BulkAIUpdateDrawer
+        open={bulkAIUpdateOpen}
+        onClose={() => setBulkAIUpdateOpen(false)}
+        recipes={recipes}
+        onUpdate={update}
       />
 
       {batchImportError && (
