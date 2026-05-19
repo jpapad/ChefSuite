@@ -891,8 +891,8 @@ export interface RegionalRecipe {
   category: string | null
 }
 
-// Step 1: Search real dish names via Google Search grounding
-async function searchRegionalDishNames(region: string, count: number): Promise<string[]> {
+// Step 1a: Search real dish names via Google Search grounding (Gemini)
+async function searchRegionalDishNamesWithGoogle(region: string, count: number): Promise<string[]> {
   const json = await callGeminiRaw({
     contents: [{
       parts: [{ text: `Ποια είναι τα ${count} πιο γνωστά και αυθεντικά παραδοσιακά πιάτα της περιοχής ${region} στην Ελλάδα; Γράψε ΜΟΝΟ τα ονόματα των πιάτων στα Ελληνικά, ένα ανά γραμμή, χωρίς αρίθμηση, χωρίς περιγραφές, χωρίς άλλο κείμενο.` }],
@@ -907,6 +907,31 @@ async function searchRegionalDishNames(region: string, count: number): Promise<s
     .map((l: string) => l.replace(/^[\d\.\-\*\•\s]+/, '').trim())
     .filter((l: string) => l.length > 2 && !l.includes(':'))
     .slice(0, count)
+}
+
+// Step 1b: Fallback — Claude lists well-known traditional dishes by region
+async function searchRegionalDishNamesWithClaude(region: string, count: number): Promise<string[]> {
+  const raw = await callClaude(
+    `List exactly ${count} well-known, historically documented traditional dishes from the ${region} region of Greece. Return ONLY the Greek dish names, one per line, no numbers, no descriptions, no other text.`,
+    800,
+  )
+  return raw
+    .split('\n')
+    .map((l) => l.replace(/^[\d\.\-\*\•\s]+/, '').trim())
+    .filter((l) => l.length > 2 && !l.includes(':'))
+    .slice(0, count)
+}
+
+// Step 1: Try Google Search, fall back to Claude on rate limit
+async function searchRegionalDishNames(region: string, count: number): Promise<string[]> {
+  try {
+    const names = await searchRegionalDishNamesWithGoogle(region, count)
+    if (names.length > 0) return names
+    // Empty result — fall through to Claude
+  } catch {
+    // Rate limit or other Gemini error — fall through to Claude
+  }
+  return searchRegionalDishNamesWithClaude(region, count)
 }
 
 // Step 2: Generate full recipe details for real dish names via Claude
