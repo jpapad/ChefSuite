@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2 } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../components/ui/Input'
@@ -49,6 +49,7 @@ export default function Recipes() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [groupedView, setGroupedView] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -78,6 +79,18 @@ export default function Recipes() {
       return true
     })
   }, [recipes, query, activeAllergens, activeCategory])
+
+  const groupedRecipes = useMemo(() => {
+    if (!groupedView) return null
+    const groups: { category: RecipeCategory | null; label: string; items: typeof filtered }[] = []
+    for (const cat of RECIPE_CATEGORIES) {
+      const items = filtered.filter((r) => r.category === cat)
+      if (items.length > 0) groups.push({ category: cat, label: t(`recipes.categories.${cat}`), items })
+    }
+    const uncategorized = filtered.filter((r) => !r.category)
+    if (uncategorized.length > 0) groups.push({ category: null, label: 'Χωρίς κατηγορία', items: uncategorized })
+    return groups
+  }, [filtered, groupedView, t])
 
   function toggleAllergen(a: string) {
     setActiveAllergens((prev) =>
@@ -261,13 +274,23 @@ export default function Recipes() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {recipes.length > 0 && (
-            <Button
-              variant="secondary"
-              leftIcon={selectionMode ? <X className="h-5 w-5" /> : <CheckSquare className="h-5 w-5" />}
-              onClick={toggleSelectionMode}
-            >
-              {selectionMode ? 'Ακύρωση' : 'Επιλογή'}
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                leftIcon={<Layers className="h-5 w-5" />}
+                onClick={() => setGroupedView((v) => !v)}
+                className={groupedView ? 'border-brand-orange/60 text-brand-orange' : ''}
+              >
+                {groupedView ? 'Ομαδοποιημένη' : 'Ομαδοποίηση'}
+              </Button>
+              <Button
+                variant="secondary"
+                leftIcon={selectionMode ? <X className="h-5 w-5" /> : <CheckSquare className="h-5 w-5" />}
+                onClick={toggleSelectionMode}
+              >
+                {selectionMode ? 'Ακύρωση' : 'Επιλογή'}
+              </Button>
+            </>
           )}
           {!selectionMode && (
             <>
@@ -406,43 +429,75 @@ export default function Recipes() {
         </GlassCard>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((r) => (
-              <div key={r.id} className="relative">
-                {selectionMode && (
-                  <button
-                    type="button"
-                    onClick={() => toggleSelect(r.id)}
-                    className="absolute inset-0 z-10 rounded-2xl focus:outline-none"
-                    aria-label={selectedIds.has(r.id) ? 'Αποεπιλογή' : 'Επιλογή'}
-                  >
-                    <span className={[
-                      'absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition',
-                      selectedIds.has(r.id)
-                        ? 'border-red-400 bg-red-400 text-white'
-                        : 'border-white/40 bg-black/40 text-transparent',
-                    ].join(' ')}>
-                      {selectedIds.has(r.id)
-                        ? <CheckSquare className="h-4 w-4" />
-                        : <Square className="h-4 w-4 text-white/50" />}
-                    </span>
-                  </button>
-                )}
-                <div className={selectionMode ? (selectedIds.has(r.id) ? 'ring-2 ring-red-400 rounded-2xl' : 'opacity-60') : ''}>
-                  <RecipeCard
-                    recipe={r}
-                    ingredients={getIngredients(r.id)}
-                    inventory={inventory}
-                    onView={selectionMode ? () => {} : setViewing}
-                    onEdit={selectionMode ? () => {} : openEdit}
-                    onDelete={selectionMode ? () => {} : onDelete}
-                    onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)}
-                    onHistory={selectionMode ? () => {} : setVersionRecipe}
-                  />
+          {groupedView && groupedRecipes ? (
+            <div className="space-y-8">
+              {groupedRecipes.map((group) => (
+                <div key={group.category ?? '_none'}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest whitespace-nowrap">
+                      {group.label}
+                    </h2>
+                    <div className="h-px flex-1 bg-white/10" />
+                    <span className="text-xs text-white/30">{group.items.length}</span>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {group.items.map((r) => (
+                      <div key={r.id} className="relative">
+                        {selectionMode && (
+                          <button type="button" onClick={() => toggleSelect(r.id)} className="absolute inset-0 z-10 rounded-2xl focus:outline-none" aria-label={selectedIds.has(r.id) ? 'Αποεπιλογή' : 'Επιλογή'}>
+                            <span className={['absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition', selectedIds.has(r.id) ? 'border-red-400 bg-red-400 text-white' : 'border-white/40 bg-black/40 text-transparent'].join(' ')}>
+                              {selectedIds.has(r.id) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-white/50" />}
+                            </span>
+                          </button>
+                        )}
+                        <div className={selectionMode ? (selectedIds.has(r.id) ? 'ring-2 ring-red-400 rounded-2xl' : 'opacity-60') : ''}>
+                          <RecipeCard recipe={r} ingredients={getIngredients(r.id)} inventory={inventory} onView={selectionMode ? () => {} : setViewing} onEdit={selectionMode ? () => {} : openEdit} onDelete={selectionMode ? () => {} : onDelete} onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)} onHistory={selectionMode ? () => {} : setVersionRecipe} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((r) => (
+                <div key={r.id} className="relative">
+                  {selectionMode && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSelect(r.id)}
+                      className="absolute inset-0 z-10 rounded-2xl focus:outline-none"
+                      aria-label={selectedIds.has(r.id) ? 'Αποεπιλογή' : 'Επιλογή'}
+                    >
+                      <span className={[
+                        'absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition',
+                        selectedIds.has(r.id)
+                          ? 'border-red-400 bg-red-400 text-white'
+                          : 'border-white/40 bg-black/40 text-transparent',
+                      ].join(' ')}>
+                        {selectedIds.has(r.id)
+                          ? <CheckSquare className="h-4 w-4" />
+                          : <Square className="h-4 w-4 text-white/50" />}
+                      </span>
+                    </button>
+                  )}
+                  <div className={selectionMode ? (selectedIds.has(r.id) ? 'ring-2 ring-red-400 rounded-2xl' : 'opacity-60') : ''}>
+                    <RecipeCard
+                      recipe={r}
+                      ingredients={getIngredients(r.id)}
+                      inventory={inventory}
+                      onView={selectionMode ? () => {} : setViewing}
+                      onEdit={selectionMode ? () => {} : openEdit}
+                      onDelete={selectionMode ? () => {} : onDelete}
+                      onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)}
+                      onHistory={selectionMode ? () => {} : setVersionRecipe}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* ── Bulk-delete action bar ── */}
           {selectionMode && (

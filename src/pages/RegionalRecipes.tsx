@@ -34,6 +34,8 @@ export default function RegionalRecipes() {
   const { create } = useRecipes()
 
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
+  const [customRegion, setCustomRegion] = useState('')
+  const activeRegion = customRegion.trim() || selectedRegion
   const [count, setCount] = useState(12)
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
@@ -45,7 +47,7 @@ export default function RegionalRecipes() {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
 
   async function handleGenerate() {
-    if (!selectedRegion) return
+    if (!activeRegion) return
     setLoading(true)
     setLoadingMsg('')
     setError(null)
@@ -54,7 +56,7 @@ export default function RegionalRecipes() {
     setImportDone(false)
     setExpandedIdx(null)
     try {
-      const recipes = await generateRegionalRecipes(selectedRegion, count, setLoadingMsg)
+      const recipes = await generateRegionalRecipes(activeRegion, count, setLoadingMsg)
       setResults(recipes)
       setSelected(new Set(recipes.map((_, i) => i)))
     } catch (err) {
@@ -132,7 +134,7 @@ export default function RegionalRecipes() {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => { setSelectedRegion(r.id); setResults([]); setImportDone(false) }}
+                  onClick={() => { setSelectedRegion(r.id); setCustomRegion(''); setResults([]); setImportDone(false) }}
                   className={cn(
                     'flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition',
                     selectedRegion === r.id
@@ -147,6 +149,18 @@ export default function RegionalRecipes() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Custom region input */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-white/40 shrink-0">ή πληκτρολόγησε:</span>
+        <input
+          type="text"
+          placeholder="π.χ. Σαντορίνη, Μεσσηνία, Λέσβος…"
+          value={customRegion}
+          onChange={(e) => { setCustomRegion(e.target.value); if (e.target.value) { setSelectedRegion(null); setResults([]); setImportDone(false) } }}
+          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-brand-orange/50 focus:outline-none focus:ring-1 focus:ring-brand-orange/30 w-72"
+        />
       </div>
 
       {/* Count + Generate */}
@@ -173,13 +187,13 @@ export default function RegionalRecipes() {
         </div>
 
         <Button
-          disabled={!selectedRegion || loading}
+          disabled={!activeRegion || loading}
           onClick={() => void handleGenerate()}
           leftIcon={loading
             ? <Loader2 className="h-4 w-4 animate-spin" />
             : <Sparkles className="h-4 w-4" />}
         >
-          {loading ? `Δημιουργία ${count} συνταγών από ${selectedRegion}…` : 'Δημιούργησε συνταγές'}
+          {loading ? `Δημιουργία ${count} συνταγών από ${activeRegion}…` : 'Δημιούργησε συνταγές'}
         </Button>
       </div>
 
@@ -206,7 +220,7 @@ export default function RegionalRecipes() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-white/70 font-medium">
-              {results.length} παραδοσιακές συνταγές από <span className="text-brand-orange">{selectedRegion}</span>
+              {results.length} παραδοσιακές συνταγές από <span className="text-brand-orange">{activeRegion}</span>
             </p>
             <div className="flex items-center gap-3">
               <button
