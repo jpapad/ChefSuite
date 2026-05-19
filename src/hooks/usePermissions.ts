@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 export const ALL_MODULES = [
   'dashboard',
   'recipes',
+  'regional-recipes',
   'inventory',
   'prep',
   'kds',
@@ -42,7 +43,7 @@ export type AppModule = (typeof ALL_MODULES)[number]
 export const MODULE_GROUPS: { labelKey: string; modules: AppModule[] }[] = [
   {
     labelKey: 'nav.groups.kitchen',
-    modules: ['dashboard', 'recipes', 'menus', 'prep', 'kds', 'haccp', 'labels'],
+    modules: ['dashboard', 'recipes', 'regional-recipes', 'menus', 'prep', 'kds', 'haccp', 'labels'],
   },
   {
     labelKey: 'nav.groups.procurement',
@@ -69,6 +70,7 @@ export const MODULE_GROUPS: { labelKey: string; modules: AppModule[] }[] = [
 export const MODULE_LABEL_KEY: Record<AppModule, string> = {
   'dashboard': 'nav.dashboard',
   'recipes': 'nav.recipes',
+  'regional-recipes': 'nav.regionalRecipes',
   'inventory': 'nav.inventory',
   'prep': 'nav.prep',
   'kds': 'nav.kds',

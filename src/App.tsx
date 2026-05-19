@@ -10,6 +10,7 @@ import { PageLoader } from './components/ui/PageLoader'
 
 const Dashboard          = lazy(() => import('./pages/Dashboard'))
 const Recipes            = lazy(() => import('./pages/Recipes'))
+const RegionalRecipes    = lazy(() => import('./pages/RegionalRecipes'))
 const Inventory          = lazy(() => import('./pages/Inventory'))
 const Prep               = lazy(() => import('./pages/Prep'))
 const Team               = lazy(() => import('./pages/Team'))
@@ -92,6 +93,7 @@ export default function App() {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="recipes" element={<PermissionGuard module="recipes"><Recipes /></PermissionGuard>} />
+                <Route path="regional-recipes" element={<PermissionGuard module="regional-recipes"><RegionalRecipes /></PermissionGuard>} />
                 <Route path="inventory" element={<PermissionGuard module="inventory"><Inventory /></PermissionGuard>} />
                 <Route path="prep" element={<PermissionGuard module="prep"><Prep /></PermissionGuard>} />
                 <Route path="team" element={<PermissionGuard module="team"><Team /></PermissionGuard>} />

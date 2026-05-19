@@ -38,6 +38,7 @@ import {
   Building2,
   Tag,
   Calculator,
+  MapPin,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -142,6 +143,7 @@ export function Sidebar() {
       items: [
         { to: '/', label: t('nav.dashboard'), icon: LayoutDashboard, end: true, module: 'dashboard' as AppModule },
         { to: '/recipes', label: t('nav.recipes'), icon: ChefHat, module: 'recipes' as AppModule },
+        { to: '/regional-recipes', label: 'Τοπικές Συνταγές', icon: MapPin, module: 'regional-recipes' as AppModule },
         { to: '/menus', label: t('nav.menus'), icon: UtensilsCrossed, module: 'menus' as AppModule },
         { to: '/prep', label: t('nav.prep'), icon: ClipboardList, module: 'prep' as AppModule },
         { to: '/kds', label: t('nav.kds'), icon: Monitor, module: 'kds' as AppModule },

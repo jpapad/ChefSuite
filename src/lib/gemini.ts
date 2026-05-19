@@ -874,3 +874,75 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
     throw new Error(`AI batch suggestion failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
+
+// ── Regional Recipes ─────────────────────────────────────────────────────────
+
+export interface RegionalRecipe {
+  title: string
+  name_el: string | null
+  description: string | null
+  description_el: string | null
+  ingredients: string | null
+  instructions: string | null
+  allergens: string[]
+  prep_time: number | null
+  cook_time: number | null
+  servings: number | null
+  category: string | null
+}
+
+export async function generateRegionalRecipes(region: string, count: number): Promise<RegionalRecipe[]> {
+  const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
+
+  const prompt = `You are an expert Greek culinary historian and chef. Generate exactly ${count} authentic traditional recipes from the ${region} region of Greece.
+
+Requirements:
+- Each recipe must be genuinely traditional and characteristic of ${region}
+- Include a good variety (appetizers, mains, sides, desserts, breads)
+- Use authentic local ingredient names where applicable
+- Instructions should be clear, numbered steps in Greek
+- Descriptions should be appetising and mention the regional character
+
+Respond with ONLY a valid JSON array, no markdown, no explanation:
+[
+  {
+    "title": "Greek name of the dish",
+    "name_el": "English name of the dish",
+    "description": "1-2 sentence appetising description in Greek",
+    "description_el": "1-2 sentence appetising description in English",
+    "ingredients": "Full ingredients list in Greek, one per line with quantities",
+    "instructions": "Numbered step-by-step instructions in Greek",
+    "allergens": ["array of allergen keys from: gluten,dairy,eggs,fish,shellfish,nuts,peanuts,soy,sesame,celery,mustard,sulphites,lupin,molluscs"],
+    "prep_time": 20,
+    "cook_time": 45,
+    "servings": 4,
+    "category": "one of: appetizer,soup,salad,main,side,sauce,bread,dessert,beverage"
+  }
+]`
+
+  const raw = await callClaude(prompt, 12000)
+  const parsed = JSON.parse(raw) as unknown
+  if (!Array.isArray(parsed)) throw new Error(`Expected JSON array, got: ${raw.slice(0, 200)}`)
+
+  const VALID_CATS = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
+
+  return (parsed as object[]).map((r: object): RegionalRecipe => {
+    const x = r as Record<string, unknown>
+    const allergens = Array.isArray(x.allergens)
+      ? (x.allergens as string[]).filter((a) => VALID_ALLERGENS.has(a))
+      : []
+    return {
+      title:          typeof x.title       === 'string' ? x.title       : '',
+      name_el:        typeof x.name_el     === 'string' ? x.name_el     : null,
+      description:    typeof x.description === 'string' ? x.description : null,
+      description_el: typeof x.description_el === 'string' ? x.description_el : null,
+      ingredients:    typeof x.ingredients === 'string' ? x.ingredients : null,
+      instructions:   typeof x.instructions === 'string' ? x.instructions : null,
+      allergens,
+      prep_time:  typeof x.prep_time  === 'number' ? x.prep_time  : null,
+      cook_time:  typeof x.cook_time  === 'number' ? x.cook_time  : null,
+      servings:   typeof x.servings   === 'number' ? x.servings   : null,
+      category:   typeof x.category   === 'string' && VALID_CATS.has(x.category) ? x.category : null,
+    }
+  })
+}
