@@ -103,6 +103,30 @@ export default function Recipes() {
     setDrawerOpen(true)
   }
 
+  async function onBatchUpdate(imported: ImportedRecipe[], onProgress: (done: number, total: number) => void): Promise<{ updated: number; notFound: number }> {
+    let updated = 0
+    let notFound = 0
+    for (let i = 0; i < imported.length; i++) {
+      const item = imported[i]
+      const existing = recipes.find((r) => r.title.trim().toLowerCase() === item.title.trim().toLowerCase())
+      if (existing) {
+        await update(existing.id, {
+          ...(item.description            ? { description:    item.description }    : {}),
+          ...(item.name_el                ? { name_el:        item.name_el }        : {}),
+          ...(item.description_el         ? { description_el: item.description_el } : {}),
+          ...(item.name_bg                ? { name_bg:        item.name_bg }        : {}),
+          ...(item.description_bg         ? { description_bg: item.description_bg } : {}),
+          ...(item.allergens.length > 0   ? { allergens:      item.allergens }      : {}),
+        })
+        updated++
+      } else {
+        notFound++
+      }
+      onProgress(i + 1, imported.length)
+    }
+    return { updated, notFound }
+  }
+
   async function onBatchImport(imported: ImportedRecipe[], onProgress: (done: number, total: number) => void) {
     setSaving(true)
     setBatchImportError(null)
@@ -453,6 +477,7 @@ export default function Recipes() {
         open={excelMenuDrawerOpen}
         onClose={() => { setExcelMenuDrawerOpen(false); setBatchImportError(null) }}
         onBatchImport={onBatchImport}
+        onBatchUpdate={onBatchUpdate}
         existingTitles={recipes.map((r) => r.title)}
       />
 

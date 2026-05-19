@@ -24,6 +24,7 @@ interface Props {
   open: boolean
   onClose: () => void
   onBatchImport: (rows: ImportedRecipe[], onProgress: (done: number, total: number) => void) => Promise<void>
+  onBatchUpdate?: (rows: ImportedRecipe[], onProgress: (done: number, total: number) => void) => Promise<{ updated: number; notFound: number }>
   existingTitles?: string[]
 }
 
@@ -153,7 +154,7 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
   return { menu, recipes: syntheticRecipes }
 }
 
-export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTitles = [] }: Props) {
+export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpdate, existingTitles = [] }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('upload')
@@ -204,6 +205,8 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
   const [importResult, setImportResult] = useState<{
     total: number; withNameEl: number; withDescEl: number; withNameBg: number; withAllergens: number
   } | null>(null)
+  const [updateProgress, setUpdateProgress] = useState<{ done: number; total: number } | null>(null)
+  const [updateResult, setUpdateResult] = useState<{ updated: number; notFound: number } | null>(null)
 
   // Single-row edit
   const [editingRowIdx, setEditingRowIdx] = useState<number | null>(null)
@@ -246,6 +249,8 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
     setFillAllergensDoneMsg('')
     setImportProgress(null)
     setImportResult(null)
+    setUpdateProgress(null)
+    setUpdateResult(null)
     setEditingRowIdx(null)
     setEditValues(null)
     setDetailLang('gr')
@@ -551,6 +556,40 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
       setError(err instanceof Error ? err.message : 'Αποτυχία εισαγωγής — έλεγξε τη σύνδεση')
     } finally {
       setImportProgress(null)
+    }
+  }
+
+  async function handleUpdateRecipes() {
+    if (!onBatchUpdate) return
+    const selectedRows = rows.filter((_, i) => selected.has(i))
+    const imported: ImportedRecipe[] = selectedRows.map((row) => ({
+      title: row.name,
+      description: row.description ?? '',
+      instructions: row.instructions ?? null,
+      allergens: row.allergens,
+      cost_per_portion: null,
+      ingredients: [],
+      extractedIngredients: [],
+      category: row.category,
+      difficulty: row.difficulty,
+      prep_time: row.prep_time,
+      cook_time: row.cook_time,
+      servings: row.servings,
+      name_el: row.name_el ?? null,
+      description_el: row.description_el ?? null,
+      name_bg: row.name_bg ?? null,
+      description_bg: row.description_bg ?? null,
+    }))
+    setUpdateProgress({ done: 0, total: imported.length })
+    setUpdateResult(null)
+    setError(null)
+    try {
+      const result = await onBatchUpdate(imported, (done, total) => setUpdateProgress({ done, total }))
+      setUpdateResult(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Αποτυχία ενημέρωσης — έλεγξε τη σύνδεση')
+    } finally {
+      setUpdateProgress(null)
     }
   }
 
@@ -1298,6 +1337,39 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
             })}
           </ul>
 
+          {/* Update progress */}
+          {updateProgress && (
+            <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 px-4 py-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-sky-300 font-medium">
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                Ενημέρωση συνταγών… {updateProgress.done}/{updateProgress.total}
+              </div>
+              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-sky-400 transition-all duration-300"
+                  style={{ width: `${updateProgress.total > 0 ? (updateProgress.done / updateProgress.total) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Update result */}
+          {updateResult && !updateProgress && (
+            <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 px-4 py-4 space-y-2">
+              <div className="flex items-center gap-2 text-sky-300 font-medium">
+                <Check className="h-5 w-5 shrink-0" />
+                <span>Ενημέρωση ολοκληρώθηκε</span>
+              </div>
+              <p className="text-sm text-white/60">
+                ✓ {updateResult.updated} ενημερώθηκαν
+                {updateResult.notFound > 0 && <span className="text-amber-400"> · {updateResult.notFound} δεν βρέθηκαν</span>}
+              </p>
+              <Button type="button" className="w-full mt-1" onClick={() => { reset(); onClose() }}>
+                Κλείσιμο
+              </Button>
+            </div>
+          )}
+
           {/* Import progress */}
           {importProgress && (
             <div className="rounded-xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-4 space-y-3">
@@ -1349,7 +1421,7 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
           )}
 
           {/* Action choice */}
-          {!importProgress && !importResult && (
+          {!importProgress && !importResult && !updateProgress && !updateResult && (
             <div className="space-y-2">
               <p className="text-sm font-medium text-white/80">What would you like to do?</p>
               <div className="grid grid-cols-2 gap-3">
@@ -1385,10 +1457,31 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, existingTi
                   <span className="text-xs text-white/40 text-center">Print labels for your buffet</span>
                 </button>
               </div>
+
+              {/* Update existing recipes */}
+              {onBatchUpdate && (
+                <button
+                  type="button"
+                  onClick={() => void handleUpdateRecipes()}
+                  disabled={selected.size === 0}
+                  className={cn(
+                    'flex w-full items-center justify-center gap-2 rounded-2xl border-2 p-3 transition',
+                    selected.size > 0
+                      ? 'border-sky-500/40 hover:border-sky-500 hover:bg-sky-500/5 cursor-pointer'
+                      : 'border-white/10 opacity-40 cursor-not-allowed',
+                  )}
+                >
+                  <Languages className="h-5 w-5 text-sky-400" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-white">Ενημέρωση υπαρχόντων συνταγών</p>
+                    <p className="text-xs text-white/40">Αντικαθιστά περιγραφές, ονόματα, αλλεργιογόνα βάσει ονόματος</p>
+                  </div>
+                </button>
+              )}
             </div>
           )}
 
-          {!importProgress && !importResult && (
+          {!importProgress && !importResult && !updateProgress && !updateResult && (
             <div className="flex justify-start pt-1">
               <Button
                 type="button"

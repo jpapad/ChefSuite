@@ -25,6 +25,19 @@ function persistPresets(ps: CustomPreset[]) {
   localStorage.setItem(PRESETS_KEY, JSON.stringify(ps))
 }
 
+// ── Label Settings Profiles ──────────────────────────────────────────────────
+
+interface LabelProfile { id: string; name: string; settings: LabelSettings }
+
+const PROFILES_KEY = 'chefsuite_label_profiles_v1'
+
+function loadProfiles(): LabelProfile[] {
+  try { return JSON.parse(localStorage.getItem(PROFILES_KEY) ?? '[]') } catch { return [] }
+}
+function persistProfiles(ps: LabelProfile[]) {
+  localStorage.setItem(PROFILES_KEY, JSON.stringify(ps))
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -102,6 +115,9 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   const [extraTranslateError, setExtraTranslateError] = useState<string | null>(null)
   const [removingBg, setRemovingBg] = useState(false)
   const [bgRemoveError, setBgRemoveError] = useState<string | null>(null)
+  const [labelProfiles, setLabelProfiles] = useState<LabelProfile[]>(() => loadProfiles())
+  const [profileName, setProfileName] = useState('')
+  const [selectedProfileId, setSelectedProfileId] = useState('')
 
   // Sync logo default when menu prop changes
   useEffect(() => {
@@ -232,6 +248,29 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     } finally {
       setRemovingBg(false)
     }
+  }
+
+  function saveProfile() {
+    const name = profileName.trim()
+    if (!name) return
+    const profile: LabelProfile = { id: crypto.randomUUID(), name, settings: { ...settings } }
+    const updated = [...labelProfiles, profile]
+    setLabelProfiles(updated)
+    persistProfiles(updated)
+    setProfileName('')
+  }
+
+  function loadProfile(id: string) {
+    const profile = labelProfiles.find((p) => p.id === id)
+    if (!profile) return
+    setSettings(profile.settings)
+  }
+
+  function deleteProfile(id: string) {
+    const updated = labelProfiles.filter((p) => p.id !== id)
+    setLabelProfiles(updated)
+    persistProfiles(updated)
+    if (selectedProfileId === id) setSelectedProfileId('')
   }
 
   function toggleItem(id: string) {
@@ -397,6 +436,63 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
           </div>
         ) : (
           <>
+            {/* ── Profiles ── */}
+            <div className="rounded-xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3 space-y-3">
+              <p className="text-xs font-semibold text-brand-orange/70 uppercase tracking-wider">🎨 Στυλ / Profiles</p>
+
+              {/* Load existing profile */}
+              {labelProfiles.length > 0 && (
+                <div className="flex gap-2">
+                  <select
+                    value={selectedProfileId}
+                    onChange={(e) => setSelectedProfileId(e.target.value)}
+                    className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white focus:outline-none"
+                  >
+                    <option value="">— Επιλογή profile —</option>
+                    {labelProfiles.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!selectedProfileId}
+                    onClick={() => loadProfile(selectedProfileId)}
+                    className="rounded-lg border border-brand-orange/40 bg-brand-orange/10 px-3 py-1.5 text-xs font-medium text-brand-orange hover:bg-brand-orange/20 transition disabled:opacity-40"
+                  >
+                    Φόρτωση
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedProfileId}
+                    onClick={() => deleteProfile(selectedProfileId)}
+                    className="rounded-lg border border-red-500/30 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Save current as new profile */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveProfile()}
+                  placeholder="Όνομα νέου profile…"
+                  className="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand-orange/50"
+                />
+                <button
+                  type="button"
+                  disabled={!profileName.trim()}
+                  onClick={saveProfile}
+                  className="rounded-lg border border-brand-orange/40 bg-brand-orange/10 px-3 py-1.5 text-xs font-medium text-brand-orange hover:bg-brand-orange/20 transition disabled:opacity-40"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
             {/* ── Logo ── */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white/70">{t('menus.labels.logoLabel')}</label>
