@@ -210,6 +210,35 @@ function MolluscsIcon() {
   )
 }
 
+function NoGlutenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
+      {/* wheat stalk (dimmed) */}
+      <rect x="11.3" y="8" width="1.4" height="13" rx="0.7" opacity="0.45" />
+      <ellipse cx="12" cy="5.5" rx="2.5" ry="3.5" opacity="0.45" />
+      <ellipse cx="8.5" cy="11" rx="2" ry="3" transform="rotate(-30 8.5 11)" opacity="0.45" />
+      <ellipse cx="15.5" cy="11" rx="2" ry="3" transform="rotate(30 15.5 11)" opacity="0.45" />
+      <ellipse cx="9" cy="15.5" rx="1.8" ry="2.5" transform="rotate(-20 9 15.5)" opacity="0.45" />
+      <ellipse cx="15" cy="15.5" rx="1.8" ry="2.5" transform="rotate(20 15 15.5)" opacity="0.45" />
+      {/* diagonal slash */}
+      <line x1="4" y1="20" x2="20" y2="4" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function NoLactoseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
+      {/* milk jug (dimmed) */}
+      <path d="M8 6 L7 20 Q7 22 12 22 Q17 22 17 20 L16 6 Z" opacity="0.45" />
+      <rect x="9" y="3" width="6" height="4" rx="1" opacity="0.45" />
+      <path d="M16 9 Q20 9 20 13 Q20 17 16 17" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.45" />
+      {/* diagonal slash */}
+      <line x1="4" y1="20" x2="20" y2="4" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /* ─────────────────────────── Data map ─────────────────────────── */
 
 export const ALLERGEN_META: Record<string, {
@@ -234,6 +263,8 @@ export const ALLERGEN_META: Record<string, {
   sulphites: { icon: <SulphitesIcon />, label: 'Sulphites',   labelEl: 'Θειώδη',          labelBg: 'Сулфити',            bg: 'bg-purple-500/20',  text: 'text-purple-300' },
   lupin:     { icon: <LupinIcon />,     label: 'Lupin',       labelEl: 'Λούπινο',         labelBg: 'Лупина',             bg: 'bg-violet-500/20',  text: 'text-violet-300' },
   molluscs:  { icon: <MolluscsIcon />,  label: 'Molluscs',    labelEl: 'Μαλάκια',         labelBg: 'Мекотели',           bg: 'bg-blue-500/20',    text: 'text-blue-300' },
+  no_gluten: { icon: <NoGlutenIcon />, label: 'Gluten-Free', labelEl: 'Χωρίς Γλουτένη',  labelBg: 'Без Глутен',         bg: 'bg-green-500/20',   text: 'text-green-400' },
+  no_lactose:{ icon: <NoLactoseIcon />,label: 'Lactose-Free',labelEl: 'Χωρίς Λακτόζη',   labelBg: 'Без Лактоза',        bg: 'bg-teal-500/20',    text: 'text-teal-400' },
 }
 
 /* ─────────────────────────── Components ─────────────────────────── */

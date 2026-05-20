@@ -57,6 +57,7 @@ export default function Recipes() {
   }, [searchParams, setSearchParams])
   const [activeAllergens, setActiveAllergens] = useState<string[]>([])
   const [activeCategory, setActiveCategory] = useState<RecipeCategory | null>(null)
+  const [filterAllergenFree, setFilterAllergenFree] = useState(false)
 
   const allAllergens = useMemo(() => {
     const set = new Set<string>()
@@ -76,9 +77,10 @@ export default function Recipes() {
       if (q && !r.title.toLowerCase().includes(q)) return false
       if (activeAllergens.length && !activeAllergens.every((a) => r.allergens.includes(a))) return false
       if (activeCategory && r.category !== activeCategory) return false
+      if (filterAllergenFree && r.allergens.filter(a => !a.startsWith('no_')).length > 0) return false
       return true
     })
-  }, [recipes, query, activeAllergens, activeCategory])
+  }, [recipes, query, activeAllergens, activeCategory, filterAllergenFree])
 
   const groupedRecipes = useMemo(() => {
     if (!groupedView) return null
@@ -371,14 +373,27 @@ export default function Recipes() {
             </div>
           )}
 
-          {allAllergens.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-white/50">{t('recipes.filterAllergens')}</span>
-              {allAllergens.map((a) => (
+          <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setFilterAllergenFree((v) => !v); setActiveAllergens([]) }}
+                className={
+                  'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
+                  (filterAllergenFree
+                    ? 'bg-green-500/20 border-green-500/50 text-green-300'
+                    : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
+                }
+              >
+                <span className="text-base leading-none">✓</span>
+                Χωρίς αλλεργιογόνα
+                {filterAllergenFree && <X className="h-3 w-3" />}
+              </button>
+
+              {allAllergens.filter(a => !a.startsWith('no_')).map((a) => (
                 <button
                   key={a}
                   type="button"
-                  onClick={() => toggleAllergen(a)}
+                  onClick={() => { toggleAllergen(a); setFilterAllergenFree(false) }}
                   className={
                     'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
                     (activeAllergens.includes(a)
@@ -390,17 +405,16 @@ export default function Recipes() {
                   {activeAllergens.includes(a) && <X className="h-3 w-3" />}
                 </button>
               ))}
-              {(activeAllergens.length > 0 || activeCategory) && (
+              {(activeAllergens.length > 0 || activeCategory || filterAllergenFree) && (
                 <button
                   type="button"
-                  onClick={() => { setActiveAllergens([]); setActiveCategory(null) }}
+                  onClick={() => { setActiveAllergens([]); setActiveCategory(null); setFilterAllergenFree(false) }}
                   className="text-xs text-white/50 hover:text-white underline"
                 >
                   {t('recipes.clearFilters')}
                 </button>
               )}
             </div>
-          )}
         </div>
       )}
 
