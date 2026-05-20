@@ -1,22 +1,17 @@
 import { useState, type KeyboardEvent } from 'react'
 import { X } from 'lucide-react'
-import { AllergenBadge, ALLERGEN_META } from '../ui/AllergenIcon'
+import { useTranslation } from 'react-i18next'
+import { AllergenBadge, ALLERGEN_GROUPS, ALLERGEN_META } from '../ui/AllergenIcon'
 
 interface AllergenChipsProps {
   value: string[]
   onChange: (next: string[]) => void
   label?: string
-  suggestions?: string[]
 }
 
-const defaultSuggestions = Object.keys(ALLERGEN_META)
-
-export function AllergenChips({
-  value,
-  onChange,
-  label = 'Allergens',
-  suggestions = defaultSuggestions,
-}: AllergenChipsProps) {
+export function AllergenChips({ value, onChange, label = 'Allergens' }: AllergenChipsProps) {
+  const { i18n } = useTranslation()
+  const lang = i18n.language
   const [draft, setDraft] = useState('')
 
   function add(raw: string) {
@@ -39,50 +34,75 @@ export function AllergenChips({
     }
   }
 
-  const remaining = suggestions.filter((s) => !value.includes(s))
-
   return (
-    <div>
-      <span className="mb-2 block text-sm font-medium text-white/80">
-        {label}
-      </span>
-      <div className="glass rounded-xl px-3 py-2 min-h-touch-target flex flex-wrap items-center gap-2">
-        {value.map((tag) => (
-          <span key={tag} className="inline-flex items-center gap-1">
-            <AllergenBadge allergen={tag} size="sm" />
-            <button
-              type="button"
-              onClick={() => remove(tag)}
-              aria-label={`Remove ${tag}`}
-              className="text-white/40 hover:text-white transition"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ))}
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={onKey}
-          onBlur={() => draft && add(draft)}
-          placeholder={value.length ? '' : 'Type and press Enter'}
-          className="flex-1 min-w-[120px] bg-transparent outline-none text-base placeholder:text-white/40 py-1"
-        />
-      </div>
-      {remaining.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {remaining.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => add(s)}
-              className="opacity-60 hover:opacity-100 transition"
-            >
-              <AllergenBadge allergen={s} size="sm" />
-            </button>
+    <div className="space-y-3">
+      <span className="block text-sm font-medium text-white/80">{label}</span>
+
+      {/* Selected tags */}
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {value.map((tag) => (
+            <span key={tag} className="inline-flex items-center gap-1">
+              <AllergenBadge allergen={tag} size="md" />
+              <button
+                type="button"
+                onClick={() => remove(tag)}
+                aria-label={`Remove ${tag}`}
+                className="flex h-4 w-4 items-center justify-center rounded-full bg-white/10 text-white/50 hover:bg-white/20 hover:text-white transition"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
           ))}
         </div>
       )}
+
+      {/* Custom text entry */}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={onKey}
+        onBlur={() => draft && add(draft)}
+        placeholder="Προσθήκη custom… (Enter)"
+        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none"
+      />
+
+      {/* Grouped suggestions */}
+      <div className="space-y-3">
+        {ALLERGEN_GROUPS.map((group) => {
+          const available = group.keys.filter((k) => !value.includes(k))
+          if (available.length === 0) return null
+          const groupLabel = lang.startsWith('el') ? group.labelEl : group.labelEl
+          return (
+            <div key={group.labelEl}>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                {groupLabel}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {available.map((key) => {
+                  const meta = ALLERGEN_META[key]
+                  if (!meta) return null
+                  const displayLabel = lang.startsWith('el') ? meta.labelEl : lang.startsWith('bg') ? meta.labelBg : meta.label
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => add(key)}
+                      className={[
+                        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+                        'border-white/10 text-white/60 hover:border-white/30 hover:text-white hover:bg-white/5',
+                      ].join(' ')}
+                    >
+                      <span className={['h-4 w-4 shrink-0', meta.text].join(' ')}>{meta.icon}</span>
+                      {displayLabel}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

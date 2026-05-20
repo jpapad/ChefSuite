@@ -252,6 +252,37 @@ function SpicyIcon() {
   )
 }
 
+function VeganIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
+      {/* bold rounded leaf */}
+      <path d="M12 2 C7 5 3 9 3 14.5 C3 18.5 6.5 22 12 22 C17.5 22 21 18.5 21 14.5 C21 9 17 5 12 2 Z" />
+      {/* centre vein */}
+      <line x1="12" y1="22" x2="12" y2="8" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+      {/* side veins */}
+      <path d="M12 14 C10 12.5 7.5 12 6 10.5" fill="none" stroke="white" strokeWidth="0.8" strokeLinecap="round" opacity="0.4" />
+      <path d="M12 14 C14 12.5 16.5 12 18 10.5" fill="none" stroke="white" strokeWidth="0.8" strokeLinecap="round" opacity="0.4" />
+    </svg>
+  )
+}
+
+function VegetarianIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
+      {/* left leaf */}
+      <path d="M12 20 C12 20 4 16 4 9 C4 5.5 7 3 10 5 C11 5.7 12 7 12 7 Z" />
+      {/* right leaf */}
+      <path d="M12 20 C12 20 20 16 20 9 C20 5.5 17 3 14 5 C13 5.7 12 7 12 7 Z" />
+      {/* stem */}
+      <rect x="11.3" y="18" width="1.4" height="4" rx="0.7" />
+      {/* centre vein left */}
+      <path d="M12 18 C10 15 7 12 6.5 8.5" fill="none" stroke="white" strokeWidth="0.9" strokeLinecap="round" opacity="0.45" />
+      {/* centre vein right */}
+      <path d="M12 18 C14 15 17 12 17.5 8.5" fill="none" stroke="white" strokeWidth="0.9" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  )
+}
+
 /* ─────────────────────────── Data map ─────────────────────────── */
 
 export const ALLERGEN_META: Record<string, {
@@ -276,10 +307,27 @@ export const ALLERGEN_META: Record<string, {
   sulphites: { icon: <SulphitesIcon />, label: 'Sulphites',   labelEl: 'Θειώδη',          labelBg: 'Сулфити',            bg: 'bg-purple-500/20',  text: 'text-purple-300' },
   lupin:     { icon: <LupinIcon />,     label: 'Lupin',       labelEl: 'Λούπινο',         labelBg: 'Лупина',             bg: 'bg-violet-500/20',  text: 'text-violet-300' },
   molluscs:  { icon: <MolluscsIcon />,  label: 'Molluscs',    labelEl: 'Μαλάκια',         labelBg: 'Мекотели',           bg: 'bg-blue-500/20',    text: 'text-blue-300' },
-  no_gluten: { icon: <NoGlutenIcon />, label: 'Gluten-Free', labelEl: 'Χωρίς Γλουτένη',  labelBg: 'Без Глутен',         bg: 'bg-green-500/20',   text: 'text-green-400' },
-  no_lactose:{ icon: <NoLactoseIcon />,label: 'Lactose-Free',labelEl: 'Χωρίς Λακτόζη',   labelBg: 'Без Лактоза',        bg: 'bg-teal-500/20',    text: 'text-teal-400' },
-  spicy:     { icon: <SpicyIcon />,    label: 'Spicy',       labelEl: 'Καυτερό',          labelBg: 'Лютиво',             bg: 'bg-red-500/20',     text: 'text-red-400' },
+  no_gluten:   { icon: <NoGlutenIcon />,   label: 'Gluten-Free',   labelEl: 'Χωρίς Γλουτένη', labelBg: 'Без Глутен',   bg: 'bg-green-500/20',   text: 'text-green-400' },
+  no_lactose:  { icon: <NoLactoseIcon />, label: 'Lactose-Free',  labelEl: 'Χωρίς Λακτόζη', labelBg: 'Без Лактоза',  bg: 'bg-teal-500/20',    text: 'text-teal-400' },
+  vegan:       { icon: <VeganIcon />,     label: 'Vegan',         labelEl: 'Vegan',          labelBg: 'Веган',         bg: 'bg-green-600/20',   text: 'text-green-300' },
+  vegetarian:  { icon: <VegetarianIcon />,label: 'Vegetarian',    labelEl: 'Χορτοφαγικό',   labelBg: 'Вегетарианско', bg: 'bg-lime-500/20',    text: 'text-lime-300' },
+  spicy:       { icon: <SpicyIcon />,     label: 'Spicy',         labelEl: 'Καυτερό',        labelBg: 'Лютиво',        bg: 'bg-red-500/20',     text: 'text-red-400' },
 }
+
+export const ALLERGEN_GROUPS: { labelEl: string; keys: string[] }[] = [
+  {
+    labelEl: 'Αλλεργιογόνα ΕΕ',
+    keys: ['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'],
+  },
+  {
+    labelEl: 'Χωρίς',
+    keys: ['no_gluten','no_lactose'],
+  },
+  {
+    labelEl: 'Χαρακτηριστικά',
+    keys: ['vegan','vegetarian','spicy'],
+  },
+]
 
 /* ─────────────────────────── Components ─────────────────────────── */
 
