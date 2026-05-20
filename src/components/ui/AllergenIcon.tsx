@@ -239,6 +239,19 @@ function NoLactoseIcon() {
   )
 }
 
+function SpicyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
+      {/* chili body */}
+      <path d="M13 3 C15 3 17 4 18 6 C19.5 9 18 13 15 16 C13 18 11 19 10 21 C9.5 22 8.5 22 8 21 C7.5 20 8 19 9 18 C10 17 11 15.5 12 13 C13.5 10 13.5 7 12 5 C11.5 4 12 3 13 3 Z" />
+      {/* stem */}
+      <path d="M13 3 C13 3 14 1.5 16 2 C17.5 2.5 17 4 16 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {/* highlight */}
+      <path d="M14.5 7 C15 8.5 15 10.5 14 12.5" fill="none" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  )
+}
+
 /* ─────────────────────────── Data map ─────────────────────────── */
 
 export const ALLERGEN_META: Record<string, {
@@ -265,6 +278,7 @@ export const ALLERGEN_META: Record<string, {
   molluscs:  { icon: <MolluscsIcon />,  label: 'Molluscs',    labelEl: 'Μαλάκια',         labelBg: 'Мекотели',           bg: 'bg-blue-500/20',    text: 'text-blue-300' },
   no_gluten: { icon: <NoGlutenIcon />, label: 'Gluten-Free', labelEl: 'Χωρίς Γλουτένη',  labelBg: 'Без Глутен',         bg: 'bg-green-500/20',   text: 'text-green-400' },
   no_lactose:{ icon: <NoLactoseIcon />,label: 'Lactose-Free',labelEl: 'Χωρίς Λακτόζη',   labelBg: 'Без Лактоза',        bg: 'bg-teal-500/20',    text: 'text-teal-400' },
+  spicy:     { icon: <SpicyIcon />,    label: 'Spicy',       labelEl: 'Καυτερό',          labelBg: 'Лютиво',             bg: 'bg-red-500/20',     text: 'text-red-400' },
 }
 
 /* ─────────────────────────── Components ─────────────────────────── */
