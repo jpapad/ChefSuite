@@ -186,7 +186,7 @@ export default function Recipes() {
   }
 
   async function onCreateMenu(menuName: string, rows: ExcelMenuRow[]) {
-    const menu = await createMenu({ name: menuName, type: 'menu', active: true, show_prices: true })
+    const menu = await createMenu({ name: menuName, type: 'a_la_carte', active: true, show_prices: true })
 
     // Look up just-created recipe IDs by title
     const { data: freshRecipes } = await supabase.from('recipes').select('id, title')
