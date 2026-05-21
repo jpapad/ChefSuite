@@ -3,7 +3,7 @@ import { Check, Loader2, Search, Sparkles, X } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { cn } from '../../lib/cn'
-import { translateMenuItems, suggestMultipleRecipeDetails, generateDescriptions } from '../../lib/gemini'
+import { translateMenuItems, suggestMultipleRecipeDetails, generateDescriptions, detectAllergensForRecipes } from '../../lib/gemini'
 import type { Recipe, RecipeUpdate } from '../../types/database.types'
 
 interface Props {
@@ -11,6 +11,8 @@ interface Props {
   onClose: () => void
   recipes: Recipe[]
   onUpdate: (id: string, patch: RecipeUpdate) => Promise<Recipe>
+  initialFillOptions?: Partial<FillOptions>
+  initialOnlyEmpty?: boolean
 }
 
 interface FillOptions {
@@ -22,12 +24,13 @@ interface FillOptions {
 
 const CHUNK = 15
 
-export function BulkAIUpdateDrawer({ open, onClose, recipes, onUpdate }: Props) {
+export function BulkAIUpdateDrawer({ open, onClose, recipes, onUpdate, initialFillOptions, initialOnlyEmpty }: Props) {
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(recipes.map((r) => r.id)))
-  const [onlyEmpty, setOnlyEmpty] = useState(true)
+  const [onlyEmpty, setOnlyEmpty] = useState(initialOnlyEmpty ?? true)
   const [fillOptions, setFillOptions] = useState<FillOptions>({
     nameEl: true, nameBg: true, descriptionEl: true, allergens: true,
+    ...initialFillOptions,
   })
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number; current: string } | null>(null)
@@ -109,18 +112,24 @@ export function BulkAIUpdateDrawer({ open, onClose, recipes, onUpdate }: Props) 
           }
         }
 
-        // ── Allergens ────────────────────────────────────────────────────
+        // ── Allergens (use full recipe text for accurate detection) ─────
         if (fillOptions.allergens) {
-          const noAllergenIdx = chunk
-            .map((r, i) => (!onlyEmpty || r.allergens.length === 0 ? i : -1))
+          const allergenIdx = chunk
+            .map((r, i) => (!onlyEmpty || r.allergens.filter(a => !a.startsWith('no_')).length === 0 ? i : -1))
             .filter((i) => i >= 0)
-          if (noAllergenIdx.length > 0) {
-            const titles = noAllergenIdx.map((i) => chunk[i].title)
-            const suggestions = await suggestMultipleRecipeDetails(titles)
-            noAllergenIdx.forEach((idx, j) => {
-              if (suggestions[j]?.allergens.length > 0) {
-                patches[idx] = { ...(patches[idx] ?? {}), allergens: suggestions[j].allergens }
-              }
+          if (allergenIdx.length > 0) {
+            const items = allergenIdx.map((i) => ({
+              title: chunk[i].title,
+              description: chunk[i].description,
+              instructions: chunk[i].instructions,
+            }))
+            const detected = await detectAllergensForRecipes(items)
+            allergenIdx.forEach((idx, j) => {
+              const found = detected[j] ?? []
+              // Keep existing positive tags (no_gluten, vegan, etc.) and merge with detected
+              const existing = chunk[idx].allergens.filter(a => a.startsWith('no_') || ['vegan','vegetarian','spicy'].includes(a))
+              const merged = [...new Set([...existing, ...found])]
+              patches[idx] = { ...(patches[idx] ?? {}), allergens: merged }
             })
           }
         }

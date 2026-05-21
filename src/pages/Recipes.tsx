@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers, ShieldAlert } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../components/ui/Input'
@@ -39,6 +39,7 @@ export default function Recipes() {
   const [scanDrawerOpen, setScanDrawerOpen] = useState(false)
   const [excelMenuDrawerOpen, setExcelMenuDrawerOpen] = useState(false)
   const [bulkAIUpdateOpen, setBulkAIUpdateOpen] = useState(false)
+  const [allergenScanOpen, setAllergenScanOpen] = useState(false)
   const [editing, setEditing] = useState<Recipe | null>(null)
   const [viewing, setViewing] = useState<Recipe | null>(null)
   const [saving, setSaving] = useState(false)
@@ -318,13 +319,22 @@ export default function Recipes() {
                 Import Excel Menu
               </Button>
               {recipes.length > 0 && (
-                <Button
-                  variant="secondary"
-                  leftIcon={<Sparkles className="h-5 w-5" />}
-                  onClick={() => setBulkAIUpdateOpen(true)}
-                >
-                  Bulk AI Update
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    leftIcon={<ShieldAlert className="h-5 w-5" />}
+                    onClick={() => setAllergenScanOpen(true)}
+                  >
+                    Σκανάρισμα αλλεργιογόνων
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    leftIcon={<Sparkles className="h-5 w-5" />}
+                    onClick={() => setBulkAIUpdateOpen(true)}
+                  >
+                    Bulk AI Update
+                  </Button>
+                </>
               )}
               <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
                 {t('recipes.newRecipe')}
@@ -566,6 +576,15 @@ export default function Recipes() {
         onClose={() => setBulkAIUpdateOpen(false)}
         recipes={recipes}
         onUpdate={update}
+      />
+
+      <BulkAIUpdateDrawer
+        open={allergenScanOpen}
+        onClose={() => setAllergenScanOpen(false)}
+        recipes={recipes}
+        onUpdate={update}
+        initialFillOptions={{ nameEl: false, nameBg: false, descriptionEl: false, allergens: true }}
+        initialOnlyEmpty={false}
       />
 
       {batchImportError && (

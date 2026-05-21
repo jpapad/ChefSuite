@@ -876,6 +876,58 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
   }
 }
 
+// ── Allergen detection from full recipe text ─────────────────────────────────
+
+const _DETECT_ALLERGENS = new Set([
+  'gluten','dairy','eggs','fish','shellfish','nuts','peanuts',
+  'soy','sesame','celery','mustard','sulphites','lupin','molluscs',
+])
+
+export async function detectAllergensForRecipes(
+  items: Array<{ title: string; description?: string | null; instructions?: string | null }>,
+): Promise<string[][]> {
+  if (items.length === 0) return []
+
+  const CHUNK = 8
+  if (items.length > CHUNK) {
+    const out: string[][] = []
+    for (let i = 0; i < items.length; i += CHUNK) {
+      const part = await detectAllergensForRecipes(items.slice(i, i + CHUNK))
+      out.push(...part)
+    }
+    return out
+  }
+
+  const block = items.map((r, i) => {
+    const text = [r.description, r.instructions].filter(Boolean).join(' ').slice(0, 800)
+    return `${i + 1}. "${r.title}"${text ? `\n   ${text}` : ''}`
+  }).join('\n')
+
+  const prompt = `You are a food safety expert. Read each recipe below and list ONLY the EU-regulated allergens that are actually present in the ingredients or instructions.
+
+Allergens to check: gluten, dairy, eggs, fish, shellfish, nuts, peanuts, soy, sesame, celery, mustard, sulphites, lupin, molluscs
+
+Recipes:
+${block}
+
+Return ONLY a valid JSON array of arrays (one per recipe, same order), no markdown:
+[["gluten","dairy"], [], ["eggs","nuts"], ...]
+If a recipe has no allergens return an empty array for it.`
+
+  try {
+    const raw = await callClaude(prompt, 2000)
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return items.map(() => [])
+    return items.map((_, i) => {
+      const row = (parsed as unknown[])[i]
+      if (!Array.isArray(row)) return []
+      return (row as unknown[]).filter((a): a is string => typeof a === 'string' && _DETECT_ALLERGENS.has(a))
+    })
+  } catch {
+    return items.map(() => [])
+  }
+}
+
 // ── Regional Recipes ─────────────────────────────────────────────────────────
 
 export interface RegionalRecipe {
