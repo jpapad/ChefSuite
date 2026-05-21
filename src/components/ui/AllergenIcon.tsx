@@ -295,6 +295,7 @@ export const ALLERGEN_META: Record<string, {
 }> = {
   gluten:    { icon: <GlutenIcon />,    label: 'Gluten',      labelEl: 'Γλουτένη',       labelBg: 'Глутен',             bg: 'bg-amber-500/20',   text: 'text-amber-300' },
   dairy:     { icon: <DairyIcon />,     label: 'Dairy',       labelEl: 'Γαλακτοκομικά',  labelBg: 'Млечни',             bg: 'bg-sky-500/20',     text: 'text-sky-300' },
+  lactose:   { icon: <DairyIcon />,     label: 'Lactose',     labelEl: 'Λακτόζη',         labelBg: 'Лактоза',            bg: 'bg-sky-400/20',     text: 'text-sky-200' },
   eggs:      { icon: <EggsIcon />,      label: 'Eggs',        labelEl: 'Αυγά',            labelBg: 'Яйца',               bg: 'bg-yellow-500/20',  text: 'text-yellow-300' },
   fish:      { icon: <FishIcon />,      label: 'Fish',        labelEl: 'Ψάρι',            labelBg: 'Риба',               bg: 'bg-cyan-500/20',    text: 'text-cyan-300' },
   peanuts:   { icon: <PeanutsIcon />,   label: 'Peanuts',     labelEl: 'Φιστίκια',        labelBg: 'Фъстъци',            bg: 'bg-orange-500/20',  text: 'text-orange-300' },
@@ -317,7 +318,7 @@ export const ALLERGEN_META: Record<string, {
 export const ALLERGEN_GROUPS: { labelEl: string; keys: string[] }[] = [
   {
     labelEl: 'Αλλεργιογόνα ΕΕ',
-    keys: ['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'],
+    keys: ['gluten','lactose','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'],
   },
   {
     labelEl: 'Χωρίς',
