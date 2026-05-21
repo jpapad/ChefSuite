@@ -25,6 +25,7 @@ interface Props {
   onClose: () => void
   onBatchImport: (rows: ImportedRecipe[], onProgress: (done: number, total: number) => void) => Promise<void>
   onBatchUpdate?: (rows: ImportedRecipe[], onProgress: (done: number, total: number) => void) => Promise<{ updated: number; notFound: number }>
+  onCreateMenu?: (name: string, rows: ExcelMenuRow[]) => Promise<void>
   existingTitles?: string[]
 }
 
@@ -154,7 +155,7 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
   return { menu, recipes: syntheticRecipes }
 }
 
-export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpdate, existingTitles = [] }: Props) {
+export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpdate, onCreateMenu, existingTitles = [] }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('upload')
@@ -205,6 +206,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpd
   const [importResult, setImportResult] = useState<{
     total: number; withNameEl: number; withDescEl: number; withNameBg: number; withAllergens: number
   } | null>(null)
+  const [newMenuName, setNewMenuName] = useState('')
+  const [menuCreating, setMenuCreating] = useState(false)
+  const [menuCreatedName, setMenuCreatedName] = useState<string | null>(null)
   const [updateProgress, setUpdateProgress] = useState<{ done: number; total: number } | null>(null)
   const [updateResult, setUpdateResult] = useState<{ updated: number; notFound: number } | null>(null)
 
@@ -251,6 +255,9 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpd
     setImportResult(null)
     setUpdateProgress(null)
     setUpdateResult(null)
+    setNewMenuName('')
+    setMenuCreating(false)
+    setMenuCreatedName(null)
     setEditingRowIdx(null)
     setEditValues(null)
     setDetailLang('gr')
@@ -683,6 +690,52 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpd
     setBuffetMenu(menu)
     setBuffetRecipes(recipes)
     setActionMode('labels')
+  }
+
+  async function handleImportAsRecipesAndMenu() {
+    if (!onCreateMenu || !newMenuName.trim()) return
+    const selectedRows = rows.filter((_, i) => selected.has(i))
+    const imported: ImportedRecipe[] = selectedRows.map((row) => ({
+      title: row.name,
+      description: row.description ?? '',
+      instructions: row.instructions ?? (row.ingredients ? `Ingredients:\n${row.ingredients}` : null),
+      allergens: row.allergens,
+      cost_per_portion: null,
+      ingredients: [],
+      extractedIngredients: [],
+      category: row.category,
+      difficulty: row.difficulty,
+      prep_time: row.prep_time,
+      cook_time: row.cook_time,
+      servings: row.servings,
+      name_el: row.name_el ?? null,
+      description_el: row.description_el ?? null,
+      name_bg: row.name_bg ?? null,
+      description_bg: row.description_bg ?? null,
+    }))
+    setImportProgress({ done: 0, total: imported.length })
+    setImportResult(null)
+    setMenuCreatedName(null)
+    setError(null)
+    try {
+      await onBatchImport(imported, (done, total) => setImportProgress({ done, total }))
+      setImportProgress(null)
+      setMenuCreating(true)
+      await onCreateMenu(newMenuName.trim(), selectedRows)
+      setMenuCreatedName(newMenuName.trim())
+      setImportResult({
+        total: imported.length,
+        withNameEl:    imported.filter((r) => r.name_el).length,
+        withDescEl:    imported.filter((r) => r.description_el).length,
+        withNameBg:    imported.filter((r) => r.name_bg).length,
+        withAllergens: imported.filter((r) => r.allergens.length > 0).length,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Αποτυχία εισαγωγής — έλεγξε τη σύνδεση')
+    } finally {
+      setImportProgress(null)
+      setMenuCreating(false)
+    }
   }
 
   // If buffet labels drawer is open, render it on top
@@ -1388,12 +1441,18 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpd
           )}
 
           {/* Import result */}
-          {importResult && !importProgress && (
+          {importResult && !importProgress && !menuCreating && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-4 space-y-3">
               <div className="flex items-center gap-2 text-emerald-300 font-medium">
                 <Check className="h-5 w-5 shrink-0" />
                 <span>{importResult.total} συνταγές εισήχθησαν επιτυχώς!</span>
               </div>
+              {menuCreatedName && (
+                <div className="flex items-center gap-2 text-indigo-300 text-sm">
+                  <Check className="h-4 w-4 shrink-0" />
+                  Μενού &ldquo;{menuCreatedName}&rdquo; δημιουργήθηκε
+                </div>
+              )}
               <div className="space-y-1.5 text-sm">
                 {[
                   { label: 'Αγγλικό όνομα',       count: importResult.withNameEl,    total: importResult.total },
@@ -1420,8 +1479,18 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpd
             </div>
           )}
 
+          {/* Menu creation progress */}
+          {menuCreating && (
+            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 px-4 py-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-indigo-300 font-medium">
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                Δημιουργία μενού "{newMenuName}"…
+              </div>
+            </div>
+          )}
+
           {/* Action choice */}
-          {!importProgress && !importResult && !updateProgress && !updateResult && (
+          {!importProgress && !importResult && !updateProgress && !updateResult && !menuCreating && (
             <div className="space-y-2">
               <p className="text-sm font-medium text-white/80">What would you like to do?</p>
               <div className="grid grid-cols-2 gap-3">
@@ -1478,10 +1547,41 @@ export function ImportExcelMenuDrawer({ open, onClose, onBatchImport, onBatchUpd
                   </div>
                 </button>
               )}
+
+              {/* Import as Recipes + New Menu */}
+              {onCreateMenu && (
+                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2">
+                  <p className="text-xs font-medium text-indigo-300/60 uppercase tracking-wider">Συνταγές + Νέο Μενού</p>
+                  <input
+                    type="text"
+                    value={newMenuName}
+                    onChange={(e) => setNewMenuName(e.target.value)}
+                    placeholder="Όνομα νέου μενού…"
+                    className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-500/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleImportAsRecipesAndMenu()}
+                    disabled={selected.size === 0 || !newMenuName.trim()}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2 rounded-xl border-2 p-3 transition',
+                      selected.size > 0 && newMenuName.trim()
+                        ? 'border-indigo-500/40 hover:border-indigo-500 hover:bg-indigo-500/10 cursor-pointer'
+                        : 'border-white/10 opacity-40 cursor-not-allowed',
+                    )}
+                  >
+                    <UtensilsCrossed className="h-5 w-5 text-indigo-400" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-white">Εισαγωγή στη βιβλιοθήκη + δημιουργία μενού</p>
+                      <p className="text-xs text-white/40">Προσθήκη ως συνταγές και δημιουργία νέου μενού ταυτόχρονα</p>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {!importProgress && !importResult && !updateProgress && !updateResult && (
+          {!importProgress && !importResult && !updateProgress && !updateResult && !menuCreating && (
             <div className="flex justify-start pt-1">
               <Button
                 type="button"

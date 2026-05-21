@@ -20,13 +20,17 @@ import { RecipeVersionHistory } from '../components/recipes/RecipeVersionHistory
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../hooks/useInventory'
 import { useRecipeIngredients } from '../hooks/useRecipeIngredients'
+import { useMenus } from '../hooks/useMenus'
+import { supabase } from '../lib/supabase'
 import { RECIPE_CATEGORIES } from '../components/recipes/RecipeForm'
 import type { ImportedRecipe } from '../lib/gemini'
+import type { ExcelMenuRow } from '../lib/excelMenu'
 import type { Recipe, RecipeCategory, RecipeDifficulty, RecipeIngredientDraft, RecipeVersion } from '../types/database.types'
 
 export default function Recipes() {
   const { t } = useTranslation()
   const { recipes, loading, error, create, update, remove, consumeRecipe } = useRecipes()
+  const { create: createMenu } = useMenus()
   const { items: inventory } = useInventory()
   const {
     getFor: getIngredients,
@@ -178,6 +182,51 @@ export default function Recipes() {
       throw err
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function onCreateMenu(menuName: string, rows: ExcelMenuRow[]) {
+    const menu = await createMenu({ name: menuName, type: 'menu', active: true, show_prices: true })
+
+    // Look up just-created recipe IDs by title
+    const { data: freshRecipes } = await supabase.from('recipes').select('id, title')
+    const recipeMap = new Map<string, string>(
+      (freshRecipes ?? []).map((r: { id: string; title: string }) => [r.title.trim().toLowerCase(), r.id])
+    )
+
+    // Group rows by category → sections
+    const sectionMap = new Map<string, ExcelMenuRow[]>()
+    for (const row of rows) {
+      const sec = row.category?.trim() || 'Μενού'
+      if (!sectionMap.has(sec)) sectionMap.set(sec, [])
+      sectionMap.get(sec)!.push(row)
+    }
+
+    let si = 0
+    for (const [sectionName, sectionRows] of sectionMap) {
+      const { data: sec } = await supabase
+        .from('menu_sections')
+        .insert({ menu_id: menu.id, name: sectionName, sort_order: si++ })
+        .select()
+        .single()
+      if (!sec) continue
+      const items = sectionRows.map((row, i) => ({
+        section_id: sec.id,
+        name: row.name,
+        description: row.description ?? null,
+        name_el: row.name_el ?? null,
+        description_el: row.description_el ?? null,
+        name_bg: row.name_bg ?? null,
+        description_bg: row.description_bg ?? null,
+        price: row.price ?? null,
+        available: true,
+        tags: [] as string[],
+        sort_order: i,
+        recipe_id: recipeMap.get(row.name.trim().toLowerCase()) ?? null,
+      }))
+      if (items.length > 0) {
+        await supabase.from('menu_items').insert(items)
+      }
     }
   }
 
@@ -568,6 +617,7 @@ export default function Recipes() {
         onClose={() => { setExcelMenuDrawerOpen(false); setBatchImportError(null) }}
         onBatchImport={onBatchImport}
         onBatchUpdate={onBatchUpdate}
+        onCreateMenu={onCreateMenu}
         existingTitles={recipes.map((r) => r.title)}
       />
 
