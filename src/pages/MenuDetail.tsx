@@ -1563,6 +1563,25 @@ export default function MenuDetail() {
                 </div>
               )}
 
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/40">{filtered.length} συνταγές</span>
+                <button
+                  type="button"
+                  onClick={() => setQuickAddSelected((prev) => {
+                    const allSel = filtered.every((r) => prev.has(r.id))
+                    const next = new Set(prev)
+                    if (allSel) { filtered.forEach((r) => next.delete(r.id)) }
+                    else { filtered.forEach((r) => next.add(r.id)) }
+                    return next
+                  })}
+                  className="text-xs text-brand-orange hover:text-brand-orange/70 transition"
+                >
+                  {filtered.length > 0 && filtered.every((r) => quickAddSelected.has(r.id))
+                    ? 'Αποεπιλογή όλων'
+                    : 'Επιλογή όλων'}
+                </button>
+              </div>
+
               <div className="space-y-1 max-h-[50vh] overflow-y-auto pr-1">
                 {filtered.length === 0 && (
                   <p className="text-sm text-white/40 text-center py-6">Δεν βρέθηκαν συνταγές</p>
