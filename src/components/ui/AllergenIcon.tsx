@@ -252,6 +252,16 @@ function SpicyIcon() {
   )
 }
 
+function LocalIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
+      {/* map pin */}
+      <path d="M12 2 C8.1 2 5 5.1 5 9 C5 14.2 12 22 12 22 C12 22 19 14.2 19 9 C19 5.1 15.9 2 12 2 Z" />
+      <circle cx="12" cy="9" r="3" fill="white" opacity="0.7" />
+    </svg>
+  )
+}
+
 function VeganIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
@@ -313,6 +323,7 @@ export const ALLERGEN_META: Record<string, {
   vegan:       { icon: <VeganIcon />,     label: 'Vegan',         labelEl: 'Vegan',          labelBg: 'Веган',         bg: 'bg-green-600/20',   text: 'text-green-300' },
   vegetarian:  { icon: <VegetarianIcon />,label: 'Vegetarian',    labelEl: 'Χορτοφαγικό',   labelBg: 'Вегетарианско', bg: 'bg-lime-500/20',    text: 'text-lime-300' },
   spicy:       { icon: <SpicyIcon />,     label: 'Spicy',         labelEl: 'Καυτερό',        labelBg: 'Лютиво',        bg: 'bg-red-500/20',     text: 'text-red-400' },
+  local:       { icon: <LocalIcon />,     label: 'Local',         labelEl: 'Τοπικό',         labelBg: 'Местно',        bg: 'bg-orange-400/20',  text: 'text-orange-300' },
 }
 
 export const ALLERGEN_GROUPS: { labelEl: string; keys: string[] }[] = [
@@ -326,7 +337,7 @@ export const ALLERGEN_GROUPS: { labelEl: string; keys: string[] }[] = [
   },
   {
     labelEl: 'Χαρακτηριστικά',
-    keys: ['vegan','vegetarian','spicy'],
+    keys: ['vegan','vegetarian','spicy','local'],
   },
 ]
 
