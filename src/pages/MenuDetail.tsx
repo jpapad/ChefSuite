@@ -861,10 +861,28 @@ export default function MenuDetail() {
               </div>
 
               {/* Recipe list */}
-              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                {recipes
-                  .filter((r) => !librarySearch || r.title.toLowerCase().includes(librarySearch.toLowerCase()))
-                  .map((r) => {
+              {(() => {
+                const filteredLib = recipes.filter((r) => !librarySearch || r.title.toLowerCase().includes(librarySearch.toLowerCase()))
+                const allSelected = filteredLib.length > 0 && filteredLib.every((r) => selectedRecipeIds.has(r.id))
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-white/40">{selectedRecipeIds.size} επιλεγμένες</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRecipeIds((prev) => {
+                          const next = new Set(prev)
+                          if (allSelected) { filteredLib.forEach((r) => next.delete(r.id)) }
+                          else { filteredLib.forEach((r) => next.add(r.id)) }
+                          return next
+                        })}
+                        className="text-xs text-brand-orange hover:text-brand-orange/80 transition"
+                      >
+                        {allSelected ? 'Αποεπιλογή όλων' : 'Επιλογή όλων'}
+                      </button>
+                    </div>
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                      {filteredLib.map((r) => {
                     const sel = selectedRecipeIds.has(r.id)
                     return (
                       <button
@@ -898,9 +916,12 @@ export default function MenuDetail() {
                           <span className="text-xs text-white/40 shrink-0">€{r.selling_price.toFixed(2)}</span>
                         )}
                       </button>
-                    )
-                  })}
-              </div>
+                      )
+                    })}
+                    </div>
+                  </>
+                )
+              })()}
 
               {/* Auto-translate toggle */}
               <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/3 px-4 py-3 cursor-pointer">
