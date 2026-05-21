@@ -3,7 +3,7 @@ import { Check, Loader2, Search, Sparkles, X } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { cn } from '../../lib/cn'
-import { translateMenuItems, suggestMultipleRecipeDetails, generateDescriptions, detectAllergensForRecipes } from '../../lib/gemini'
+import { translateMenuItems, generateDescriptions, detectAllergensForRecipes } from '../../lib/gemini'
 import type { Recipe, RecipeUpdate } from '../../types/database.types'
 
 interface Props {
