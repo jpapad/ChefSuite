@@ -18,7 +18,7 @@ import { BuffetLabelsDrawer } from '../components/menus/BuffetLabelsDrawer'
 import { ProductionSheetDrawer } from '../components/menus/ProductionSheetDrawer'
 import { ServiceBoardOverlay } from '../components/menus/ServiceBoardOverlay'
 import { PrepFromMenuDrawer, type GeneratedPrepItem } from '../components/prep/PrepFromMenuDrawer'
-import { useMenuDetail } from '../hooks/useMenus'
+import { useMenuDetail, useMenus } from '../hooks/useMenus'
 import { useMenuScans } from '../hooks/useMenuScans'
 import { useRecipes } from '../hooks/useRecipes'
 import { useWorkstations } from '../hooks/useWorkstations'
@@ -75,6 +75,7 @@ export default function MenuDetail() {
     addItem, updateItem, removeItem, moveItemUp, moveItemDown,
   } = useMenuDetail(id ?? null)
   const { recipes, loading: recipesLoading } = useRecipes()
+  const { menus: allMenus } = useMenus()
   const { items: inventory } = useInventory()
   const { workstations } = useWorkstations()
   const { members } = useTeam()
@@ -178,11 +179,43 @@ export default function MenuDetail() {
   const [quickAddSelected, setQuickAddSelected] = useState<Set<string>>(new Set())
   const [quickAddSearch, setQuickAddSearch] = useState('')
   const [addingQuick, setAddingQuick] = useState(false)
+  const [excludeMenuIds, setExcludeMenuIds] = useState<Set<string>>(new Set())
+  const menuRecipeCache = useRef<Map<string, Set<string>>>(new Map())
 
   function openQuickAdd(sectionId: string) {
     setQuickAddSelected(new Set())
     setQuickAddSearch('')
     setQuickAddSectionId(sectionId)
+  }
+
+  async function toggleExcludeMenu(menuId: string) {
+    setExcludeMenuIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(menuId)) { next.delete(menuId); return next }
+      next.add(menuId)
+      return next
+    })
+    // Lazy-fetch recipe IDs for this menu if not cached
+    if (!menuRecipeCache.current.has(menuId)) {
+      const { data } = await supabase
+        .from('menu_items')
+        .select('recipe_id, menu_sections!inner(menu_id)')
+        .eq('menu_sections.menu_id', menuId)
+        .not('recipe_id', 'is', null)
+      const ids = new Set<string>((data ?? []).map((row: { recipe_id: string }) => row.recipe_id))
+      menuRecipeCache.current.set(menuId, ids)
+      // Force re-render so filter picks up the cache
+      setExcludeMenuIds((prev) => new Set(prev))
+    }
+  }
+
+  function getExcludedRecipeIds(): Set<string> {
+    const out = new Set<string>()
+    for (const mId of excludeMenuIds) {
+      const cached = menuRecipeCache.current.get(mId)
+      if (cached) cached.forEach((rid) => out.add(rid))
+    }
+    return out
   }
 
   async function confirmQuickAdd() {
@@ -1541,9 +1574,12 @@ export default function MenuDetail() {
       {/* ── Quick-add from library drawer ── */}
       {(() => {
         const section = menu?.sections.find((s) => s.id === quickAddSectionId)
+        const excludedIds = getExcludedRecipeIds()
         const filtered = recipes.filter((r) =>
-          r.title.toLowerCase().includes(quickAddSearch.toLowerCase())
+          r.title.toLowerCase().includes(quickAddSearch.toLowerCase()) &&
+          !excludedIds.has(r.id)
         )
+        const otherMenus = allMenus.filter((m) => m.id !== id)
         return (
           <Drawer open={!!quickAddSectionId} onClose={() => { if (!addingQuick) setQuickAddSectionId(null) }}
             title={`Από βιβλιοθήκη — ${section?.name ?? ''}`}>
@@ -1554,6 +1590,39 @@ export default function MenuDetail() {
                   onChange={(e) => setQuickAddSearch(e.target.value)}
                   className="w-full rounded-xl border border-glass-border bg-glass px-4 py-2.5 pl-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-orange/50" />
               </div>
+
+              {/* Exclude by menu */}
+              {otherMenus.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Εξαίρεση συνταγών από μενού:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {otherMenus.map((m) => {
+                      const active = excludeMenuIds.has(m.id)
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => void toggleExcludeMenu(m.id)}
+                          className={cn(
+                            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition',
+                            active
+                              ? 'border-red-400/50 bg-red-400/10 text-red-300'
+                              : 'border-white/10 text-white/50 hover:border-white/25 hover:text-white',
+                          )}
+                        >
+                          {active && <X className="h-3 w-3" />}
+                          {m.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {excludeMenuIds.size > 0 && (
+                    <p className="text-[10px] text-red-300/60">
+                      {excludedIds.size} συνταγές εξαιρούνται
+                    </p>
+                  )}
+                </div>
+              )}
 
               {quickAddSelected.size > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-brand-orange/30 bg-brand-orange/10 px-3 py-2">
