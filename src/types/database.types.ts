@@ -165,6 +165,8 @@ export interface InventoryItem {
   unit: string
   min_stock_level: number
   cost_per_unit: number | null
+  /** Usable yield percentage (1–100). null = 100%. E.g. 80 = 80% usable after trim/prep. */
+  yield_pct: number | null
   location_id: UUID | null
   supplier_id: UUID | null
   barcode: string | null
@@ -175,12 +177,12 @@ export interface InventoryItem {
 export type InventoryInsert = Pick<
   InventoryItem,
   'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id'
-> & { team_id: UUID; supplier_id?: string | null; barcode?: string | null }
+> & { team_id: UUID; supplier_id?: string | null; barcode?: string | null; yield_pct?: number | null }
 
 export type InventoryUpdate = Partial<
   Pick<
     InventoryItem,
-    'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id' | 'supplier_id'
+    'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id' | 'supplier_id' | 'yield_pct'
   >
 >
 
