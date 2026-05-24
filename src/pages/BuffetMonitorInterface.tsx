@@ -240,51 +240,51 @@ export default function BuffetMonitorInterface() {
             <p className="text-white/50 max-w-xs text-sm">{t('buffetPulse.noBuffetMenu')}</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {(activeMenu?.items ?? []).map((item) => {
               const st = statusMap.get(item.menu_item_id)
               const currentStatus: BuffetItemStatus = st?.status ?? 'full'
               const vesselReq = st?.vessel_request ?? false
               const isUpdating = updating === item.menu_item_id
 
-              const statusStripe =
-                currentStatus === 'empty' ? 'bg-red-600'
-                : currentStatus === 'low'  ? 'bg-amber-500'
-                : 'bg-emerald-600'
-
-              const cardBorder =
-                currentStatus === 'empty' ? 'border-red-500/50'
-                : currentStatus === 'low'  ? 'border-amber-500/50'
-                : 'border-white/10'
+              // Name header background — the whole top block is colored
+              const nameBg =
+                currentStatus === 'empty' ? 'bg-red-700'
+                : currentStatus === 'low'  ? 'bg-amber-600'
+                : 'bg-emerald-700'
 
               return (
                 <div
                   key={item.menu_item_id}
-                  className={cn(
-                    'rounded-2xl bg-gray-900 border overflow-hidden flex flex-col transition-all',
-                    cardBorder,
-                  )}
+                  className="rounded-2xl overflow-hidden flex flex-col shadow-lg"
+                  style={{ backgroundColor: '#1f2937' }}   // explicit gray-800
                 >
-                  {/* ── Status stripe header ───────────────────────── */}
-                  <div className={cn('px-4 py-2 flex items-center justify-between', statusStripe)}>
-                    <span className="text-xs font-bold uppercase tracking-widest text-white/90">
-                      {t(STATUS_CFG[currentStatus].label)}
-                    </span>
-                    {isUpdating && <Loader2 className="h-3.5 w-3.5 animate-spin text-white/70" />}
-                    {vesselReq && !isUpdating && (
-                      <span className="text-xs font-bold text-white/90">🥘 Αλλαγή Σκεύους</span>
-                    )}
-                  </div>
-
-                  {/* ── Item name — dominant visual element ───────────── */}
-                  <div className="px-4 py-5">
-                    <p className="text-3xl font-extrabold leading-tight tracking-tight">
+                  {/* ── Name block (colored by status) ──────────────── */}
+                  <div className={cn('px-5 py-5 flex flex-col gap-1', nameBg)}>
+                    <p
+                      className="text-2xl font-black leading-snug tracking-tight"
+                      style={{ color: '#ffffff' }}          // explicit white
+                    >
                       {item.item_name}
                     </p>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-xs font-bold uppercase tracking-widest"
+                        style={{ color: 'rgba(255,255,255,0.75)' }}
+                      >
+                        {t(STATUS_CFG[currentStatus].label)}
+                      </span>
+                      {isUpdating && <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'rgba(255,255,255,0.6)' }} />}
+                      {vesselReq && !isUpdating && (
+                        <span style={{ color: 'rgba(255,255,255,0.75)' }} className="text-xs font-semibold">
+                          · 🥘 Αλλαγή Σκεύους
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* ── Status buttons ────────────────────────────────── */}
-                  <div className="grid grid-cols-3 gap-2 px-4 pb-3">
+                  <div className="grid grid-cols-3 gap-2 p-3">
                     {(['full', 'low', 'empty'] as BuffetItemStatus[]).map((s) => {
                       const cfg = STATUS_CFG[s]
                       const active = currentStatus === s
@@ -294,13 +294,14 @@ export default function BuffetMonitorInterface() {
                           disabled={isUpdating}
                           onClick={() => void upsertStatus(item, { status: s, vessel_request: vesselReq })}
                           className={cn(
-                            'rounded-xl py-5 text-base font-black transition-all select-none',
+                            'rounded-xl py-5 text-sm font-black transition-all select-none',
                             cfg.bg,
                             active
-                              ? `ring-2 ${cfg.ring} ring-offset-2 ring-offset-gray-900`
-                              : 'opacity-40',
-                            isUpdating && 'cursor-not-allowed opacity-30',
+                              ? `ring-2 ${cfg.ring} ring-offset-2`
+                              : 'opacity-35',
+                            isUpdating && 'cursor-not-allowed opacity-25',
                           )}
+                          style={{ color: '#ffffff', ringOffsetColor: '#1f2937' }}
                         >
                           {t(cfg.label)}
                         </button>
@@ -313,12 +314,13 @@ export default function BuffetMonitorInterface() {
                     disabled={isUpdating}
                     onClick={() => void upsertStatus(item, { vessel_request: !vesselReq })}
                     className={cn(
-                      'mx-4 mb-4 rounded-xl py-4 text-sm font-semibold transition-all select-none',
-                      vesselReq
-                        ? 'bg-amber-500 text-white ring-2 ring-amber-400 ring-offset-2 ring-offset-gray-900'
-                        : 'bg-white/8 text-white/50 hover:bg-white/15 active:bg-white/20',
-                      isUpdating && 'cursor-not-allowed opacity-30',
+                      'mx-3 mb-3 rounded-xl py-4 text-sm font-semibold transition-all select-none',
+                      isUpdating && 'cursor-not-allowed opacity-25',
                     )}
+                    style={{
+                      backgroundColor: vesselReq ? '#f59e0b' : 'rgba(255,255,255,0.08)',
+                      color: vesselReq ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                    }}
                   >
                     🥘 {t(vesselReq ? 'buffetPulse.vesselRequested' : 'buffetPulse.vesselRequest')}
                   </button>
