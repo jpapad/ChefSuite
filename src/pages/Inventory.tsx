@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, CalendarClock, FileSpreadsheet } from 'lucide-react'
+import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, CalendarClock, FileSpreadsheet, ClipboardList } from 'lucide-react'
 import { ReceivingScanner } from '../components/inventory/ReceivingScanner'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +13,8 @@ import { InventoryQRDrawer } from '../components/inventory/InventoryQRDrawer'
 import { IngredientSuppliersDrawer } from '../components/inventory/IngredientSuppliersDrawer'
 import { OrderingChecklist } from '../components/inventory/OrderingChecklist'
 import { ExcelImportWizard } from '../components/inventory/ExcelImportWizard'
+import { OrderWatchlistDrawer } from '../components/inventory/OrderWatchlistDrawer'
+import { useOrderWatchlist } from '../hooks/useOrderWatchlist'
 import {
   InventoryForm,
   type InventoryFormValues,
@@ -54,6 +56,8 @@ export default function Inventory() {
   const [viewingSuppliers, setViewingSuppliers] = useState<InventoryItem | null>(null)
   const [showChecklist, setShowChecklist] = useState(false)
   const [showImportWizard, setShowImportWizard] = useState(false)
+  const [showWatchlist, setShowWatchlist] = useState(false)
+  const { total: watchlistTotal } = useOrderWatchlist()
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -255,6 +259,13 @@ export default function Inventory() {
           <p className="text-white/60 mt-1">{t('inventory.subtitle')}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            leftIcon={<ClipboardList className="h-5 w-5" />}
+            onClick={() => setShowWatchlist(true)}
+          >
+            Watchlist{watchlistTotal > 0 ? ` (${watchlistTotal})` : ''}
+          </Button>
           <Button
             variant="secondary"
             leftIcon={<FileSpreadsheet className="h-5 w-5" />}
@@ -616,6 +627,13 @@ export default function Inventory() {
           )}
         </div>
       </Drawer>
+
+      <OrderWatchlistDrawer
+        open={showWatchlist}
+        onClose={() => setShowWatchlist(false)}
+        inventoryItems={items}
+        suppliers={suppliers}
+      />
 
       <Drawer
         open={showImportWizard}

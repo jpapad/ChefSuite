@@ -696,3 +696,22 @@ export interface OnlineOrderWithItems extends OnlineOrder {
 export type OnlineOrderInsert = Pick<OnlineOrder, 'menu_id' | 'table_ref' | 'customer_name' | 'customer_notes'> & { team_id: UUID }
 export type OnlineOrderItemInsert = Pick<OnlineOrderItem, 'menu_item_id' | 'name' | 'price' | 'quantity' | 'notes'> & { order_id: UUID }
 export type OnlineOrderUpdate = Partial<Pick<OnlineOrder, 'status' | 'updated_at'>>
+
+// ── Order Watchlist ───────────────────────────────────────────────────────────
+
+export interface OrderWatchlistItem {
+  id: UUID
+  team_id: UUID
+  ingredient_id: UUID
+  supplier_id: UUID | null
+  requested_quantity: number
+  notes: string | null
+  created_at: ISODateString
+}
+
+export type OrderWatchlistInsert = {
+  ingredient_id: UUID
+  supplier_id?: UUID | null
+  requested_quantity: number
+  notes?: string | null
+}

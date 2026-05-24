@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Plus, ShoppingCart, ChevronRight, Trash2, Check, Package,
-  Send, RotateCcw, X, Euro, Loader2, Sparkles, AlertTriangle,
+  Send, RotateCcw, X, Euro, Loader2, Sparkles, AlertTriangle, ClipboardList,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -12,6 +12,7 @@ import { Textarea } from '../components/ui/Textarea'
 import { usePurchaseOrders, usePurchaseOrderItems } from '../hooks/usePurchaseOrders'
 import { useSuppliers } from '../hooks/useSuppliers'
 import { useInventory } from '../hooks/useInventory'
+import { useOrderWatchlist } from '../hooks/useOrderWatchlist'
 import { supabase } from '../lib/supabase'
 
 async function fileToBase64(file: File): Promise<string> {
@@ -71,6 +72,7 @@ export default function PurchaseOrders() {
   const { orders, loading, error, create, update, remove } = usePurchaseOrders()
   const { suppliers } = useSuppliers()
   const { items: inventoryItems, update: updateInv } = useInventory()
+  const { getItemsForSupplier, bulkRemove: watchlistBulkRemove } = useOrderWatchlist()
 
   // Invoice parsing
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -121,12 +123,30 @@ export default function PurchaseOrders() {
     setSaving(true)
     setFormError(null)
     try {
+      const watchlistItems = supplierId ? getItemsForSupplier(supplierId) : []
+
       const created = await create({
         supplier_id: supplierId || null,
         status: 'draft',
         notes: orderNotes.trim() || null,
         ordered_at: null,
       })
+
+      // Pre-fill from watchlist — insert before setting active order so hook loads them
+      if (watchlistItems.length > 0) {
+        await supabase.from('purchase_order_items').insert(
+          watchlistItems.map((w) => ({
+            order_id: created.id,
+            inventory_item_id: w.ingredient_id,
+            name: w.ingredient_name,
+            quantity: w.requested_quantity,
+            unit: w.ingredient_unit,
+            unit_price: null,
+          })),
+        )
+        await watchlistBulkRemove(watchlistItems.map((w) => w.id))
+      }
+
       setActiveOrder(created)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t('common.saveFailed'))
@@ -542,6 +562,33 @@ export default function PurchaseOrders() {
                 </select>
               </div>
             </div>
+            {/* Watchlist pre-fill banner */}
+            {supplierId && getItemsForSupplier(supplierId).length > 0 && (() => {
+              const wItems = getItemsForSupplier(supplierId)
+              return (
+                <div className="rounded-xl border border-brand-orange/40 bg-brand-orange/10 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-brand-orange shrink-0" />
+                    <p className="text-sm font-semibold text-brand-orange">
+                      {wItems.length} {wItems.length === 1 ? 'είδος' : 'είδη'} από το Watchlist
+                    </p>
+                  </div>
+                  <ul className="space-y-1 pl-6">
+                    {wItems.map((w) => (
+                      <li key={w.id} className="text-xs text-white/70 flex items-center gap-1.5">
+                        <span className="h-1 w-1 rounded-full bg-white/30 shrink-0" />
+                        {w.ingredient_name} — {w.requested_quantity} {w.ingredient_unit}
+                        {w.notes && <span className="text-white/40">({w.notes})</span>}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-brand-orange/70 pl-6">
+                    Θα προ-συμπληρωθούν αυτόματα στις γραμμές της παραγγελίας.
+                  </p>
+                </div>
+              )
+            })()}
+
             <Textarea
               name="notes"
               label={t('purchaseOrders.notes')}
