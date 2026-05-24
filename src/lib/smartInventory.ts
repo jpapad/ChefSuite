@@ -182,7 +182,6 @@ export function getOrderingChecklist(
   now: Date = new Date(),
 ): SupplierOrderSlot[] {
   const todayDayIdx = now.getDay()           // 0=Sun … 6=Sat
-  const todayKey = DAY_ORDER[todayDayIdx]!
   const currentTimeStr = now.toTimeString().slice(0, 8) // "HH:MM:SS"
 
   // Low-stock item set

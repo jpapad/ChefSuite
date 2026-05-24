@@ -275,7 +275,7 @@ function AddLinkForm({
 // ── Main drawer ────────────────────────────────────────────────────────────────
 
 export function IngredientSuppliersDrawer({ open, onClose, item, allSuppliers }: Props) {
-  const { links, loading, addLink, updateLink, removeLink, getLinksForItem } =
+  const { loading, addLink, updateLink, removeLink, getLinksForItem } =
     useIngredientSuppliers()
 
   const [showAddForm, setShowAddForm] = useState(false)
@@ -335,7 +335,7 @@ export function IngredientSuppliersDrawer({ open, onClose, item, allSuppliers }:
                 supplierName={supplierNameById.get(link.supplier_id) ?? '—'}
                 onUpdate={(form) => handleUpdate(link.id, form)}
                 onRemove={() => removeLink(link.id)}
-                onSetPreferred={() => updateLink(link.id, { is_preferred: true })}
+                onSetPreferred={() => { void updateLink(link.id, { is_preferred: true }) }}
               />
             ))}
 
