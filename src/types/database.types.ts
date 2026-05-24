@@ -721,3 +721,58 @@ export type OrderWatchlistInsert = {
   requested_quantity: number
   notes?: string | null
 }
+
+// ── Waste Logs (v2) ───────────────────────────────────────────────────────────
+
+export type WasteReasonCode = 'spoilage' | 'kitchen_mistake' | 'supplier_damaged' | 'customer_return'
+
+export interface WasteLog {
+  id: UUID
+  team_id: UUID
+  ingredient_id: UUID | null
+  menu_item_id: UUID | null
+  quantity: number
+  unit: string
+  reason_code: WasteReasonCode
+  supplier_id: UUID | null
+  calculated_cost: number | null
+  notes: string | null
+  user_id: UUID | null
+  created_at: ISODateString
+}
+
+export interface WasteLogRow extends WasteLog {
+  ingredient: { id: UUID; name: string; unit: string; cost_per_unit: number | null } | null
+  menu_item:  { id: UUID; name: string } | null
+}
+
+export type WasteLogInsert = {
+  ingredient_id?:   UUID | null
+  menu_item_id?:    UUID | null
+  quantity:         number
+  unit:             string
+  reason_code:      WasteReasonCode
+  supplier_id?:     UUID | null
+  calculated_cost?: number | null
+  notes?:           string | null
+}
+
+export type WasteLogUpdate = Partial<Pick<
+  WasteLog,
+  'quantity' | 'unit' | 'reason_code' | 'supplier_id' | 'calculated_cost' | 'notes'
+>>
+
+// ── Supplier Credits ──────────────────────────────────────────────────────────
+
+export type SupplierCreditStatus = 'pending' | 'confirmed' | 'applied'
+
+export interface SupplierCredit {
+  id:           UUID
+  team_id:      UUID
+  supplier_id:  UUID
+  waste_log_id: UUID | null
+  amount:       number
+  description:  string | null
+  status:       SupplierCreditStatus
+  created_at:   ISODateString
+}

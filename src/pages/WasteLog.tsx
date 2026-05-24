@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  Plus, Pencil, Trash2, Trash, TrendingDown, Euro, ChevronLeft, ChevronRight,
+  Plus, Trash2, Trash, TrendingDown, Euro, ChevronLeft, ChevronRight,
+  Package2, UtensilsCrossed, AlertCircle, BadgeDollarSign,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -8,20 +9,35 @@ import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
 import { Textarea } from '../components/ui/Textarea'
-import { useWasteLog } from '../hooks/useWasteLog'
+import { useWasteLogs } from '../hooks/useWasteLogs'
 import { useInventory } from '../hooks/useInventory'
+import { useSuppliers } from '../hooks/useSuppliers'
+import { useRecipes } from '../hooks/useRecipes'
+import { supabase } from '../lib/supabase'
 import { cn } from '../lib/cn'
-import type { WasteEntry, WasteReason } from '../types/database.types'
+import type { WasteReasonCode, WasteLogRow } from '../types/database.types'
 
-const REASONS: WasteReason[] = ['expired', 'spoiled', 'overproduction', 'dropped', 'other']
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const REASON_COLOR: Record<WasteReason, string> = {
-  expired:        'bg-red-500/15 text-red-400 border-red-500/30',
-  spoiled:        'bg-orange-500/15 text-orange-400 border-orange-500/30',
-  overproduction: 'bg-amber-400/15 text-amber-400 border-amber-400/30',
-  dropped:        'bg-blue-400/15 text-blue-400 border-blue-400/30',
-  other:          'bg-white/10 text-white/50 border-white/20',
+type WasteMode = 'ingredient' | 'dish'
+
+const REASON_CODES: WasteReasonCode[] = ['spoilage', 'kitchen_mistake', 'supplier_damaged', 'customer_return']
+
+const REASON_LABEL: Record<WasteReasonCode, string> = {
+  spoilage:         'Αλλοίωση',
+  kitchen_mistake:  'Λάθος κουζίνας',
+  supplier_damaged: 'Κατεστραμμένο (Προμηθευτής)',
+  customer_return:  'Επιστροφή πελάτη',
 }
+
+const REASON_COLOR: Record<WasteReasonCode, string> = {
+  spoilage:         'bg-red-500/15 text-red-400 border-red-500/30',
+  kitchen_mistake:  'bg-orange-500/15 text-orange-400 border-orange-500/30',
+  supplier_damaged: 'bg-amber-400/15 text-amber-400 border-amber-400/30',
+  customer_return:  'bg-blue-400/15 text-blue-400 border-blue-400/30',
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function todayIso(): string {
   const d = new Date()
@@ -39,111 +55,187 @@ function shiftMonth(iso: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-interface FormValues {
-  item_id: string
-  item_name: string
-  quantity: string
-  unit: string
-  reason: WasteReason
-  cost: string
-  wasted_at: string
-  notes: string
+function displayName(entry: WasteLogRow): string {
+  return entry.ingredient?.name ?? entry.menu_item?.name ?? '—'
 }
 
-function blankForm(entry?: WasteEntry): FormValues {
+// ── Form state ────────────────────────────────────────────────────────────────
+
+interface FormState {
+  mode:          WasteMode
+  ingredient_id: string
+  menu_item_id:  string
+  quantity:      string
+  reason_code:   WasteReasonCode
+  supplier_id:   string
+  notes:         string
+  wasted_at:     string
+}
+
+function blankForm(): FormState {
   return {
-    item_id: entry?.item_id ?? '',
-    item_name: entry?.item_name ?? '',
-    quantity: entry?.quantity?.toString() ?? '',
-    unit: entry?.unit ?? '',
-    reason: entry?.reason ?? 'expired',
-    cost: entry?.cost?.toString() ?? '',
-    wasted_at: entry?.wasted_at ?? todayIso(),
-    notes: entry?.notes ?? '',
+    mode:          'ingredient',
+    ingredient_id: '',
+    menu_item_id:  '',
+    quantity:      '',
+    reason_code:   'spoilage',
+    supplier_id:   '',
+    notes:         '',
+    wasted_at:     todayIso(),
   }
 }
+
+// ── Menu item type (local) ────────────────────────────────────────────────────
+
+interface MenuItemFlat {
+  id:        string
+  name:      string
+  recipe_id: string | null
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
 
 export default function WasteLog() {
   const { t } = useTranslation()
-  const { entries, loading, error, create, update, remove } = useWasteLog()
+  const { entries, loading, error, create, remove } = useWasteLogs()
   const { items: inventoryItems } = useInventory()
+  const { suppliers } = useSuppliers()
+  const { recipes } = useRecipes()
 
   const [month, setMonth] = useState(() => todayIso().slice(0, 7))
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [editing, setEditing] = useState<WasteEntry | null>(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [values, setValues] = useState<FormValues>(blankForm())
+  const [form, setForm] = useState<FormState>(blankForm())
+  const [menuItems, setMenuItems] = useState<MenuItemFlat[]>([])
 
-  const monthEntries = useMemo(() =>
-    entries.filter((e) => e.wasted_at.startsWith(month)),
-    [entries, month],
-  )
+  // Load all menu items once
+  useEffect(() => {
+    supabase
+      .from('menu_items')
+      .select('id, name, recipe_id')
+      .order('name')
+      .then(({ data }) => setMenuItems((data ?? []) as MenuItemFlat[]))
+  }, [])
 
-  const totalCost = useMemo(() =>
-    monthEntries.reduce((s, e) => s + (e.cost ?? 0), 0),
-    [monthEntries],
-  )
+  // ── Derived live cost ───────────────────────────────────────────────────────
 
-  const byReason = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const e of monthEntries) map[e.reason] = (map[e.reason] ?? 0) + 1
-    return map
-  }, [monthEntries])
+  const liveCost = useMemo((): number | null => {
+    const qty = parseFloat(form.quantity)
+    if (isNaN(qty) || qty <= 0) return null
+
+    if (form.mode === 'ingredient' && form.ingredient_id) {
+      const item = inventoryItems.find((i) => i.id === form.ingredient_id)
+      if (item?.cost_per_unit != null) return +(qty * item.cost_per_unit).toFixed(2)
+    }
+
+    if (form.mode === 'dish' && form.menu_item_id) {
+      const mi = menuItems.find((m) => m.id === form.menu_item_id)
+      if (mi?.recipe_id) {
+        const recipe = recipes.find((r) => r.id === mi.recipe_id)
+        if (recipe?.cost_per_portion != null) return +(qty * recipe.cost_per_portion).toFixed(2)
+      }
+    }
+
+    return null
+  }, [form.mode, form.ingredient_id, form.menu_item_id, form.quantity, inventoryItems, menuItems, recipes])
+
+  // Auto-fill unit when ingredient is selected
+  function onIngredientSelect(id: string) {
+    const item = inventoryItems.find((i) => i.id === id)
+    setForm((f) => ({ ...f, ingredient_id: id, quantity: item ? '' : f.quantity }))
+  }
 
   function openCreate() {
-    setEditing(null)
-    setValues(blankForm())
+    setForm(blankForm())
     setFormError(null)
     setDrawerOpen(true)
   }
 
-  function openEdit(e: WasteEntry) {
-    setEditing(e)
-    setValues(blankForm(e))
-    setFormError(null)
-    setDrawerOpen(true)
-  }
-
-  function onInventorySelect(itemId: string) {
-    const item = inventoryItems.find((i) => i.id === itemId)
-    if (!item) { setValues((v) => ({ ...v, item_id: '', item_name: '', unit: '' })); return }
-    setValues((v) => ({ ...v, item_id: item.id, item_name: item.name, unit: item.unit }))
-  }
+  // ── Submit ──────────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
-    if (!values.item_name.trim()) { setFormError(t('waste.form.nameRequired')); return }
-    const qty = parseFloat(values.quantity)
-    if (isNaN(qty) || qty <= 0) { setFormError(t('waste.form.quantityRequired')); return }
+
+    if (form.mode === 'ingredient' && !form.ingredient_id) {
+      setFormError('Επιλέξτε υλικό από την αποθήκη.'); return
+    }
+    if (form.mode === 'dish' && !form.menu_item_id) {
+      setFormError('Επιλέξτε πιάτο από το μενού.'); return
+    }
+    const qty = parseFloat(form.quantity)
+    if (isNaN(qty) || qty <= 0) { setFormError('Εισάγετε έγκυρη ποσότητα.'); return }
+
+    if (form.reason_code === 'supplier_damaged' && !form.supplier_id) {
+      setFormError('Επιλέξτε προμηθευτή για να δημιουργηθεί πιστωτικό.'); return
+    }
+
+    const unit = form.mode === 'ingredient'
+      ? (inventoryItems.find((i) => i.id === form.ingredient_id)?.unit ?? '')
+      : 'μερίδα'
+
     setSaving(true)
     try {
-      const payload = {
-        item_id: values.item_id || null,
-        item_name: values.item_name.trim(),
-        quantity: qty,
-        unit: values.unit.trim(),
-        reason: values.reason,
-        cost: values.cost ? parseFloat(values.cost) : null,
-        wasted_at: values.wasted_at || todayIso(),
-        notes: values.notes.trim() || null,
-      }
-      if (editing) await update(editing.id, payload)
-      else await create(payload)
+      await create({
+        ingredient_id:   form.mode === 'ingredient' ? form.ingredient_id || null : null,
+        menu_item_id:    form.mode === 'dish'       ? form.menu_item_id  || null : null,
+        quantity:        qty,
+        unit,
+        reason_code:     form.reason_code,
+        supplier_id:     form.reason_code === 'supplier_damaged' ? (form.supplier_id || null) : null,
+        calculated_cost: liveCost,
+        notes:           form.notes.trim() || null,
+      })
       setDrawerOpen(false)
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : t('common.saveFailed'))
+      setFormError(err instanceof Error ? err.message : 'Αποτυχία αποθήκευσης')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDelete(entry: WasteEntry) {
-    const ok = window.confirm(t('waste.deleteConfirm', { name: entry.item_name }))
+  async function handleDelete(entry: WasteLogRow) {
+    const name = displayName(entry)
+    const ok = window.confirm(`Διαγραφή καταχώρησης για «${name}»;`)
     if (!ok) return
     await remove(entry.id)
   }
+
+  // ── Monthly filtering & stats ───────────────────────────────────────────────
+
+  const monthEntries = useMemo(() =>
+    entries.filter((e) => e.created_at.startsWith(month)),
+    [entries, month],
+  )
+
+  const totalCost = useMemo(() =>
+    monthEntries.reduce((s, e) => s + (e.calculated_cost ?? 0), 0),
+    [monthEntries],
+  )
+
+  const byReason = useMemo(() => {
+    const map: Record<string, { count: number; cost: number }> = {}
+    for (const e of monthEntries) {
+      const r = map[e.reason_code] ??= { count: 0, cost: 0 }
+      r.count++
+      r.cost += e.calculated_cost ?? 0
+    }
+    return map
+  }, [monthEntries])
+
+  const creditCount = useMemo(() =>
+    monthEntries.filter((e) => e.reason_code === 'supplier_damaged').length,
+    [monthEntries],
+  )
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  const selectedIngredient = inventoryItems.find((i) => i.id === form.ingredient_id)
+  const selectedMenuItem   = menuItems.find((m) => m.id === form.menu_item_id)
+  const selectedRecipe     = selectedMenuItem?.recipe_id
+    ? recipes.find((r) => r.id === selectedMenuItem.recipe_id)
+    : null
 
   return (
     <div className="space-y-6">
@@ -153,13 +245,13 @@ export default function WasteLog() {
           <p className="text-white/60 mt-1">{t('waste.subtitle')}</p>
         </div>
         <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-          {t('waste.logWaste')}
+          Καταγραφή αποβλήτου
         </Button>
       </header>
 
       {error && <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>}
 
-      {/* Month nav */}
+      {/* Month navigator */}
       <GlassCard className="flex items-center justify-between gap-3">
         <button type="button" onClick={() => setMonth((m) => shiftMonth(m, -1))}
           className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
@@ -176,25 +268,39 @@ export default function WasteLog() {
       {monthEntries.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <GlassCard className="space-y-0.5">
-            <p className="text-xs text-white/50">{t('waste.stats.totalEntries')}</p>
+            <p className="text-xs text-white/50">Καταχωρήσεις</p>
             <p className="text-2xl font-bold">{monthEntries.length}</p>
           </GlassCard>
           <GlassCard className="space-y-0.5">
-            <p className="text-xs text-white/50">{t('waste.stats.totalCost')}</p>
+            <p className="text-xs text-white/50">Κόστος αποβλήτων</p>
             <p className="text-2xl font-bold text-red-400">
               {totalCost > 0 ? `€${totalCost.toFixed(2)}` : '—'}
             </p>
           </GlassCard>
-          {REASONS.filter((r) => byReason[r]).slice(0, 2).map((r) => (
-            <GlassCard key={r} className="space-y-0.5">
-              <p className="text-xs text-white/50">{t(`waste.reasons.${r}`)}</p>
-              <p className="text-2xl font-bold">{byReason[r]}</p>
+          {creditCount > 0 && (
+            <GlassCard className="space-y-0.5 border border-amber-500/30">
+              <p className="text-xs text-white/50 flex items-center gap-1">
+                <BadgeDollarSign className="h-3.5 w-3.5 text-amber-400" />
+                Πιστωτικά προμ/τών
+              </p>
+              <p className="text-2xl font-bold text-amber-400">{creditCount}</p>
             </GlassCard>
-          ))}
+          )}
+          {Object.entries(byReason)
+            .sort(([, a], [, b]) => b.cost - a.cost)
+            .slice(0, creditCount > 0 ? 1 : 2)
+            .map(([code, data]) => (
+              <GlassCard key={code} className="space-y-0.5">
+                <p className="text-xs text-white/50">{REASON_LABEL[code as WasteReasonCode] ?? code}</p>
+                <p className="text-2xl font-bold">{data.count}
+                  {data.cost > 0 && <span className="text-sm text-red-400 ml-1">€{data.cost.toFixed(0)}</span>}
+                </p>
+              </GlassCard>
+            ))}
         </div>
       )}
 
-      {/* Entries */}
+      {/* Entries table */}
       {loading ? (
         <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
       ) : monthEntries.length === 0 ? (
@@ -202,10 +308,10 @@ export default function WasteLog() {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/15 text-red-400">
             <Trash className="h-7 w-7" />
           </div>
-          <h2 className="text-xl font-semibold">{t('waste.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('waste.empty.description')}</p>
+          <h2 className="text-xl font-semibold">Δεν υπάρχουν καταχωρήσεις αυτό τον μήνα</h2>
+          <p className="text-white/60 max-w-sm">Καταγράψτε τα απόβλητα για παρακολούθηση κόστους.</p>
           <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-            {t('waste.empty.cta')}
+            Πρώτη καταχώρηση
           </Button>
         </GlassCard>
       ) : (
@@ -213,50 +319,58 @@ export default function WasteLog() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-glass-border bg-white/5">
-                <th className="text-left px-4 py-3 text-xs text-white/50 font-medium">{t('waste.table.item')}</th>
-                <th className="text-left px-4 py-3 text-xs text-white/50 font-medium hidden sm:table-cell">{t('waste.table.reason')}</th>
-                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium">{t('waste.table.qty')}</th>
-                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">{t('waste.table.cost')}</th>
-                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">{t('waste.table.date')}</th>
-                <th className="w-20" />
+                <th className="text-left px-4 py-3 text-xs text-white/50 font-medium">Τύπος / Είδος</th>
+                <th className="text-left px-4 py-3 text-xs text-white/50 font-medium hidden sm:table-cell">Αιτία</th>
+                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium">Ποσ.</th>
+                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">Κόστος</th>
+                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">Ημερ.</th>
+                <th className="w-14" />
               </tr>
             </thead>
             <tbody>
               {monthEntries.map((entry) => (
                 <tr key={entry.id} className="border-b border-glass-border/50 last:border-0 hover:bg-white/5">
-                  <td className="px-4 py-3 font-medium">
-                    {entry.item_name}
-                    {entry.notes && (
-                      <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{entry.notes}</p>
-                    )}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={cn(
+                        'shrink-0 flex h-6 w-6 items-center justify-center rounded-md',
+                        entry.ingredient_id
+                          ? 'bg-emerald-500/15 text-emerald-400'
+                          : 'bg-purple-500/15 text-purple-400',
+                      )}>
+                        {entry.ingredient_id
+                          ? <Package2 className="h-3.5 w-3.5" />
+                          : <UtensilsCrossed className="h-3.5 w-3.5" />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{displayName(entry)}</p>
+                        {entry.notes && (
+                          <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{entry.notes}</p>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
-                    <span className={cn('inline-flex rounded-lg border px-2 py-0.5 text-xs font-medium', REASON_COLOR[entry.reason])}>
-                      {t(`waste.reasons.${entry.reason}`)}
+                    <span className={cn('inline-flex rounded-lg border px-2 py-0.5 text-xs font-medium', REASON_COLOR[entry.reason_code])}>
+                      {REASON_LABEL[entry.reason_code]}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-white/70">
                     {entry.quantity} <span className="text-white/40">{entry.unit}</span>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums hidden md:table-cell">
-                    {entry.cost != null
-                      ? <span className="text-red-400 font-semibold">€{entry.cost.toFixed(2)}</span>
+                    {entry.calculated_cost != null
+                      ? <span className="text-red-400 font-semibold">€{entry.calculated_cost.toFixed(2)}</span>
                       : <span className="text-white/20">—</span>}
                   </td>
                   <td className="px-4 py-3 text-right text-white/50 text-xs hidden md:table-cell">
-                    {new Date(entry.wasted_at).toLocaleDateString()}
+                    {new Date(entry.created_at).toLocaleDateString('el-GR')}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      <button type="button" onClick={() => openEdit(entry)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button type="button" onClick={() => handleDelete(entry)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                    <button type="button" onClick={() => handleDelete(entry)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 ml-auto">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -265,12 +379,14 @@ export default function WasteLog() {
               <tfoot>
                 <tr className="border-t border-glass-border bg-white/5">
                   <td colSpan={3} className="px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">
-                    {t('waste.table.totalCost')}
+                    Συνολικό κόστος αποβλήτων
                   </td>
-                  <td colSpan={3} className="px-4 py-3 text-right font-bold text-red-400 flex items-center justify-end gap-1 md:table-cell hidden">
-                    <TrendingDown className="h-4 w-4" />€{totalCost.toFixed(2)}
+                  <td className="px-4 py-3 text-right font-bold text-red-400 hidden md:table-cell">
+                    <span className="flex items-center justify-end gap-1">
+                      <TrendingDown className="h-4 w-4" />€{totalCost.toFixed(2)}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 md:hidden" colSpan={4}>
+                  <td colSpan={2} className="px-4 py-3 md:hidden">
                     <div className="flex items-center justify-end gap-1 font-bold text-red-400">
                       <Euro className="h-4 w-4" />{totalCost.toFixed(2)}
                     </div>
@@ -282,104 +398,190 @@ export default function WasteLog() {
         </GlassCard>
       )}
 
-      {/* Log / Edit Drawer */}
+      {/* ── Log Drawer ── */}
       <Drawer
         open={drawerOpen}
         onClose={() => { if (!saving) setDrawerOpen(false) }}
-        title={editing ? t('waste.editEntry') : t('waste.newEntry')}
+        title="Νέα Καταγραφή Αποβλήτου"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Pick from inventory or type manually */}
-          <div>
-            <span className="mb-2 block text-sm font-medium text-white/80">{t('waste.form.inventoryItem')}</span>
-            <div className="glass flex items-center rounded-xl px-4 min-h-touch-target focus-within:ring-2 focus-within:ring-brand-orange">
-              <select
-                value={values.item_id}
-                onChange={(e) => onInventorySelect(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-base text-white"
-              >
-                <option value="" className="bg-[#f5ede0]">{t('waste.form.selectItem')}</option>
-                {inventoryItems.map((item) => (
-                  <option key={item.id} value={item.id} className="bg-[#f5ede0]">{item.name}</option>
-                ))}
-              </select>
-            </div>
+
+          {/* Mode tabs */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, mode: 'ingredient', menu_item_id: '' }))}
+              className={cn(
+                'flex flex-col items-center gap-1.5 rounded-xl border py-4 text-sm font-medium transition',
+                form.mode === 'ingredient'
+                  ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+                  : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
+              )}
+            >
+              <Package2 className="h-6 w-6" />
+              Υλικό Αποθήκης
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, mode: 'dish', ingredient_id: '' }))}
+              className={cn(
+                'flex flex-col items-center gap-1.5 rounded-xl border py-4 text-sm font-medium transition',
+                form.mode === 'dish'
+                  ? 'border-purple-500/50 bg-purple-500/10 text-purple-400'
+                  : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
+              )}
+            >
+              <UtensilsCrossed className="h-6 w-6" />
+              Έτοιμο Πιάτο
+            </button>
           </div>
 
+          {/* Item selector */}
+          {form.mode === 'ingredient' ? (
+            <div>
+              <span className="mb-2 block text-sm font-medium text-white/80">Υλικό από Αποθήκη</span>
+              <div className="glass flex items-center rounded-xl px-4 min-h-touch-target focus-within:ring-2 focus-within:ring-brand-orange">
+                <select
+                  value={form.ingredient_id}
+                  onChange={(e) => onIngredientSelect(e.target.value)}
+                  className="flex-1 bg-transparent outline-none text-base text-white"
+                  required
+                >
+                  <option value="" className="bg-[#1a1a1a]">— επιλέξτε υλικό —</option>
+                  {inventoryItems.map((item) => (
+                    <option key={item.id} value={item.id} className="bg-[#1a1a1a]">
+                      {item.name} ({item.quantity} {item.unit})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedIngredient && (
+                <p className="mt-1.5 text-xs text-white/40">
+                  Τιμή αγοράς: {selectedIngredient.cost_per_unit != null
+                    ? `€${selectedIngredient.cost_per_unit.toFixed(3)} / ${selectedIngredient.unit}`
+                    : 'Δεν έχει οριστεί'}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <span className="mb-2 block text-sm font-medium text-white/80">Πιάτο από Μενού</span>
+              <div className="glass flex items-center rounded-xl px-4 min-h-touch-target focus-within:ring-2 focus-within:ring-brand-orange">
+                <select
+                  value={form.menu_item_id}
+                  onChange={(e) => setForm((f) => ({ ...f, menu_item_id: e.target.value }))}
+                  className="flex-1 bg-transparent outline-none text-base text-white"
+                  required
+                >
+                  <option value="" className="bg-[#1a1a1a]">— επιλέξτε πιάτο —</option>
+                  {menuItems.map((mi) => (
+                    <option key={mi.id} value={mi.id} className="bg-[#1a1a1a]">{mi.name}</option>
+                  ))}
+                </select>
+              </div>
+              {selectedMenuItem && (
+                <p className="mt-1.5 text-xs text-white/40">
+                  {selectedRecipe
+                    ? `Κόστος συνταγής: €${selectedRecipe.cost_per_portion?.toFixed(2) ?? '—'} / μερίδα`
+                    : 'Δεν υπάρχει συνδεδεμένη συνταγή'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Quantity */}
           <Input
-            name="item_name"
-            label={t('waste.form.itemName')}
-            placeholder={t('waste.form.itemNamePlaceholder')}
+            name="quantity"
+            type="number"
+            label={form.mode === 'ingredient' ? 'Ποσότητα' : 'Αριθμός μερίδων'}
+            placeholder={form.mode === 'ingredient' ? '2.5' : '1'}
+            step="any"
+            min={0}
             required
-            value={values.item_name}
-            onChange={(e) => setValues((v) => ({ ...v, item_name: e.target.value, item_id: '' }))}
+            value={form.quantity}
+            onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              name="quantity"
-              type="number"
-              label={t('waste.form.quantity')}
-              placeholder="2.5"
-              step="any"
-              min={0}
-              required
-              value={values.quantity}
-              onChange={(e) => setValues((v) => ({ ...v, quantity: e.target.value }))}
-            />
-            <Input
-              name="unit"
-              label={t('waste.form.unit')}
-              placeholder="kg"
-              value={values.unit}
-              onChange={(e) => setValues((v) => ({ ...v, unit: e.target.value }))}
-            />
-          </div>
+          {/* Live cost banner */}
+          {liveCost !== null ? (
+            <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3">
+              <TrendingDown className="h-5 w-5 text-red-400 shrink-0" />
+              <div>
+                <p className="text-xs text-red-300/70">Υπολογισμένη ζημιά</p>
+                <p className="text-2xl font-bold text-red-400 tabular-nums">€{liveCost.toFixed(2)}</p>
+              </div>
+            </div>
+          ) : form.quantity && (form.ingredient_id || form.menu_item_id) ? (
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/40">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Δεν υπάρχει τιμή κόστους — η ζημιά δεν θα υπολογιστεί
+            </div>
+          ) : null}
 
-          {/* Reason */}
+          {/* Reason code */}
           <div>
-            <span className="mb-2 block text-sm font-medium text-white/80">{t('waste.form.reason')}</span>
-            <div className="flex flex-wrap gap-2">
-              {REASONS.map((r) => (
+            <span className="mb-2 block text-sm font-medium text-white/80">Αιτία</span>
+            <div className="grid grid-cols-2 gap-2">
+              {REASON_CODES.map((r) => (
                 <button key={r} type="button"
-                  onClick={() => setValues((v) => ({ ...v, reason: r }))}
+                  onClick={() => setForm((f) => ({ ...f, reason_code: r }))}
                   className={cn(
-                    'rounded-xl border px-3 py-1.5 text-xs font-medium transition',
-                    values.reason === r ? REASON_COLOR[r] : 'border-white/20 text-white/60 hover:text-white',
+                    'rounded-xl border px-3 py-2 text-xs font-medium text-left transition',
+                    form.reason_code === r
+                      ? REASON_COLOR[r]
+                      : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
                   )}>
-                  {t(`waste.reasons.${r}`)}
+                  {REASON_LABEL[r]}
                 </button>
               ))}
             </div>
           </div>
 
-          <Input
-            name="cost"
-            type="number"
-            label={t('waste.form.cost')}
-            placeholder="0.00"
-            step="0.01"
-            min={0}
-            hint={t('waste.form.costHint')}
-            value={values.cost}
-            onChange={(e) => setValues((v) => ({ ...v, cost: e.target.value }))}
+          {/* Supplier dropdown — only for supplier_damaged */}
+          {form.reason_code === 'supplier_damaged' && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-amber-400">
+                <BadgeDollarSign className="h-4 w-4" />
+                Πιστωτικό Προμηθευτή
+              </div>
+              <p className="text-xs text-white/50">
+                Θα δημιουργηθεί αυτόματα αίτημα πιστωτικού προς τον προμηθευτή για €{liveCost?.toFixed(2) ?? '—'}.
+              </p>
+              <div>
+                <span className="mb-2 block text-xs font-medium text-white/70">Επιλογή Προμηθευτή</span>
+                <div className="glass flex items-center rounded-xl px-4 min-h-touch-target focus-within:ring-2 focus-within:ring-amber-500/50">
+                  <select
+                    value={form.supplier_id}
+                    onChange={(e) => setForm((f) => ({ ...f, supplier_id: e.target.value }))}
+                    className="flex-1 bg-transparent outline-none text-base text-white"
+                    required
+                  >
+                    <option value="" className="bg-[#1a1a1a]">— επιλέξτε προμηθευτή —</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id} className="bg-[#1a1a1a]">{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notes & date */}
+          <Textarea
+            name="notes"
+            label="Σημειώσεις"
+            placeholder="Πρόσθετες λεπτομέρειες…"
+            rows={2}
+            value={form.notes}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           />
 
           <Input
             name="wasted_at"
             type="date"
-            label={t('waste.form.date')}
-            value={values.wasted_at}
-            onChange={(e) => setValues((v) => ({ ...v, wasted_at: e.target.value }))}
-          />
-
-          <Textarea
-            name="notes"
-            label={t('waste.form.notes')}
-            placeholder={t('waste.form.notesPlaceholder')}
-            rows={2}
-            value={values.notes}
-            onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))}
+            label="Ημερομηνία"
+            value={form.wasted_at}
+            onChange={(e) => setForm((f) => ({ ...f, wasted_at: e.target.value }))}
           />
 
           {formError && (
@@ -393,7 +595,7 @@ export default function WasteLog() {
               {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? t('common.saving') : editing ? t('common.save') : t('waste.form.log')}
+              {saving ? t('common.saving') : 'Καταγραφή'}
             </Button>
           </div>
         </form>
