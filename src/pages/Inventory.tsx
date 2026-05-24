@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, Truck, CalendarClock } from 'lucide-react'
+import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, CalendarClock } from 'lucide-react'
 import { ReceivingScanner } from '../components/inventory/ReceivingScanner'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
