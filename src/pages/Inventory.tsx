@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus } from 'lucide-react'
+import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, Truck, CalendarClock } from 'lucide-react'
 import { ReceivingScanner } from '../components/inventory/ReceivingScanner'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +10,8 @@ import { Drawer } from '../components/ui/Drawer'
 import { InventoryList } from '../components/inventory/InventoryList'
 import { InventoryMovementsDrawer } from '../components/inventory/InventoryMovementsDrawer'
 import { InventoryQRDrawer } from '../components/inventory/InventoryQRDrawer'
+import { IngredientSuppliersDrawer } from '../components/inventory/IngredientSuppliersDrawer'
+import { OrderingChecklist } from '../components/inventory/OrderingChecklist'
 import {
   InventoryForm,
   type InventoryFormValues,
@@ -48,6 +50,8 @@ export default function Inventory() {
   const [creatingOrder, setCreatingOrder] = useState<string | null>(null)
   const [forecast, setForecast] = useState<ForecastItem[]>([])
   const [scanMode, setScanMode] = useState<'check' | 'receive' | null>(null)
+  const [viewingSuppliers, setViewingSuppliers] = useState<InventoryItem | null>(null)
+  const [showChecklist, setShowChecklist] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -249,6 +253,13 @@ export default function Inventory() {
           <p className="text-white/60 mt-1">{t('inventory.subtitle')}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={showChecklist ? 'primary' : 'secondary'}
+            leftIcon={<CalendarClock className="h-5 w-5" />}
+            onClick={() => setShowChecklist((v) => !v)}
+          >
+            Daily Checklist
+          </Button>
           {lowStockItems.length > 0 && (
             <Button
               variant={showReorder ? 'primary' : 'secondary'}
@@ -289,6 +300,22 @@ export default function Inventory() {
 
       {error && (
         <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>
+      )}
+
+      {/* ── Daily Ordering Checklist ── */}
+      {showChecklist && (
+        <GlassCard className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-lg flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-brand-orange" />
+                Daily Ordering Checklist
+              </h2>
+              <p className="text-sm text-white/50">Παραγγελίες που πρέπει να φύγουν σήμερα</p>
+            </div>
+          </div>
+          <OrderingChecklist />
+        </GlassCard>
       )}
 
       {/* ── Reorder panel ── */}
@@ -473,6 +500,7 @@ export default function Inventory() {
           onHistory={setViewingHistory}
           onQR={setViewingQR}
           onPrint={printLabel}
+          onSuppliers={setViewingSuppliers}
         />
       )}
 
@@ -579,6 +607,15 @@ export default function Inventory() {
           )}
         </div>
       </Drawer>
+
+      {viewingSuppliers && (
+        <IngredientSuppliersDrawer
+          open={viewingSuppliers != null}
+          onClose={() => setViewingSuppliers(null)}
+          item={viewingSuppliers}
+          allSuppliers={suppliers}
+        />
+      )}
 
       <InventoryMovementsDrawer
         item={viewingHistory}

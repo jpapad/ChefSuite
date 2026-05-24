@@ -1,4 +1,4 @@
-import { Pencil, Trash2, AlertTriangle, PackagePlus, History, QrCode, MapPin, Printer } from 'lucide-react'
+import { Pencil, Trash2, AlertTriangle, PackagePlus, History, QrCode, MapPin, Printer, Truck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../ui/GlassCard'
 import { cn } from '../../lib/cn'
@@ -15,13 +15,14 @@ interface InventoryListProps {
   onHistory: (item: InventoryItem) => void
   onQR: (item: InventoryItem) => void
   onPrint?: (item: InventoryItem) => void
+  onSuppliers?: (item: InventoryItem) => void
 }
 
 function formatQty(n: number): string {
   return Number.isInteger(n) ? n.toString() : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
 }
 
-export function InventoryList({ items, locationMap, onEdit, onDelete, onRestock, onHistory, onQR, onPrint }: InventoryListProps) {
+export function InventoryList({ items, locationMap, onEdit, onDelete, onRestock, onHistory, onQR, onPrint, onSuppliers }: InventoryListProps) {
   const { t } = useTranslation()
   const trNames = useAutoTranslateMany(items.map((i) => i.name))
 
@@ -122,6 +123,17 @@ export function InventoryList({ items, locationMap, onEdit, onDelete, onRestock,
                 >
                   <History className="h-5 w-5" />
                 </button>
+                {onSuppliers && (
+                  <button
+                    type="button"
+                    onClick={() => onSuppliers(item)}
+                    aria-label={`Suppliers for ${item.name}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-brand-orange hover:bg-brand-orange/10"
+                    title="Προμηθευτές"
+                  >
+                    <Truck className="h-5 w-5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onEdit(item)}
