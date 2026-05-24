@@ -319,7 +319,8 @@
       "subtitle": "Items running low based on average daily consumption.",
       "daysLeft": "{{days}}d left",
       "avgDaily": "avg {{qty}}/day",
-      "empty": "All items have sufficient stock for 14+ days."
+      "empty": "All items have sufficient stock for 14+ days.",
+      "now": "NOW"
     },
     "autoOrder": "Create Order",
     "autoOrderCreated": "Order created for {{supplier}}"
