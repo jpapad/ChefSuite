@@ -5,7 +5,18 @@ import { Activity, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
-import type { BuffetLiveStatus } from '../types/database.types'
+import type { BuffetItemStatus, BuffetLiveStatus } from '../types/database.types'
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface BuffetItem {
+  menu_item_id: string
+  item_name: string
+}
+
+type MenuItemRow = { id: string; name: string }
+type MenuSectionRow = { id: string; menu_items: MenuItemRow[] }
+type MenuRow = { id: string; name: string; menu_sections: MenuSectionRow[] }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -17,11 +28,26 @@ function formatElapsed(sinceIso: string, nowMs: number): string {
   return `${m}λ ${String(s).padStart(2, '0')}δ`
 }
 
-function priorityScore(row: BuffetLiveStatus): number {
-  if (row.status === 'empty') return 0
-  if (row.vessel_request && row.status === 'low') return 1
-  if (row.vessel_request) return 2
-  return 3 // low only
+function priorityScore(status: BuffetItemStatus, vessel: boolean): number {
+  if (status === 'empty') return 0
+  if (vessel && status === 'low') return 1
+  if (vessel) return 2
+  return 3
+}
+
+function needsAttention(status: BuffetItemStatus, vessel: boolean) {
+  return status !== 'full' || vessel
+}
+
+// ── Merged view of a buffet item with its live status ─────────────────────────
+
+interface MergedItem {
+  menu_item_id: string
+  item_name: string
+  status: BuffetItemStatus
+  vessel_request: boolean
+  status_changed_at: string | null
+  row_id: string | null // buffet_live_status.id, null if never set
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -33,33 +59,56 @@ export default function KitchenBuffetKDS() {
   const teamId = profile?.team_id ?? null
   const userId = profile?.id ?? null
 
-  const [rows, setRows] = useState<BuffetLiveStatus[]>([])
+  const [menuItems, setMenuItems] = useState<BuffetItem[]>([])
+  const [statusMap, setStatusMap] = useState<Map<string, BuffetLiveStatus>>(new Map())
   const [loading, setLoading] = useState(true)
   const [dispatching, setDispatching] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(Date.now())
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
-  // ── Tick every second for timers ─────────────────────────────────────────────
+  // ── Tick every second ────────────────────────────────────────────────────────
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
 
-  // ── Load all status rows ─────────────────────────────────────────────────────
+  // ── Load buffet menu items ────────────────────────────────────────────────────
 
-  const loadRows = useCallback(async () => {
+  const loadAll = useCallback(async () => {
     if (!teamId) return
     setLoading(true)
-    const { data } = await supabase
-      .from('buffet_live_status')
-      .select('*')
-      .eq('team_id', teamId)
-    setRows((data ?? []) as BuffetLiveStatus[])
+
+    const [{ data: menuData }, { data: statusData }] = await Promise.all([
+      supabase
+        .from('menus')
+        .select('id, name, menu_sections(id, menu_items(id, name))')
+        .eq('team_id', teamId)
+        .eq('type', 'buffet')
+        .eq('active', true),
+      supabase
+        .from('buffet_live_status')
+        .select('*')
+        .eq('team_id', teamId),
+    ])
+
+    const menus = (menuData ?? []) as unknown as MenuRow[]
+    const items: BuffetItem[] = menus.flatMap((m) =>
+      m.menu_sections.flatMap((s) =>
+        s.menu_items.map((i) => ({ menu_item_id: i.id, item_name: i.name })),
+      ),
+    )
+    setMenuItems(items)
+
+    const map = new Map<string, BuffetLiveStatus>()
+    for (const row of (statusData ?? []) as BuffetLiveStatus[]) {
+      if (row.menu_item_id) map.set(row.menu_item_id, row)
+    }
+    setStatusMap(map)
     setLoading(false)
   }, [teamId])
 
-  useEffect(() => { void loadRows() }, [loadRows])
+  useEffect(() => { void loadAll() }, [loadAll])
 
   // ── Realtime ─────────────────────────────────────────────────────────────────
 
@@ -70,26 +119,23 @@ export default function KitchenBuffetKDS() {
       .channel(`buffet-kds:${teamId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'buffet_live_status',
-          filter: `team_id=eq.${teamId}`,
-        },
+        { event: '*', schema: 'public', table: 'buffet_live_status', filter: `team_id=eq.${teamId}` },
         (payload) => {
           if (payload.eventType === 'DELETE') {
             const old = payload.old as Partial<BuffetLiveStatus>
-            if (old.id) setRows((prev) => prev.filter((r) => r.id !== old.id))
+            if (old.menu_item_id) {
+              setStatusMap((prev) => {
+                const next = new Map(prev)
+                next.delete(old.menu_item_id!)
+                return next
+              })
+            }
             return
           }
           const row = payload.new as BuffetLiveStatus
-          setRows((prev) => {
-            const idx = prev.findIndex((r) => r.id === row.id)
-            if (idx === -1) return [...prev, row]
-            const next = [...prev]
-            next[idx] = row
-            return next
-          })
+          if (row.menu_item_id) {
+            setStatusMap((prev) => new Map(prev).set(row.menu_item_id!, row))
+          }
         },
       )
       .subscribe()
@@ -98,147 +144,209 @@ export default function KitchenBuffetKDS() {
     return () => { void supabase.removeChannel(ch) }
   }, [teamId])
 
-  // ── Dispatch: mark item as full, clear vessel request ────────────────────────
+  // ── Dispatch ─────────────────────────────────────────────────────────────────
 
-  async function dispatch(row: BuffetLiveStatus) {
+  async function dispatch(item: MergedItem) {
     if (!teamId || !userId) return
-    setDispatching(row.id)
+    setDispatching(item.menu_item_id)
     try {
-      await supabase
-        .from('buffet_live_status')
-        .update({
-          status: 'full',
-          vessel_request: false,
-          status_changed_at: new Date().toISOString(),
-          changed_by: userId,
-        })
-        .eq('id', row.id)
+      if (item.row_id) {
+        await supabase
+          .from('buffet_live_status')
+          .update({
+            status: 'full',
+            vessel_request: false,
+            status_changed_at: new Date().toISOString(),
+            changed_by: userId,
+          })
+          .eq('id', item.row_id)
+      }
     } finally {
       setDispatching(null)
     }
   }
 
-  // ── Derived: filter + sort ────────────────────────────────────────────────────
+  // ── Merge menu items with live status ────────────────────────────────────────
 
-  const attention = rows
-    .filter((r) => r.status !== 'full' || r.vessel_request)
-    .sort((a, b) => priorityScore(a) - priorityScore(b))
+  const merged: MergedItem[] = menuItems.map((item) => {
+    const live = statusMap.get(item.menu_item_id)
+    return {
+      menu_item_id: item.menu_item_id,
+      item_name: item.item_name,
+      status: live?.status ?? 'full',
+      vessel_request: live?.vessel_request ?? false,
+      status_changed_at: live?.status_changed_at ?? null,
+      row_id: live?.id ?? null,
+    }
+  })
 
-  // ── Card config ───────────────────────────────────────────────────────────────
+  const urgent = merged
+    .filter((i) => needsAttention(i.status, i.vessel_request))
+    .sort((a, b) => priorityScore(a.status, a.vessel_request) - priorityScore(b.status, b.vessel_request))
 
-  function cardStyle(row: BuffetLiveStatus) {
-    if (row.status === 'empty') return { border: 'border-red-500/70', badge: 'bg-red-600', pulse: true }
-    if (row.status === 'low')   return { border: 'border-amber-500/70', badge: 'bg-amber-600', pulse: false }
-    return { border: 'border-amber-400/50', badge: 'bg-amber-500/80', pulse: false } // vessel only
-  }
+  const ok = merged.filter((i) => !needsAttention(i.status, i.vessel_request))
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#030712', color: '#fff' }}>
+
       {/* Top bar */}
-      <header className="sticky top-0 z-10 bg-gray-900/80 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center gap-3">
+      <header
+        className="sticky top-0 z-10 backdrop-blur border-b px-4 py-3 flex items-center gap-3"
+        style={{ backgroundColor: 'rgba(17,24,39,0.85)', borderColor: 'rgba(255,255,255,0.08)' }}
+      >
         <button
           onClick={() => navigate('/buffet-pulse')}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors"
+          style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" style={{ color: '#fff' }} />
         </button>
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Activity className="h-5 w-5 text-red-400 shrink-0" />
-          <span className="font-semibold truncate">{t('buffetPulse.kdsMode')}</span>
-          <span className="ml-1 shrink-0 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold tracking-wider text-red-400 uppercase">
+          <Activity className="h-5 w-5 shrink-0" style={{ color: '#f87171' }} />
+          <span className="font-semibold truncate" style={{ color: '#fff' }}>
+            {t('buffetPulse.kdsMode')}
+          </span>
+          <span
+            className="ml-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase"
+            style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171' }}
+          >
             {t('buffetPulse.liveIndicator')}
           </span>
         </div>
-        <div className="shrink-0 text-sm font-mono text-white/40 tabular-nums">
+        <div className="shrink-0 text-sm font-mono tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
           {new Date(nowMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </div>
       </header>
 
-      {/* Priority queue header */}
-      {attention.length > 0 && (
-        <div className="px-4 py-2 bg-gray-900 border-b border-white/10 flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
-            {t('buffetPulse.priority')}
-          </span>
-          <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
-            {attention.length}
-          </span>
-        </div>
-      )}
-
       {/* Content */}
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 space-y-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20 gap-3 text-white/40">
-            <Loader2 className="h-6 w-6 animate-spin" />
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />
           </div>
-        ) : attention.length === 0 ? (
+        ) : merged.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-            <CheckCircle2 className="h-16 w-16 text-emerald-500/40" />
-            <p className="text-xl font-semibold text-white/60">{t('buffetPulse.allGood')}</p>
-            <p className="text-sm text-white/30">{t('buffetPulse.allGoodDesc')}</p>
+            <Activity className="h-12 w-12" style={{ color: 'rgba(255,255,255,0.15)' }} />
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              {t('buffetPulse.noBuffetMenu')}
+            </p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {attention.map((row) => {
-              const style = cardStyle(row)
-              const isDispatching = dispatching === row.id
-              const elapsed = formatElapsed(row.status_changed_at, nowMs)
-
-              return (
-                <div
-                  key={row.id}
-                  className={cn(
-                    'rounded-2xl bg-gray-900 border p-4 flex flex-col gap-3',
-                    style.border,
-                    style.pulse && 'animate-pulse-border',
-                  )}
-                >
-                  {/* Status badge + elapsed timer */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={cn('rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white', style.badge)}>
-                        {row.status === 'empty'
-                          ? t('buffetPulse.empty')
-                          : row.status === 'low'
-                          ? t('buffetPulse.low')
-                          : '—'}
-                      </span>
-                      {row.vessel_request && (
-                        <span className="rounded-lg bg-amber-500/20 border border-amber-500/50 px-2 py-0.5 text-xs font-semibold text-amber-300">
-                          🥘 Σκεύος
-                        </span>
-                      )}
-                    </div>
-                    {/* Timer */}
-                    <span className="font-mono text-sm tabular-nums text-white/50">
-                      {t('buffetPulse.since')} {elapsed}
-                    </span>
-                  </div>
-
-                  {/* Item name */}
-                  <p className="text-2xl font-bold leading-tight">{row.item_name}</p>
-
-                  {/* Dispatch button */}
-                  <button
-                    disabled={isDispatching}
-                    onClick={() => void dispatch(row)}
-                    className={cn(
-                      'mt-auto w-full rounded-xl py-4 text-base font-bold transition-all select-none',
-                      'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-400 text-white',
-                      isDispatching && 'cursor-not-allowed opacity-50',
-                    )}
-                  >
-                    {isDispatching
-                      ? <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                      : `✓ ${t('buffetPulse.dispatched')}`}
-                  </button>
+          <>
+            {/* ── URGENT section ──────────────────────────────────── */}
+            {urgent.length === 0 ? (
+              <div
+                className="flex items-center gap-3 rounded-2xl px-5 py-4"
+                style={{ backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)' }}
+              >
+                <CheckCircle2 className="h-6 w-6 shrink-0" style={{ color: '#34d399' }} />
+                <div>
+                  <p className="font-semibold" style={{ color: '#34d399' }}>{t('buffetPulse.allGood')}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(52,211,153,0.6)' }}>{t('buffetPulse.allGoodDesc')}</p>
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            ) : (
+              <>
+                {/* Urgent header */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    {t('buffetPulse.priority')}
+                  </span>
+                  <span
+                    className="rounded-full px-2 py-0.5 text-xs font-black"
+                    style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                  >
+                    {urgent.length}
+                  </span>
+                </div>
+
+                {/* Urgent cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {urgent.map((item) => {
+                    const isDispatching = dispatching === item.menu_item_id
+                    const headerBg = item.status === 'empty' ? '#991b1b' : '#92400e'
+
+                    return (
+                      <div
+                        key={item.menu_item_id}
+                        className="rounded-2xl overflow-hidden flex flex-col shadow-xl"
+                        style={{
+                          border: `1px solid ${item.status === 'empty' ? 'rgba(239,68,68,0.6)' : 'rgba(245,158,11,0.6)'}`,
+                          backgroundColor: '#111827',
+                        }}
+                      >
+                        {/* Name header */}
+                        <div className="px-5 py-4" style={{ backgroundColor: headerBg }}>
+                          <p className="text-2xl font-black leading-snug" style={{ color: '#fff' }}>
+                            {item.item_name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                              {item.status === 'empty' ? t('buffetPulse.empty') : t('buffetPulse.low')}
+                            </span>
+                            {item.vessel_request && (
+                              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>· 🥘 Αλλαγή Σκεύους</span>
+                            )}
+                            {item.status_changed_at && (
+                              <span className="ml-auto font-mono text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                                {formatElapsed(item.status_changed_at, nowMs)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Dispatch button */}
+                        <div className="p-3">
+                          <button
+                            disabled={isDispatching}
+                            onClick={() => void dispatch(item)}
+                            className="w-full rounded-xl py-5 text-base font-black transition-all select-none"
+                            style={{
+                              backgroundColor: isDispatching ? 'rgba(16,185,129,0.4)' : '#059669',
+                              color: '#fff',
+                              cursor: isDispatching ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {isDispatching
+                              ? <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                              : `✓ ${t('buffetPulse.dispatched')}`}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* ── OK items compact grid ────────────────────────────── */}
+            {ok.length > 0 && (
+              <div className="space-y-3">
+                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  {t('buffetPulse.full')} ({ok.length})
+                </span>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {ok.map((item) => (
+                    <div
+                      key={item.menu_item_id}
+                      className="rounded-xl px-4 py-3 flex items-center gap-2"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
+                    >
+                      <span
+                        className="shrink-0 h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: '#10b981' }}
+                      />
+                      <span className="text-sm font-medium truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                        {item.item_name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
