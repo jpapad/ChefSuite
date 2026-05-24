@@ -3,6 +3,7 @@ import { Plus, Star, Trash2, Pencil, Check, X } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { cn } from '../../lib/cn'
 import { useIngredientSuppliers } from '../../hooks/useIngredientSuppliers'
+import { PriceComparisonBadge } from '../ui/PriceComparisonBadge'
 import type { IngredientSupplier, InventoryItem, Supplier } from '../../types/database.types'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -25,12 +26,16 @@ interface EditState {
 function LinkRow({
   link,
   supplierName,
+  inventoryUnit,
+  inventoryCostPerUnit,
   onUpdate,
   onRemove,
   onSetPreferred,
 }: {
   link: IngredientSupplier
   supplierName: string
+  inventoryUnit: string
+  inventoryCostPerUnit: number | null
   onUpdate: (patch: Partial<EditState>) => Promise<void>
   onRemove: () => Promise<void>
   onSetPreferred: () => void
@@ -98,19 +103,29 @@ function LinkRow({
 
       {/* Display mode */}
       {!editing && (
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="space-y-0.5">
-            <p className="text-white/40 uppercase tracking-wide">Τιμή</p>
-            <p className="font-bold text-sm text-white">€{link.purchase_price.toFixed(4)}</p>
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="space-y-0.5">
+              <p className="text-white/40 uppercase tracking-wide">Τιμή</p>
+              <p className="font-bold text-sm text-white">€{link.purchase_price.toFixed(4)}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-white/40 uppercase tracking-wide">Κωδικός</p>
+              <p className="font-medium text-white/70">{link.supplier_sku || '—'}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-white/40 uppercase tracking-wide">Lead time</p>
+              <p className="font-medium text-white/70">{link.lead_time_days}η</p>
+            </div>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-white/40 uppercase tracking-wide">Κωδικός</p>
-            <p className="font-medium text-white/70">{link.supplier_sku || '—'}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-white/40 uppercase tracking-wide">Lead time</p>
-            <p className="font-medium text-white/70">{link.lead_time_days}η</p>
-          </div>
+          {inventoryCostPerUnit != null && (
+            <PriceComparisonBadge
+              currentPrice={inventoryCostPerUnit}
+              currentUnit={inventoryUnit}
+              newPrice={link.purchase_price}
+              newUnit={inventoryUnit}
+            />
+          )}
         </div>
       )}
 
@@ -333,6 +348,8 @@ export function IngredientSuppliersDrawer({ open, onClose, item, allSuppliers }:
                 key={link.id}
                 link={link}
                 supplierName={supplierNameById.get(link.supplier_id) ?? '—'}
+                inventoryUnit={item.unit}
+                inventoryCostPerUnit={item.cost_per_unit}
                 onUpdate={(form) => handleUpdate(link.id, form)}
                 onRemove={() => removeLink(link.id)}
                 onSetPreferred={() => { void updateLink(link.id, { is_preferred: true }) }}

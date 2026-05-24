@@ -24,6 +24,7 @@ async function fileToBase64(file: File): Promise<string> {
   })
 }
 import { cn } from '../lib/cn'
+import { PriceComparisonBadge } from '../components/ui/PriceComparisonBadge'
 import type { PurchaseOrderWithSupplier, PurchaseOrderStatus } from '../types/database.types'
 
 const STATUS_STYLES: Record<PurchaseOrderStatus, string> = {
@@ -484,27 +485,41 @@ export default function PurchaseOrders() {
                       ? 'border-emerald-500/30 bg-emerald-500/5'
                       : 'border-amber-500/30 bg-amber-500/5',
                   )}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-white/50 mt-0.5">
-                          {item.quantity} {item.unit}
-                          {item.unit_price != null && ` · €${item.unit_price.toFixed(2)}`}
-                        </p>
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-white/50 mt-0.5">
+                            {item.quantity} {item.unit}
+                            {item.unit_price != null && ` · €${item.unit_price.toFixed(2)}`}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          {item.matched_inv_id ? (
+                            <span className="text-xs text-emerald-400">
+                              <Check className="inline h-3 w-3 mr-1" />
+                              {t('purchaseOrders.willUpdate')}: {item.matched_inv_name}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-amber-400">
+                              <AlertTriangle className="inline h-3 w-3 mr-1" />
+                              {t('purchaseOrders.willCreate')}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="shrink-0 text-right">
-                        {item.matched_inv_id ? (
-                          <span className="text-xs text-emerald-400">
-                            <Check className="inline h-3 w-3 mr-1" />
-                            {t('purchaseOrders.willUpdate')}: {item.matched_inv_name}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-amber-400">
-                            <AlertTriangle className="inline h-3 w-3 mr-1" />
-                            {t('purchaseOrders.willCreate')}
-                          </span>
-                        )}
-                      </div>
+                      {item.matched_inv_id && item.unit_price != null && (() => {
+                        const inv = inventoryItems.find((i) => i.id === item.matched_inv_id)
+                        if (!inv) return null
+                        return (
+                          <PriceComparisonBadge
+                            currentPrice={inv.cost_per_unit}
+                            currentUnit={inv.unit}
+                            newPrice={item.unit_price}
+                            newUnit={item.unit}
+                          />
+                        )
+                      })()}
                     </div>
                   </li>
                 ))}
