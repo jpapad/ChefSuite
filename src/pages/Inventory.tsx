@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, CalendarClock } from 'lucide-react'
+import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, CalendarClock, FileSpreadsheet } from 'lucide-react'
 import { ReceivingScanner } from '../components/inventory/ReceivingScanner'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,7 @@ import { InventoryMovementsDrawer } from '../components/inventory/InventoryMovem
 import { InventoryQRDrawer } from '../components/inventory/InventoryQRDrawer'
 import { IngredientSuppliersDrawer } from '../components/inventory/IngredientSuppliersDrawer'
 import { OrderingChecklist } from '../components/inventory/OrderingChecklist'
+import { ExcelImportWizard } from '../components/inventory/ExcelImportWizard'
 import {
   InventoryForm,
   type InventoryFormValues,
@@ -52,6 +53,7 @@ export default function Inventory() {
   const [scanMode, setScanMode] = useState<'check' | 'receive' | null>(null)
   const [viewingSuppliers, setViewingSuppliers] = useState<InventoryItem | null>(null)
   const [showChecklist, setShowChecklist] = useState(false)
+  const [showImportWizard, setShowImportWizard] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -253,6 +255,13 @@ export default function Inventory() {
           <p className="text-white/60 mt-1">{t('inventory.subtitle')}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            leftIcon={<FileSpreadsheet className="h-5 w-5" />}
+            onClick={() => setShowImportWizard(true)}
+          >
+            Import Excel
+          </Button>
           <Button
             variant={showChecklist ? 'primary' : 'secondary'}
             leftIcon={<CalendarClock className="h-5 w-5" />}
@@ -606,6 +615,14 @@ export default function Inventory() {
             </ul>
           )}
         </div>
+      </Drawer>
+
+      <Drawer
+        open={showImportWizard}
+        onClose={() => setShowImportWizard(false)}
+        title="Import από Excel"
+      >
+        <ExcelImportWizard onClose={() => setShowImportWizard(false)} />
       </Drawer>
 
       {viewingSuppliers && (
