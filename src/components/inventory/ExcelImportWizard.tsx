@@ -10,7 +10,7 @@
 
 import { useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
-import { Upload, ChevronRight, AlertTriangle, CheckCircle2, X, Loader2, FileSpreadsheet } from 'lucide-react'
+import { ChevronRight, AlertTriangle, CheckCircle2, X, Loader2, FileSpreadsheet } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useInventory } from '../../hooks/useInventory'
 import { useAuth } from '../../contexts/AuthContext'
