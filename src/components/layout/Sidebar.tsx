@@ -39,6 +39,7 @@ import {
   Tag,
   Calculator,
   MapPin,
+  Activity,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -147,6 +148,7 @@ export function Sidebar() {
         { to: '/menus', label: t('nav.menus'), icon: UtensilsCrossed, module: 'menus' as AppModule },
         { to: '/prep', label: t('nav.prep'), icon: ClipboardList, module: 'prep' as AppModule },
         { to: '/kds', label: t('nav.kds'), icon: Monitor, module: 'kds' as AppModule },
+        { to: '/buffet-pulse', label: t('nav.buffetPulse'), icon: Activity, module: 'buffet-pulse' as AppModule },
         { to: '/haccp', label: t('nav.haccp'), icon: Thermometer, module: 'haccp' as AppModule },
         { to: '/labels', label: t('nav.labels'), icon: Tag, module: 'labels' as AppModule },
       ],

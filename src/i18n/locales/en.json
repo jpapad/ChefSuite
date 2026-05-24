@@ -34,6 +34,7 @@
     "techniques": "Technique Library",
     "ingredients": "Ingredients Encyclopedia",
     "help": "Help Center",
+    "buffetPulse": "Buffet Live Pulse",
     "groups": {
       "kitchen": "Kitchen",
       "procurement": "Procurement",
@@ -1702,5 +1703,26 @@
     "noIngredients": "No ingredients with cost data",
     "warningHigh": "High food cost",
     "warningLow": "Low margin"
+  },
+  "buffetPulse": {
+    "title": "Buffet Live Pulse",
+    "monitorMode": "Buffet Monitor",
+    "kdsMode": "Kitchen Display",
+    "monitorDesc": "Touch interface for buffet station staff",
+    "kdsDesc": "Real-time kitchen display for buffet replenishment",
+    "openMonitor": "Open Buffet Monitor",
+    "openKds": "Open Kitchen Display",
+    "full": "Full",
+    "low": "Running Low",
+    "empty": "Empty",
+    "vesselRequest": "Request Vessel Change",
+    "vesselRequested": "Vessel Change Requested",
+    "dispatched": "Dispatched",
+    "noBuffetMenu": "No active buffet menu found. Create a menu of type \"Buffet\" to get started.",
+    "allGood": "All buffet stations stocked",
+    "allGoodDesc": "No items need attention right now.",
+    "since": "for",
+    "priority": "Needs Attention",
+    "liveIndicator": "LIVE"
   }
 }

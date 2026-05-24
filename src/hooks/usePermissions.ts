@@ -36,6 +36,7 @@ export const ALL_MODULES = [
   'help',
   'ingredients',
   'pos-settings',
+  'buffet-pulse',
 ] as const
 
 export type AppModule = (typeof ALL_MODULES)[number]
@@ -43,7 +44,7 @@ export type AppModule = (typeof ALL_MODULES)[number]
 export const MODULE_GROUPS: { labelKey: string; modules: AppModule[] }[] = [
   {
     labelKey: 'nav.groups.kitchen',
-    modules: ['dashboard', 'recipes', 'regional-recipes', 'menus', 'prep', 'kds', 'haccp', 'labels'],
+    modules: ['dashboard', 'recipes', 'regional-recipes', 'menus', 'prep', 'kds', 'buffet-pulse', 'haccp', 'labels'],
   },
   {
     labelKey: 'nav.groups.procurement',
@@ -103,6 +104,7 @@ export const MODULE_LABEL_KEY: Record<AppModule, string> = {
   'labels': 'nav.labels',
   'stocktake': 'nav.stocktake',
   'costing': 'nav.costing',
+  'buffet-pulse': 'nav.buffetPulse',
 }
 
 export function usePermissions() {

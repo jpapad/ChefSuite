@@ -34,6 +34,7 @@
     "techniques": "Библиотека с Техники",
     "ingredients": "Енциклопедия на Съставките",
     "help": "Помощен Център",
+    "buffetPulse": "Buffet Live Pulse",
     "groups": {
       "kitchen": "Кухня",
       "procurement": "Доставки",
@@ -1700,5 +1701,26 @@
     "previewEmpty": "Изберете рецепти за преглед",
     "print": "Печат на {{count}} Етикет(а)",
     "noRecipes": "Няма намерени рецепти"
+  },
+  "buffetPulse": {
+    "title": "Buffet Live Pulse",
+    "monitorMode": "Монитор Буфет",
+    "kdsMode": "Кухненски Дисплей",
+    "monitorDesc": "Интерфейс за персонала на буфета",
+    "kdsDesc": "Дисплей в реално време за попълване на буфета",
+    "openMonitor": "Отвори Монитор Буфет",
+    "openKds": "Отвори Кухненски Дисплей",
+    "full": "Пълно",
+    "low": "Свършва",
+    "empty": "Празно",
+    "vesselRequest": "Заявка за смяна на съд",
+    "vesselRequested": "Заявена смяна на съд",
+    "dispatched": "Изпратено",
+    "noBuffetMenu": "Не е намерено активно меню тип буфет.",
+    "allGood": "Всички станции са пълни",
+    "allGoodDesc": "Нищо не се нуждае от внимание.",
+    "since": "от",
+    "priority": "Нужда от внимание",
+    "liveIndicator": "НА ЖИВО"
   }
 }

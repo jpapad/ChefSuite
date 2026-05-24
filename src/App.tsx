@@ -52,7 +52,10 @@ const HandoverNotes      = lazy(() => import('./pages/HandoverNotes'))
 const Labels             = lazy(() => import('./pages/Labels'))
 const Stocktake          = lazy(() => import('./pages/Stocktake'))
 const Costing            = lazy(() => import('./pages/Costing'))
-const DishInfo           = lazy(() => import('./pages/DishInfo'))
+const DishInfo                = lazy(() => import('./pages/DishInfo'))
+const BuffetPulse             = lazy(() => import('./pages/BuffetPulse'))
+const BuffetMonitorInterface  = lazy(() => import('./pages/BuffetMonitorInterface'))
+const KitchenBuffetKDS        = lazy(() => import('./pages/KitchenBuffetKDS'))
 
 export default function App() {
   return (
@@ -128,7 +131,30 @@ export default function App() {
                 <Route path="help" element={<PermissionGuard module="help"><HelpCenter /></PermissionGuard>} />
                 <Route path="ingredients" element={<PermissionGuard module="ingredients"><IngredientsEncyclopedia /></PermissionGuard>} />
                 <Route path="pos-settings" element={<PermissionGuard module="pos-settings"><PosSettings /></PermissionGuard>} />
+                <Route path="buffet-pulse" element={<PermissionGuard module="buffet-pulse"><BuffetPulse /></PermissionGuard>} />
               </Route>
+
+              {/* Fullscreen buffet interfaces — no AppShell sidebar */}
+              <Route
+                path="/buffet-monitor"
+                element={
+                  <ProtectedRoute>
+                    <RequireTeam>
+                      <BuffetMonitorInterface />
+                    </RequireTeam>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/buffet-kds"
+                element={
+                  <ProtectedRoute>
+                    <RequireTeam>
+                      <KitchenBuffetKDS />
+                    </RequireTeam>
+                  </ProtectedRoute>
+                }
+              />
 
               <Route path="/menu/:id" element={<MenuPublic />} />
               <Route path="/reserve/:id" element={<ReservationPublic />} />
