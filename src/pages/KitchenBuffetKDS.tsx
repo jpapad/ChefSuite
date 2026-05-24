@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { Activity, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { cn } from '../lib/cn'
 import type { BuffetItemStatus, BuffetLiveStatus } from '../types/database.types'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
