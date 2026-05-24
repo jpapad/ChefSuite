@@ -247,30 +247,44 @@ export default function BuffetMonitorInterface() {
               const vesselReq = st?.vessel_request ?? false
               const isUpdating = updating === item.menu_item_id
 
+              const statusStripe =
+                currentStatus === 'empty' ? 'bg-red-600'
+                : currentStatus === 'low'  ? 'bg-amber-500'
+                : 'bg-emerald-600'
+
+              const cardBorder =
+                currentStatus === 'empty' ? 'border-red-500/50'
+                : currentStatus === 'low'  ? 'border-amber-500/50'
+                : 'border-white/10'
+
               return (
                 <div
                   key={item.menu_item_id}
                   className={cn(
-                    'rounded-2xl bg-gray-900 border p-4 flex flex-col gap-3 transition-all',
-                    currentStatus === 'empty' ? 'border-red-500/60'
-                    : currentStatus === 'low' ? 'border-amber-500/60'
-                    : 'border-white/10',
+                    'rounded-2xl bg-gray-900 border overflow-hidden flex flex-col transition-all',
+                    cardBorder,
                   )}
                 >
-                  {/* Item name + status badge */}
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-lg font-bold leading-tight">{item.item_name}</span>
-                    {isUpdating && <Loader2 className="h-4 w-4 animate-spin text-white/40 shrink-0 mt-1" />}
+                  {/* ── Status stripe header ───────────────────────── */}
+                  <div className={cn('px-4 py-2 flex items-center justify-between', statusStripe)}>
+                    <span className="text-xs font-bold uppercase tracking-widest text-white/90">
+                      {t(STATUS_CFG[currentStatus].label)}
+                    </span>
+                    {isUpdating && <Loader2 className="h-3.5 w-3.5 animate-spin text-white/70" />}
+                    {vesselReq && !isUpdating && (
+                      <span className="text-xs font-bold text-white/90">🥘 Αλλαγή Σκεύους</span>
+                    )}
                   </div>
 
-                  {vesselReq && (
-                    <div className="rounded-lg bg-amber-500/20 border border-amber-500/40 px-3 py-1.5 text-xs font-semibold text-amber-300 uppercase tracking-wide">
-                      🔔 {t('buffetPulse.vesselRequested')}
-                    </div>
-                  )}
+                  {/* ── Item name — dominant visual element ───────────── */}
+                  <div className="px-4 py-5">
+                    <p className="text-3xl font-extrabold leading-tight tracking-tight">
+                      {item.item_name}
+                    </p>
+                  </div>
 
-                  {/* Status buttons */}
-                  <div className="grid grid-cols-3 gap-2">
+                  {/* ── Status buttons ────────────────────────────────── */}
+                  <div className="grid grid-cols-3 gap-2 px-4 pb-3">
                     {(['full', 'low', 'empty'] as BuffetItemStatus[]).map((s) => {
                       const cfg = STATUS_CFG[s]
                       const active = currentStatus === s
@@ -280,10 +294,12 @@ export default function BuffetMonitorInterface() {
                           disabled={isUpdating}
                           onClick={() => void upsertStatus(item, { status: s, vessel_request: vesselReq })}
                           className={cn(
-                            'rounded-xl py-4 text-sm font-bold transition-all select-none',
+                            'rounded-xl py-5 text-base font-black transition-all select-none',
                             cfg.bg,
-                            active ? `ring-2 ${cfg.ring} ring-offset-2 ring-offset-gray-900 scale-[1.03]` : 'opacity-60',
-                            isUpdating && 'cursor-not-allowed opacity-40',
+                            active
+                              ? `ring-2 ${cfg.ring} ring-offset-2 ring-offset-gray-900`
+                              : 'opacity-40',
+                            isUpdating && 'cursor-not-allowed opacity-30',
                           )}
                         >
                           {t(cfg.label)}
@@ -292,16 +308,16 @@ export default function BuffetMonitorInterface() {
                     })}
                   </div>
 
-                  {/* Vessel request toggle */}
+                  {/* ── Vessel request ────────────────────────────────── */}
                   <button
                     disabled={isUpdating}
                     onClick={() => void upsertStatus(item, { vessel_request: !vesselReq })}
                     className={cn(
-                      'w-full rounded-xl py-3.5 text-sm font-semibold transition-all select-none',
+                      'mx-4 mb-4 rounded-xl py-4 text-sm font-semibold transition-all select-none',
                       vesselReq
                         ? 'bg-amber-500 text-white ring-2 ring-amber-400 ring-offset-2 ring-offset-gray-900'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20 active:bg-white/30',
-                      isUpdating && 'cursor-not-allowed opacity-40',
+                        : 'bg-white/8 text-white/50 hover:bg-white/15 active:bg-white/20',
+                      isUpdating && 'cursor-not-allowed opacity-30',
                     )}
                   >
                     🥘 {t(vesselReq ? 'buffetPulse.vesselRequested' : 'buffetPulse.vesselRequest')}
