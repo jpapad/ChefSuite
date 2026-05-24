@@ -301,7 +301,7 @@ export default function BuffetMonitorInterface() {
                               : 'opacity-35',
                             isUpdating && 'cursor-not-allowed opacity-25',
                           )}
-                          style={{ color: '#ffffff', ringOffsetColor: '#1f2937' }}
+                          style={{ color: '#ffffff' }}
                         >
                           {t(cfg.label)}
                         </button>
