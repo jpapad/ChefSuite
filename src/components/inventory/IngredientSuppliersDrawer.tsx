@@ -33,7 +33,7 @@ function LinkRow({
   supplierName: string
   onUpdate: (patch: Partial<EditState>) => Promise<void>
   onRemove: () => Promise<void>
-  onSetPreferred: () => Promise<void>
+  onSetPreferred: () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditState>({
