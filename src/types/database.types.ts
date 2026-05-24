@@ -134,6 +134,8 @@ export interface RecipeVersion {
   created_at: ISODateString
 }
 
+export type DeliveryDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+
 export interface Supplier {
   id: UUID
   team_id: UUID
@@ -143,12 +145,60 @@ export interface Supplier {
   phone: string | null
   notes: string | null
   logo_url: string | null
+  /** Weekdays the supplier delivers, e.g. ['mon','wed','fri'] */
+  delivery_days: DeliveryDay[]
+  /** Days before delivery an order must be placed (1 = previous day) */
+  order_cutoff_days: number
+  /** Latest time on cutoff day to submit order, e.g. '17:00:00' */
+  order_cutoff_time: string
   created_at: ISODateString
   updated_at: ISODateString
 }
 
-export type SupplierInsert = Pick<Supplier, 'name' | 'contact_name' | 'email' | 'phone' | 'notes' | 'logo_url'> & { team_id: UUID }
-export type SupplierUpdate = Partial<Pick<Supplier, 'name' | 'contact_name' | 'email' | 'phone' | 'notes' | 'logo_url'>>
+export type SupplierInsert = Pick<Supplier, 'name' | 'contact_name' | 'email' | 'phone' | 'notes' | 'logo_url'> & {
+  team_id: UUID
+  delivery_days?: DeliveryDay[]
+  order_cutoff_days?: number
+  order_cutoff_time?: string
+}
+export type SupplierUpdate = Partial<Pick<Supplier, 'name' | 'contact_name' | 'email' | 'phone' | 'notes' | 'logo_url' | 'delivery_days' | 'order_cutoff_days' | 'order_cutoff_time'>>
+
+// ── Ingredient → Supplier link (many-to-many with commercial terms) ────────────
+
+export interface IngredientSupplier {
+  id: UUID
+  team_id: UUID
+  inventory_item_id: UUID
+  supplier_id: UUID
+  /** Purchase price from this supplier */
+  purchase_price: number
+  /** Supplier's own product code / SKU */
+  supplier_sku: string | null
+  /** Days from order to delivery */
+  lead_time_days: number
+  /** True = default supplier for this ingredient */
+  is_preferred: boolean
+  notes: string | null
+  price_updated_at: ISODateString
+  created_at: ISODateString
+  updated_at: ISODateString
+}
+
+export type IngredientSupplierInsert = {
+  team_id: UUID
+  inventory_item_id: UUID
+  supplier_id: UUID
+  purchase_price: number
+  supplier_sku?: string | null
+  lead_time_days?: number
+  is_preferred?: boolean
+  notes?: string | null
+}
+
+export type IngredientSupplierUpdate = Partial<Pick<
+  IngredientSupplier,
+  'purchase_price' | 'supplier_sku' | 'lead_time_days' | 'is_preferred' | 'notes'
+>>
 
 export interface InventoryLocation {
   id: UUID
@@ -167,6 +217,10 @@ export interface InventoryItem {
   cost_per_unit: number | null
   /** Usable yield percentage (1–100). null = 100%. E.g. 80 = 80% usable after trim/prep. */
   yield_pct: number | null
+  /** Top-level category, e.g. "Dairy", "Meat" */
+  category: string | null
+  /** Sub-level category, e.g. "Hard Cheese", "Poultry" */
+  subcategory: string | null
   location_id: UUID | null
   supplier_id: UUID | null
   barcode: string | null
@@ -177,12 +231,20 @@ export interface InventoryItem {
 export type InventoryInsert = Pick<
   InventoryItem,
   'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id'
-> & { team_id: UUID; supplier_id?: string | null; barcode?: string | null; yield_pct?: number | null }
+> & {
+  team_id: UUID
+  supplier_id?: string | null
+  barcode?: string | null
+  yield_pct?: number | null
+  category?: string | null
+  subcategory?: string | null
+}
 
 export type InventoryUpdate = Partial<
   Pick<
     InventoryItem,
-    'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit' | 'location_id' | 'supplier_id' | 'yield_pct'
+    | 'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit'
+    | 'location_id' | 'supplier_id' | 'yield_pct' | 'category' | 'subcategory'
   >
 >
 
