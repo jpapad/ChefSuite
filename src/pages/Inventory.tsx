@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, CalendarClock, FileSpreadsheet, ClipboardList } from 'lucide-react'
+import { Plus, Package, Search, AlertTriangle, MapPin, Trash2, Settings2, ShoppingCart, Copy, Check, Zap, Clock, ScanLine, PackagePlus, CalendarClock, FileSpreadsheet, ClipboardList, ClipboardCheck } from 'lucide-react'
 import { ReceivingScanner } from '../components/inventory/ReceivingScanner'
+import { StockCountView } from '../components/inventory/StockCountView'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../contexts/AuthContext'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -31,6 +33,7 @@ interface ForecastItem { id: string; name: string; unit: string; quantity: numbe
 
 export default function Inventory() {
   const { t } = useTranslation()
+  const { profile } = useAuth()
   const { items, loading, error, create, update, remove } = useInventory()
   const { locations, create: createLocation, remove: removeLocation } = useInventoryLocations()
   const { suppliers } = useSuppliers()
@@ -57,6 +60,7 @@ export default function Inventory() {
   const [showChecklist, setShowChecklist] = useState(false)
   const [showImportWizard, setShowImportWizard] = useState(false)
   const [showWatchlist, setShowWatchlist] = useState(false)
+  const [countMode, setCountMode] = useState(false)
   const { total: watchlistTotal } = useOrderWatchlist()
 
   useEffect(() => {
@@ -251,6 +255,25 @@ export default function Inventory() {
     setTimeout(() => setOrderCopied(false), 2000)
   }
 
+  async function handleCountSave(counts: Record<string, number>) {
+    const changed = items.filter((i) => counts[i.id] !== undefined && counts[i.id] !== i.quantity)
+    await Promise.all(changed.map((item) => update(item.id, { quantity: counts[item.id] }, 'count')))
+    setCountMode(false)
+  }
+
+  // Full-screen stock count mode
+  if (countMode) {
+    return (
+      <StockCountView
+        items={items}
+        locations={locations}
+        teamId={profile?.team_id ?? null}
+        onSave={handleCountSave}
+        onExit={() => setCountMode(false)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4 flex-wrap">
@@ -259,6 +282,13 @@ export default function Inventory() {
           <p className="text-white/60 mt-1">{t('inventory.subtitle')}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            leftIcon={<ClipboardCheck className="h-5 w-5" />}
+            onClick={() => setCountMode(true)}
+          >
+            Απογραφή
+          </Button>
           <Button
             variant="secondary"
             leftIcon={<ClipboardList className="h-5 w-5" />}
