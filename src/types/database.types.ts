@@ -145,6 +145,10 @@ export interface Supplier {
   phone: string | null
   notes: string | null
   logo_url: string | null
+  /** Greek VAT registration number (ΑΦΜ) */
+  afm: string | null
+  /** Registered address */
+  address: string | null
   /** Weekdays the supplier delivers, e.g. ['mon','wed','fri'] */
   delivery_days: DeliveryDay[]
   /** Days before delivery an order must be placed (1 = previous day) */
@@ -157,6 +161,8 @@ export interface Supplier {
 
 export type SupplierInsert = Pick<Supplier, 'name' | 'contact_name' | 'email' | 'phone' | 'notes' | 'logo_url'> & {
   team_id: UUID
+  afm?: string | null
+  address?: string | null
   delivery_days?: DeliveryDay[]
   order_cutoff_days?: number
   order_cutoff_time?: string

@@ -4,6 +4,7 @@ import {
   Send, RotateCcw, X, Euro, Loader2, Sparkles, AlertTriangle, ClipboardList,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../contexts/AuthContext'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
@@ -51,11 +52,22 @@ interface ParsedItem {
   unit_price: number | null
 }
 
+interface SupplierInfo {
+  name: string | null
+  afm: string | null
+  address: string | null
+  phone: string | null
+  invoice_number: string | null
+  invoice_date: string | null
+}
+
 interface ParsedPreview {
   supplier_name: string | null
   matched_supplier_id: string | null
   file_name: string
   items: Array<ParsedItem & { matched_inv_id: string | null; matched_inv_name: string | null }>
+  supplier_info: SupplierInfo | null
+  is_new_supplier: boolean
 }
 
 function fuzzyMatch(a: string, b: string) {
@@ -70,6 +82,7 @@ function fmt(n: number) {
 
 export default function PurchaseOrders() {
   const { t } = useTranslation()
+  const { profile } = useAuth()
   const { orders, loading, error, create, update, remove } = usePurchaseOrders()
   const { suppliers } = useSuppliers()
   const { items: inventoryItems, update: updateInv } = useInventory()
@@ -222,14 +235,20 @@ export default function PurchaseOrders() {
     try {
       const file_base64 = await fileToBase64(file)
       const { data, error: fnErr } = await supabase.functions.invoke('parse-invoice', {
-        body: { file_base64, media_type: file.type },
+        body: { file_base64, media_type: file.type, team_id: profile?.team_id ?? undefined },
       })
       if (fnErr) throw fnErr
       if (data?.error) throw new Error(data.error)
 
-      const matchedSupplier = data.supplier_name
-        ? suppliers.find((s) => fuzzyMatch(s.name, data.supplier_name as string))
-        : null
+      const supplierInfo = (data.supplier_info ?? null) as SupplierInfo | null
+
+      // Prefer DB-resolved supplier_id (from AFM lookup); fall back to fuzzy name match
+      const resolvedSupplierId = (data.supplier_id as string | null) ?? null
+      const matchedSupplier = resolvedSupplierId
+        ? null  // already resolved server-side
+        : (supplierInfo?.name ?? data.supplier_name)
+          ? suppliers.find((s) => fuzzyMatch(s.name, (supplierInfo?.name ?? data.supplier_name) as string))
+          : null
 
       const rawItems = (data.items ?? []) as ParsedItem[]
       const enriched = rawItems.map((item) => {
@@ -242,10 +261,12 @@ export default function PurchaseOrders() {
       })
 
       setPreview({
-        supplier_name: data.supplier_name ?? null,
-        matched_supplier_id: matchedSupplier?.id ?? null,
+        supplier_name: supplierInfo?.name ?? data.supplier_name ?? null,
+        matched_supplier_id: resolvedSupplierId ?? matchedSupplier?.id ?? null,
         file_name: file.name,
         items: enriched,
+        supplier_info: supplierInfo,
+        is_new_supplier: (data.is_new_supplier as boolean) ?? false,
       })
       setPreviewOpen(true)
     } catch (err) {
@@ -464,15 +485,74 @@ export default function PurchaseOrders() {
       >
         {preview && (
           <div className="space-y-5">
+            {/* ── Supplier info card ── */}
+            {preview.supplier_info && (
+              <div className={cn(
+                'rounded-xl border p-4 space-y-3',
+                preview.is_new_supplier
+                  ? 'border-brand-orange/40 bg-brand-orange/10'
+                  : preview.matched_supplier_id
+                    ? 'border-emerald-500/30 bg-emerald-500/5'
+                    : 'border-white/20 bg-white/[0.03]',
+              )}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/50">
+                    Στοιχεία Προμηθευτή
+                  </p>
+                  {preview.is_new_supplier && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange border border-brand-orange/30">
+                      🤖 Νέος — Δημιουργήθηκε αυτόματα
+                    </span>
+                  )}
+                  {!preview.is_new_supplier && preview.matched_supplier_id && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      ✓ Αναγνωρίστηκε
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  {preview.supplier_info.name && (
+                    <div>
+                      <p className="text-[11px] text-white/40 uppercase tracking-wide">Επωνυμία</p>
+                      <p className="font-semibold text-white">{preview.supplier_info.name}</p>
+                    </div>
+                  )}
+                  {preview.supplier_info.afm && (
+                    <div>
+                      <p className="text-[11px] text-white/40 uppercase tracking-wide">ΑΦΜ</p>
+                      <p className="font-semibold text-white">{preview.supplier_info.afm}</p>
+                    </div>
+                  )}
+                  {preview.supplier_info.invoice_number && (
+                    <div>
+                      <p className="text-[11px] text-white/40 uppercase tracking-wide">Αρ. Παραστατικού</p>
+                      <p className="font-medium text-white/80">{preview.supplier_info.invoice_number}</p>
+                    </div>
+                  )}
+                  {preview.supplier_info.invoice_date && (
+                    <div>
+                      <p className="text-[11px] text-white/40 uppercase tracking-wide">Ημερομηνία</p>
+                      <p className="font-medium text-white/80">{preview.supplier_info.invoice_date}</p>
+                    </div>
+                  )}
+                  {preview.supplier_info.address && (
+                    <div className="col-span-2">
+                      <p className="text-[11px] text-white/40 uppercase tracking-wide">Διεύθυνση</p>
+                      <p className="font-medium text-white/70 text-xs">{preview.supplier_info.address}</p>
+                    </div>
+                  )}
+                  {preview.supplier_info.phone && (
+                    <div>
+                      <p className="text-[11px] text-white/40 uppercase tracking-wide">Τηλέφωνο</p>
+                      <p className="font-medium text-white/70">{preview.supplier_info.phone}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="glass rounded-xl px-4 py-3 space-y-1 text-sm">
               <p className="text-white/50">{t('purchaseOrders.file')}: <span className="text-white">{preview.file_name}</span></p>
-              {preview.supplier_name && (
-                <p className="text-white/50">{t('purchaseOrders.supplier')}: <span className="text-white">{preview.supplier_name}</span>
-                  {preview.matched_supplier_id
-                    ? <span className="ml-2 text-xs text-emerald-400">✓ {t('purchaseOrders.matched')}</span>
-                    : <span className="ml-2 text-xs text-amber-400">({t('purchaseOrders.notMatched')})</span>}
-                </p>
-              )}
             </div>
 
             <div>
