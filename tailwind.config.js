@@ -32,9 +32,14 @@ export default {
           '0%':   { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(300%)' },
         },
+        'fade-in-up': {
+          '0%':   { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.4s ease-in-out infinite',
+        'fade-in-up': 'fade-in-up 0.3s ease-out forwards',
       },
     },
   },

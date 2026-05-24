@@ -60,6 +60,15 @@ export default function BuffetMonitorInterface() {
   const [updating, setUpdating] = useState<string | null>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
+  // Toast notifications when kitchen dispatches
+  const [toasts, setToasts] = useState<Array<{ id: string; itemName: string }>>([])
+
+  // Refs so the realtime closure always reads fresh values
+  const statusMapRef = useRef(statusMap)
+  const userIdRef = useRef(userId)
+  useEffect(() => { statusMapRef.current = statusMap }, [statusMap])
+  useEffect(() => { userIdRef.current = userId }, [userId])
+
   // ── Load buffet menus ────────────────────────────────────────────────────────
 
   const loadMenus = useCallback(async () => {
@@ -140,10 +149,26 @@ export default function BuffetMonitorInterface() {
             }
             return
           }
+
           const row = payload.new as BuffetLiveStatus
-          if (row.menu_item_id) {
-            setStatusMap((prev) => new Map(prev).set(row.menu_item_id!, row))
+          if (!row.menu_item_id) return
+
+          // Detect kitchen dispatch: status flipped TO 'full' by someone else
+          const prevRow = statusMapRef.current.get(row.menu_item_id)
+          const wasNotFull = !prevRow || prevRow.status !== 'full'
+          const isNowFull  = row.status === 'full'
+          const fromKitchen = row.changed_by != null && row.changed_by !== userIdRef.current
+
+          if (wasNotFull && isNowFull && fromKitchen) {
+            const toastId = crypto.randomUUID()
+            setToasts((prev) => [...prev, { id: toastId, itemName: row.item_name }])
+            setTimeout(
+              () => setToasts((prev) => prev.filter((t) => t.id !== toastId)),
+              4500,
+            )
           }
+
+          setStatusMap((prev) => new Map(prev).set(row.menu_item_id!, row))
         },
       )
       .subscribe()
@@ -330,6 +355,30 @@ export default function BuffetMonitorInterface() {
           </div>
         )}
       </main>
+
+      {/* ── Kitchen-dispatch toasts ──────────────────────────────────────────── */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className="flex items-center gap-3 rounded-2xl px-5 py-4 shadow-2xl animate-fade-in-up"
+              style={{
+                backgroundColor: '#065f46',
+                border: '1px solid rgba(52,211,153,0.5)',
+                minWidth: '280px',
+                maxWidth: '90vw',
+              }}
+            >
+              <span className="text-xl shrink-0">✅</span>
+              <p className="text-sm font-semibold leading-snug" style={{ color: '#fff' }}>
+                <span style={{ color: '#6ee7b7' }}>«{toast.itemName}»</span>
+                {' '}ανανεώθηκε από την κουζίνα!
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
