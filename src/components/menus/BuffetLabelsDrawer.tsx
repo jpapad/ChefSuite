@@ -41,7 +41,7 @@ async function validateQrDataUrl(dataUrl: string): Promise<boolean> {
 const QR_BORDER: Record<QrStatus, string> = {
   pending:      'border-gray-200',
   validating:   'border-gray-200',
-  verified:     'border-gray-800 shadow-md',
+  verified:     'border-black shadow-md',
   'auto-fixed': 'border-amber-400 shadow-amber-100/60 shadow-md',
   failed:       'border-red-400 shadow-red-100/60 shadow-md animate-pulse',
 }
@@ -69,7 +69,7 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
       onClick={onToggle}
       className={cn(
         'relative w-[160px] h-[160px] bg-transparent rounded-2xl border cursor-pointer select-none',
-        'flex flex-col justify-between p-3.5 shrink-0 transition-all',
+        'flex flex-col justify-between p-3.5 shrink-0 transition-all duration-200',
         border,
         'print:border-gray-400 print:shadow-none print:ring-0',
         selected
@@ -108,19 +108,16 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
         </span>
       )}
 
-      {/* ── Centre: bilingual title block ── */}
+      {/* ── Centre: bilingual title block (EN top, EL bottom) ── */}
       <div className="mt-6 text-center px-0.5">
+        <p className="text-[11px] font-semibold text-gray-400 tracking-wide line-clamp-1 leading-tight">
+          {item.name}
+        </p>
         {item.name_el && (
-          <p className="text-[11px] font-semibold text-gray-400 tracking-wide line-clamp-1 leading-tight">
+          <p className="text-[12px] font-black text-gray-900 uppercase tracking-tight leading-tight line-clamp-1 mt-0.5">
             {item.name_el}
           </p>
         )}
-        <p className={cn(
-          'text-[12px] font-black text-gray-900 uppercase tracking-tight leading-tight line-clamp-1',
-          item.name_el ? 'mt-0.5' : '',
-        )}>
-          {item.name}
-        </p>
       </div>
 
       {/* ── Bottom: QR frame + SCAN ME badge ── */}
