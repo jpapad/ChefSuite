@@ -69,7 +69,7 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
       onClick={onToggle}
       className={cn(
         'relative w-[160px] h-[160px] bg-transparent rounded-2xl border cursor-pointer select-none',
-        'flex flex-col justify-between p-3 shrink-0 transition-all',
+        'flex flex-col justify-between p-3.5 shrink-0 transition-all',
         border,
         'print:border-gray-400 print:shadow-none print:ring-0',
         selected
@@ -87,7 +87,7 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
       </div>
 
       {/* ── Absolute top-left: logo or brand name ── */}
-      <div className="absolute top-3.5 left-3.5 max-w-[80px]">
+      <div className="absolute top-3.5 left-3.5 flex flex-col text-left max-w-[80px]">
         {settings.logoUrl ? (
           <img
             src={settings.logoUrl}
@@ -109,7 +109,7 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
       )}
 
       {/* ── Centre: bilingual title block ── */}
-      <div className="mt-6 text-center px-1">
+      <div className="mt-6 text-center px-0.5">
         {item.name_el && (
           <p className="text-[11px] font-semibold text-gray-400 tracking-wide line-clamp-1 leading-tight">
             {item.name_el}
@@ -124,21 +124,21 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
       </div>
 
       {/* ── Bottom: QR frame + SCAN ME badge ── */}
-      <div className="flex justify-center pb-2">
+      <div className="flex justify-center">
         {showQr ? (
-          <div className="relative p-1.5 bg-white border border-gray-100 rounded-xl shadow-sm">
+          <div className="relative p-1.5 bg-white border border-gray-100 rounded-xl shadow-sm flex items-center justify-center mx-auto mb-1">
             <img
               src={qrDataUrl}
               alt="QR"
               style={{ width: 58, height: 58, imageRendering: 'pixelated', display: 'block' }}
             />
-            <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-black text-white text-[6px] font-black tracking-widest px-1.5 py-[3px] rounded-full uppercase shadow-sm whitespace-nowrap">
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black text-white text-[6px] font-black tracking-widest px-1.5 py-0.5 rounded-full uppercase shadow-sm whitespace-nowrap">
               SCAN ME
             </div>
           </div>
         ) : (
           <div
-            className="flex items-center justify-center border border-dashed border-gray-200 rounded-xl"
+            className="flex items-center justify-center border border-dashed border-gray-200 rounded-xl mb-1"
             style={{ width: 58, height: 58 }}
           >
             <QrCode className="h-6 w-6 text-gray-200" />
