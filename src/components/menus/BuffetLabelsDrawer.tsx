@@ -247,6 +247,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   const [generatingQr, setGeneratingQr] = useState(false)
   const [qrValidation, setQrValidation] = useState<Map<string, QrStatus>>(new Map())
   const [fixedQrMap, setFixedQrMap] = useState<Map<string, string>>(new Map())
+  // Stores the original payload URLs so the auto-fix can re-render them at higher resolution
+  const urlMapRef = useRef<Map<string, string>>(new Map())
   // Extra-language translations (RO/SL/UK/TR/SR) — loaded from DB or freshly translated
   const [extraNames, setExtraNames] = useState<Map<string, TranslatedItemExtra>>(new Map())
   const [translatingExtra, setTranslatingExtra] = useState(false)
@@ -362,10 +364,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
           errorCorrectionLevel: 'H',
           color: { dark: '#000000', light: '#ffffff' },
         })
-        return [item.id, dataUrl] as const
+        return [item.id, dataUrl, url] as const
       })
-    ).then((pairs) => {
-      setQrMap(new Map(pairs))
+    ).then((triples) => {
+      setQrMap(new Map(triples.map(([id, dataUrl]) => [id, dataUrl])))
+      urlMapRef.current = new Map(triples.map(([id, , url]) => [id, url]))
     }).catch((err) => {
       console.error('QR generation failed:', err)
     }).finally(() => {
@@ -373,14 +376,13 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     })
   }, [settings.showQr, allItems, extraNames, recipeMap])
 
-  // Validate every generated QR; auto-fix failures with a shorter URL + larger render
+  // Validate every generated QR; auto-fix failures with same URL at higher resolution
   useEffect(() => {
     if (!settings.showQr || qrMap.size === 0) {
       setQrValidation(new Map())
       setFixedQrMap(new Map())
       return
     }
-    const origin = window.location.origin
     let cancelled = false
 
     void (async () => {
@@ -400,9 +402,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         if (ok) {
           setQrValidation((prev) => new Map(prev).set(item.id, 'verified'))
         } else {
-          // Auto-fix: minimal URL (no JSON payload) + higher resolution + tighter margin
+          // Auto-fix: same full URL, higher resolution + tighter margin for better scanability
           try {
-            const fixedDataUrl = await QRCode.toDataURL(`${origin}/b/${item.id}`, {
+            const originalUrl = urlMapRef.current.get(item.id)
+            if (!originalUrl) { setQrValidation((prev) => new Map(prev).set(item.id, 'failed')); continue }
+            const fixedDataUrl = await QRCode.toDataURL(originalUrl, {
               width: 900,
               margin: 2,
               errorCorrectionLevel: 'H',
