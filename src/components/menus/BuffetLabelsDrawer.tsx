@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import QRCode from 'qrcode'
-import { AlignCenter, AlignLeft, AlignRight, Globe, Loader2, Printer, QrCode, Save, Tag, Trash2 } from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight, Globe, Loader2, Printer, QrCode, Save, ShieldCheck, ShieldX, Tag, Trash2, Wrench } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { ImageUpload } from '../ui/ImageUpload'
@@ -11,6 +11,29 @@ import type { LabelSettings, LabelSize, LabelSizePreset } from '../../lib/printL
 import type { MenuWithSections, MenuItem, Recipe } from '../../types/database.types'
 import { supabase } from '../../lib/supabase'
 import { translateMenuItemsExtra, type TranslatedItemExtra } from '../../lib/gemini'
+
+// ── QR Validation ────────────────────────────────────────────────────────────
+
+type QrStatus = 'pending' | 'validating' | 'verified' | 'auto-fixed' | 'failed'
+
+async function validateQrDataUrl(dataUrl: string): Promise<boolean> {
+  const { default: jsQR } = await import('jsqr')
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { resolve(false); return }
+      ctx.drawImage(img, 0, 0)
+      const d = ctx.getImageData(0, 0, img.width, img.height)
+      resolve(!!jsQR(d.data, d.width, d.height))
+    }
+    img.onerror = () => resolve(false)
+    img.src = dataUrl
+  })
+}
 
 // ── Custom preset persistence ────────────────────────────────────────────────
 
@@ -108,6 +131,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   const [presetName, setPresetName] = useState('')
   const [qrMap, setQrMap] = useState<Map<string, string>>(new Map())
   const [generatingQr, setGeneratingQr] = useState(false)
+  const [qrValidation, setQrValidation] = useState<Map<string, QrStatus>>(new Map())
+  const [fixedQrMap, setFixedQrMap] = useState<Map<string, string>>(new Map())
   // Extra-language translations (RO/SL/UK/TR/SR) — loaded from DB or freshly translated
   const [extraNames, setExtraNames] = useState<Map<string, TranslatedItemExtra>>(new Map())
   const [translatingExtra, setTranslatingExtra] = useState(false)
@@ -164,6 +189,14 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     () => new Map(allItems.map(({ item }, i) => [item.id, String(i + 1).padStart(3, '0')])),
     [allItems],
   )
+
+  // Effective QR map: override originals with auto-fixed variants where applicable
+  const effectiveQrMap = useMemo(() => {
+    if (!settings.showQr) return new Map<string, string>()
+    const merged = new Map(qrMap)
+    fixedQrMap.forEach((v, k) => merged.set(k, v))
+    return merged
+  }, [settings.showQr, qrMap, fixedQrMap])
 
   // Generate QR data URLs for each item
   useEffect(() => {
@@ -225,6 +258,61 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
       setGeneratingQr(false)
     })
   }, [settings.showQr, allItems, extraNames, recipeMap])
+
+  // Validate every generated QR; auto-fix failures with a shorter URL + larger render
+  useEffect(() => {
+    if (!settings.showQr || qrMap.size === 0) {
+      setQrValidation(new Map())
+      setFixedQrMap(new Map())
+      return
+    }
+    const origin = window.location.origin
+    let cancelled = false
+
+    void (async () => {
+      setQrValidation(new Map(allItems.map(({ item }) => [item.id, 'pending' as QrStatus])))
+      setFixedQrMap(new Map())
+      const newFixed = new Map<string, string>()
+
+      for (const { item } of allItems) {
+        if (cancelled) break
+        const dataUrl = qrMap.get(item.id)
+        if (!dataUrl) continue
+
+        setQrValidation((prev) => new Map(prev).set(item.id, 'validating'))
+        const ok = await validateQrDataUrl(dataUrl)
+        if (cancelled) break
+
+        if (ok) {
+          setQrValidation((prev) => new Map(prev).set(item.id, 'verified'))
+        } else {
+          // Auto-fix: minimal URL (no JSON payload) + higher resolution + tighter margin
+          try {
+            const fixedDataUrl = await QRCode.toDataURL(`${origin}/b/${item.id}`, {
+              width: 900,
+              margin: 2,
+              errorCorrectionLevel: 'H',
+              color: { dark: '#000000', light: '#ffffff' },
+            })
+            const fixedOk = await validateQrDataUrl(fixedDataUrl)
+            if (cancelled) break
+            if (fixedOk) {
+              newFixed.set(item.id, fixedDataUrl)
+              setQrValidation((prev) => new Map(prev).set(item.id, 'auto-fixed'))
+            } else {
+              setQrValidation((prev) => new Map(prev).set(item.id, 'failed'))
+            }
+          } catch {
+            setQrValidation((prev) => new Map(prev).set(item.id, 'failed'))
+          }
+        }
+      }
+
+      if (!cancelled) setFixedQrMap(newFixed)
+    })()
+
+    return () => { cancelled = true }
+  }, [qrMap, settings.showQr, allItems])
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -382,17 +470,33 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
   useEffect(() => {
     if (!previewItem) return
-    const qrDataUrl  = settings.showQr ? qrMap.get(previewItem.id) : undefined
+    const qrDataUrl  = settings.showQr ? effectiveQrMap.get(previewItem.id) : undefined
     const shortCode  = settings.showQr ? shortCodeMap.get(previewItem.id) : undefined
     const html = buildPreviewHtml(previewItem, previewRecipe, settings, qrDataUrl, shortCode)
     const iframe = iframeRef.current
     if (iframe) iframe.srcdoc = html
-  }, [previewItem, previewRecipe, settings, qrMap, shortCodeMap])
+  }, [previewItem, previewRecipe, settings, effectiveQrMap, shortCodeMap])
 
   const handlePrint = useCallback(() => {
     if (selectedItems.length === 0) return
-    printLabels(selectedItems, menu, recipes, settings, settings.showQr ? qrMap : undefined, settings.showQr ? shortCodeMap : undefined)
-  }, [selectedItems, menu, recipes, settings, qrMap])
+    printLabels(selectedItems, menu, recipes, settings, settings.showQr ? effectiveQrMap : undefined, settings.showQr ? shortCodeMap : undefined)
+  }, [selectedItems, menu, recipes, settings, effectiveQrMap, shortCodeMap])
+
+  // ── QR Validation stats ───────────────────────────────────────────────────
+
+  const validationStats = useMemo(() => {
+    if (!settings.showQr || qrValidation.size === 0) return null
+    const vals = [...qrValidation.values()]
+    return {
+      verified:  vals.filter((s) => s === 'verified').length,
+      autoFixed: vals.filter((s) => s === 'auto-fixed').length,
+      failed:    vals.filter((s) => s === 'failed').length,
+      pending:   vals.filter((s) => s === 'pending' || s === 'validating').length,
+    }
+  }, [settings.showQr, qrValidation])
+
+  const hasFailedQr = settings.showQr &&
+    selectedItems.some((item) => qrValidation.get(item.id) === 'failed')
 
   // ── Static option lists ────────────────────────────────────────────────────
 
@@ -1108,13 +1212,73 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 <span>Generating QR codes…</span>
               </div>
             )}
-            {settings.showQr && !generatingQr && qrMap.size > 0 && (
-              <div className="flex items-center gap-2 text-xs text-emerald-400/70">
-                <QrCode className="h-3.5 w-3.5" />
-                <span>
-                  {qrMap.size} QR codes ready
-                  {extraTranslateDone && ' 🇧🇬 🇺🇦 🇷🇴 🇷🇸 🇸🇰 🇵🇱 🇨🇿'}
-                </span>
+
+            {/* ── QR Validation & Auto-Fix panel ── */}
+            {settings.showQr && !generatingQr && validationStats && (
+              <div className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-2.5">
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                  <QrCode className="h-3.5 w-3.5 text-white/40 shrink-0" />
+                  <p className="text-xs font-semibold text-white/60 uppercase tracking-wider flex-1">
+                    Ψηφιακός Έλεγχος QR
+                  </p>
+                  {validationStats.pending > 0 && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-white/30 shrink-0" />
+                  )}
+                  {validationStats.pending === 0 && validationStats.failed === 0 && (
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  )}
+                  {validationStats.pending === 0 && validationStats.failed > 0 && (
+                    <ShieldX className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                  )}
+                </div>
+
+                {/* Status chips */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {validationStats.verified > 0 && (
+                    <span className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                      <ShieldCheck className="h-3 w-3" />
+                      {validationStats.verified} Ελέγχθηκε
+                    </span>
+                  )}
+                  {validationStats.autoFixed > 0 && (
+                    <span className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20 font-medium">
+                      <Wrench className="h-3 w-3" />
+                      {validationStats.autoFixed} Διορθώθηκε αυτόματα
+                    </span>
+                  )}
+                  {validationStats.failed > 0 && (
+                    <span className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 font-medium">
+                      <ShieldX className="h-3 w-3" />
+                      {validationStats.failed} Αποτυχία
+                    </span>
+                  )}
+                  {validationStats.pending > 0 && (
+                    <span className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-white/5 text-white/40 border border-white/10">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {validationStats.pending} Σε εξέλιξη…
+                    </span>
+                  )}
+                  {extraTranslateDone && validationStats.pending === 0 && (
+                    <span className="text-[11px] px-2 py-1 rounded-lg bg-white/5 text-white/40 border border-white/10">
+                      🇧🇬 🇺🇦 🇷🇴 🇷🇸 🇸🇰 🇵🇱 🇨🇿
+                    </span>
+                  )}
+                </div>
+
+                {/* Failure message */}
+                {validationStats.failed > 0 && validationStats.pending === 0 && (
+                  <p className="text-[11px] text-red-400 leading-relaxed border-t border-red-500/15 pt-2">
+                    ⚠️ Μερικά QR δεν είναι αναγνώσιμα ακόμα και μετά την αυτόματη διόρθωση. Η εκτύπωση είναι κλειδωμένη μέχρι να επιλυθούν.
+                  </p>
+                )}
+
+                {/* All-clear message */}
+                {validationStats.failed === 0 && validationStats.pending === 0 && (
+                  <p className="text-[11px] text-emerald-400/80 leading-relaxed border-t border-emerald-500/15 pt-2">
+                    ✓ Όλα τα QR είναι εγγυημένα αναγνώσιμα — ασφαλής εκτύπωση!
+                  </p>
+                )}
               </div>
             )}
 
@@ -1169,24 +1333,48 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 </div>
               </div>
               <div className="space-y-px max-h-52 overflow-y-auto rounded-xl border border-glass-border">
-                {allItems.map(({ item, sectionName }) => (
-                  <label key={item.id}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2 cursor-pointer transition hover:bg-white/5 first:rounded-t-xl last:rounded-b-xl',
-                      !selectedIds.has(item.id) && 'opacity-40',
-                    )}
-                  >
-                    <input type="checkbox"
-                      checked={selectedIds.has(item.id)}
-                      onChange={() => toggleItem(item.id)}
-                      className="h-4 w-4 rounded accent-brand-orange shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.name}</p>
-                      <p className="text-xs text-white/40 truncate">{sectionName}</p>
-                    </div>
-                  </label>
-                ))}
+                {allItems.map(({ item, sectionName }) => {
+                  const qrStatus = settings.showQr ? qrValidation.get(item.id) : undefined
+                  return (
+                    <label key={item.id}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 cursor-pointer transition hover:bg-white/5 first:rounded-t-xl last:rounded-b-xl',
+                        !selectedIds.has(item.id) && 'opacity-40',
+                        qrStatus === 'failed' && 'border-l-2 border-red-500/60',
+                        qrStatus === 'auto-fixed' && 'border-l-2 border-sky-400/50',
+                      )}
+                    >
+                      <input type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleItem(item.id)}
+                        className="h-4 w-4 rounded accent-brand-orange shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.name}</p>
+                        <p className="text-xs text-white/40 truncate">{sectionName}</p>
+                      </div>
+                      {/* Per-item QR validation status badge */}
+                      {qrStatus === 'validating' && (
+                        <Loader2 className="h-3 w-3 animate-spin text-white/30 shrink-0" />
+                      )}
+                      {qrStatus === 'verified' && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/20">
+                          <ShieldCheck className="h-2.5 w-2.5" /> OK
+                        </span>
+                      )}
+                      {qrStatus === 'auto-fixed' && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 font-semibold border border-sky-500/20">
+                          <Wrench className="h-2.5 w-2.5" /> Fix
+                        </span>
+                      )}
+                      {qrStatus === 'failed' && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-semibold border border-red-500/20">
+                          <ShieldX className="h-2.5 w-2.5" /> ⚠
+                        </span>
+                      )}
+                    </label>
+                  )
+                })}
               </div>
             </div>
 
@@ -1211,10 +1399,16 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
             {/* ── Print ── */}
             <div className="flex gap-2 pt-2">
               <Button type="button" leftIcon={<Printer className="h-4 w-4" />}
-                onClick={handlePrint} disabled={selectedItems.length === 0} className="flex-1">
+                onClick={handlePrint}
+                disabled={selectedItems.length === 0 || hasFailedQr || (validationStats?.pending ?? 0) > 0}
+                className="flex-1">
                 {selectedItems.length === 0
                   ? t('menus.labels.noItems')
-                  : t('menus.labels.printButton', { count: selectedItems.length })}
+                  : hasFailedQr
+                    ? '🔒 QR αποτυχία — κλειδωμένο'
+                    : (validationStats?.pending ?? 0) > 0
+                      ? 'Έλεγχος QR…'
+                      : t('menus.labels.printButton', { count: selectedItems.length })}
               </Button>
               <Button type="button" variant="secondary" onClick={onClose}>
                 {t('common.cancel')}
