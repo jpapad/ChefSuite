@@ -37,6 +37,7 @@ export const ALL_MODULES = [
   'ingredients',
   'pos-settings',
   'buffet-pulse',
+  'haccp-logbook',
 ] as const
 
 export type AppModule = (typeof ALL_MODULES)[number]
@@ -105,6 +106,7 @@ export const MODULE_LABEL_KEY: Record<AppModule, string> = {
   'stocktake': 'nav.stocktake',
   'costing': 'nav.costing',
   'buffet-pulse': 'nav.buffetPulse',
+  'haccp-logbook': 'nav.haccpLogbook',
 }
 
 export function usePermissions() {

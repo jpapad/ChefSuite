@@ -40,6 +40,7 @@ import {
   Calculator,
   MapPin,
   Activity,
+  BookLock,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -150,6 +151,7 @@ export function Sidebar() {
         { to: '/kds', label: t('nav.kds'), icon: Monitor, module: 'kds' as AppModule },
         { to: '/buffet-pulse', label: t('nav.buffetPulse'), icon: Activity, module: 'buffet-pulse' as AppModule },
         { to: '/haccp', label: t('nav.haccp'), icon: Thermometer, module: 'haccp' as AppModule },
+        { to: '/haccp-logbook', label: t('nav.haccpLogbook'), icon: BookLock, module: 'haccp-logbook' as AppModule },
         { to: '/labels', label: t('nav.labels'), icon: Tag, module: 'labels' as AppModule },
       ],
     },

@@ -776,3 +776,70 @@ export interface SupplierCredit {
   status:       SupplierCreditStatus
   created_at:   ISODateString
 }
+
+// ── HACCP Logbook ─────────────────────────────────────────────────────────────
+
+export type ApplianceType = 'fridge' | 'freezer'
+export type HACCPShift    = 'morning' | 'night'
+export type CleaningFrequency = 'daily' | 'weekly'
+
+export interface HACCPAppliance {
+  id:         UUID
+  team_id:    UUID
+  name:       string
+  type:       ApplianceType
+  min_temp:   number
+  max_temp:   number
+  sort_order: number
+  created_at: ISODateString
+}
+
+export type HACCPApplianceInsert = {
+  name:        string
+  type:        ApplianceType
+  min_temp:    number
+  max_temp:    number
+  sort_order?: number
+}
+
+export interface HACCPTemperatureLog {
+  id:                UUID
+  team_id:           UUID
+  appliance_id:      UUID
+  temperature:       number
+  shift:             HACCPShift
+  corrective_action: string | null
+  user_id:           UUID | null
+  logged_date:       string   // YYYY-MM-DD
+  created_at:        ISODateString
+}
+
+export interface HACCPCleaningTask {
+  id:         UUID
+  team_id:    UUID
+  task_name:  string
+  frequency:  CleaningFrequency
+  area:       string
+  sort_order: number
+  created_at: ISODateString
+}
+
+export type HACCPCleaningTaskInsert = {
+  task_name:   string
+  frequency:   CleaningFrequency
+  area:        string
+  sort_order?: number
+}
+
+export interface HACCPCleaningLog {
+  id:          UUID
+  team_id:     UUID
+  task_id:     UUID
+  user_id:     UUID | null
+  logged_date: string   // YYYY-MM-DD
+  created_at:  ISODateString
+}
+
+export interface HACCPCleaningLogWithUser extends HACCPCleaningLog {
+  user_name: string | null
+}

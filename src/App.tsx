@@ -56,6 +56,7 @@ const DishInfo                = lazy(() => import('./pages/DishInfo'))
 const BuffetPulse             = lazy(() => import('./pages/BuffetPulse'))
 const BuffetMonitorInterface  = lazy(() => import('./pages/BuffetMonitorInterface'))
 const KitchenBuffetKDS        = lazy(() => import('./pages/KitchenBuffetKDS'))
+const HACCPLogbook            = lazy(() => import('./pages/HACCPLogbook'))
 
 export default function App() {
   return (
@@ -102,6 +103,7 @@ export default function App() {
                 <Route path="team" element={<PermissionGuard module="team"><Team /></PermissionGuard>} />
                 <Route path="analytics" element={<PermissionGuard module="analytics"><Analytics /></PermissionGuard>} />
                 <Route path="haccp" element={<PermissionGuard module="haccp"><HACCPLog /></PermissionGuard>} />
+                <Route path="haccp-logbook" element={<PermissionGuard module="haccp-logbook"><HACCPLogbook /></PermissionGuard>} />
                 <Route path="chat" element={<PermissionGuard module="chat"><Chat /></PermissionGuard>} />
                 <Route path="kds" element={<PermissionGuard module="kds"><KDS /></PermissionGuard>} />
                 <Route path="walkie" element={<PermissionGuard module="walkie"><Walkie /></PermissionGuard>} />
