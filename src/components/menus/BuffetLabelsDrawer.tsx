@@ -6,7 +6,7 @@ import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { ImageUpload } from '../ui/ImageUpload'
 import { cn } from '../../lib/cn'
-import { ALLERGEN_EN, buildPreviewHtml, getDims, LABEL_FONTS, previewIframeHeight, printLabels } from '../../lib/printLabels'
+import { buildPreviewHtml, getDims, LABEL_FONTS, previewIframeHeight, printLabels } from '../../lib/printLabels'
 import type { LabelSettings, LabelSize, LabelSizePreset } from '../../lib/printLabels'
 import type { MenuWithSections, MenuItem, Recipe } from '../../types/database.types'
 import { supabase } from '../../lib/supabase'
@@ -37,7 +37,7 @@ async function validateQrDataUrl(dataUrl: string): Promise<boolean> {
 
 // ── Premium Label Card (drawer preview) ──────────────────────────────────────
 
-// Card border per validation state
+// Validation state → card border (screen only; print always resets to gray-200)
 const QR_BORDER: Record<QrStatus, string> = {
   pending:      'border-gray-200',
   validating:   'border-gray-200',
@@ -46,143 +46,85 @@ const QR_BORDER: Record<QrStatus, string> = {
   failed:       'border-red-400 animate-pulse',
 }
 
-// Bottom-left status badge per state (print:hidden in JSX)
-const QR_BADGE: Partial<Record<QrStatus, { cls: string; label: string }>> = {
-  verified:     { cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: '✓ Ελέγχθηκε' },
-  'auto-fixed': { cls: 'bg-amber-50  text-amber-700  border-amber-100',     label: '⚡ Διορθώθηκε' },
-  failed:       { cls: 'bg-red-50    text-red-700    border-red-100',       label: '⚠ Αποτυχία' },
-}
-
 interface LabelCardProps {
-  item: MenuItem
-  recipe: Recipe | undefined
-  menu: MenuWithSections
-  settings: LabelSettings
+  item:      MenuItem         // kept for parent API compatibility
+  recipe:    Recipe | undefined
+  menu:      MenuWithSections
+  settings:  LabelSettings
   qrDataUrl: string | undefined
   shortCode: string | undefined
-  status: QrStatus | undefined
-  selected: boolean
-  onToggle: () => void
+  status:    QrStatus | undefined
+  selected:  boolean
+  onToggle:  () => void
 }
 
-function LabelCardPreview({ item, recipe, menu, settings, qrDataUrl, shortCode, status, selected, onToggle }: LabelCardProps) {
-  const allergens = recipe?.allergens ?? []
-  const border    = status ? QR_BORDER[status] : 'border-gray-200'
-  const badge     = status ? QR_BADGE[status] : undefined
-  const showQr    = settings.showQr && !!qrDataUrl
+// Luxury-minimal square card: brand → QR → code. No dish text on the label.
+function LabelCardPreview({ menu, settings, qrDataUrl, shortCode, status, selected, onToggle }: LabelCardProps) {
+  const border = status ? QR_BORDER[status] : 'border-gray-200'
+  const showQr = settings.showQr && !!qrDataUrl
 
   return (
     <div
       onClick={onToggle}
       className={cn(
-        'relative w-full h-[190px] bg-white rounded-xl border-2 cursor-pointer transition-all shrink-0 overflow-hidden select-none',
+        // Fixed square — never breaks the print grid
+        'relative w-[140px] h-[140px] bg-white rounded-xl border cursor-pointer',
+        'flex flex-col items-center justify-between p-3 shrink-0 select-none transition-all',
+        // Screen: validation colour; Print: always thin gray
         border,
+        'print:border-gray-200 print:ring-0',
         selected
-          ? 'ring-2 ring-brand-orange ring-offset-2 ring-offset-[#0d0d0d]'
-          : 'hover:border-gray-300 opacity-50',
+          ? 'ring-2 ring-brand-orange ring-offset-1 ring-offset-[#0d0d0d]'
+          : 'opacity-40 hover:opacity-65',
       )}
     >
-      {/* ── Selection dot ── */}
+      {/* Selection dot */}
       <div className={cn(
-        'absolute top-2.5 left-2.5 z-10 h-4 w-4 rounded-full border-2 flex items-center justify-center transition shrink-0',
+        'absolute top-1.5 left-1.5 z-10 h-3.5 w-3.5 rounded-full border-2',
+        'flex items-center justify-center transition shrink-0',
         selected ? 'bg-brand-orange border-brand-orange' : 'border-gray-300 bg-white',
       )}>
-        {selected && <Check className="h-2.5 w-2.5 text-white" />}
+        {selected && <Check className="h-2 w-2 text-white" />}
       </div>
 
-      {/* ── Validation badge — bottom-left, never printed ── */}
-      {badge && (
-        <div className={cn(
-          'absolute bottom-2 left-2.5 z-10 flex items-center gap-0.5 rounded-md border px-1.5 py-[3px] text-[8px] font-semibold print:hidden',
-          badge.cls,
-        )}>
-          {badge.label}
-        </div>
-      )}
-
-      {/* ── Card body ── */}
-      <div className="flex flex-col h-full px-3 pt-2.5 pb-2.5">
-
-        {/* Brand header — full width, separated by hairline */}
-        <div className="pl-5 border-b border-gray-50 pb-1.5 mb-2 shrink-0">
-          <p className="text-[9px] font-black tracking-[0.2em] text-gray-400 uppercase truncate">
+      {/* ── Top: logo or brand name ── */}
+      <div className="w-full flex items-center justify-center pt-0.5">
+        {settings.logoUrl ? (
+          <img
+            src={settings.logoUrl}
+            alt="logo"
+            className="max-h-[18px] max-w-full object-contain"
+          />
+        ) : (
+          <p className="text-[8px] font-black tracking-[0.25em] text-gray-400 uppercase text-center leading-tight line-clamp-2">
             {menu.name}
           </p>
-        </div>
-
-        {/* Two-column body */}
-        <div className="flex flex-1 min-h-0">
-
-          {/* ── Left column: title hierarchy + allergens ── */}
-          <div className="flex flex-col min-w-0 flex-1 pr-2">
-
-            {/* Greek / source title */}
-            <p className="text-base font-black tracking-tight text-gray-900 uppercase leading-tight truncate">
-              {item.name}
-            </p>
-
-            {/* English subtitle */}
-            {item.name_el && (
-              <p className="text-xs font-semibold text-gray-400 italic mt-0.5 tracking-wide truncate">
-                {item.name_el}
-              </p>
-            )}
-
-            {/* Description */}
-            {settings.showDescription && (item.description_el ?? item.description) && (
-              <p className="text-[10px] text-gray-400 leading-relaxed mt-2 line-clamp-2 font-medium print:text-gray-600">
-                {item.description_el ?? item.description}
-              </p>
-            )}
-
-            {/* Allergen badges — pushed to bottom; extra padding when status badge occupies corner */}
-            {settings.showAllergens && allergens.length > 0 && (
-              <div className={cn('flex flex-wrap gap-1 mt-auto', badge ? 'pb-5' : 'pb-0')}>
-                {allergens.slice(0, 5).map((a) => (
-                  <span
-                    key={a}
-                    className={cn(
-                      'text-[7px] font-semibold px-1.5 py-0.5 rounded-md border leading-none',
-                      a === 'vegan' || a === 'vegetarian'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100 print:bg-white print:border-black print:text-black'
-                        : 'bg-gray-50 text-gray-600 border-gray-100 print:bg-white print:border-black print:text-black',
-                    )}
-                  >
-                    {ALLERGEN_EN[a] ?? a}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Right column: QR + Manual Code ── */}
-          {showQr && (
-            <div className="flex flex-col items-center justify-center shrink-0 border-l border-gray-50 pl-3 print:border-l-gray-200">
-              {/* QR image — white padded block for camera clearance */}
-              <div className="bg-white border border-gray-100 rounded-sm p-1">
-                <img
-                  src={qrDataUrl}
-                  alt="QR"
-                  style={{ width: 68, height: 68, imageRendering: 'pixelated', display: 'block' }}
-                />
-              </div>
-
-              {/* Short code block */}
-              {shortCode && (
-                <div className="flex flex-col items-center mt-1.5">
-                  <span className="text-[7px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-0.5">
-                    MANUAL CODE
-                  </span>
-                  <span className="font-mono text-[11px] font-black text-gray-700 bg-gray-100 border border-gray-200/50 px-2 py-0.5 rounded-md tracking-wider print:bg-white print:border-black">
-                    #{shortCode}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-        </div>
+        )}
       </div>
+
+      {/* ── Centre: QR Code ── */}
+      <div className="flex items-center justify-center">
+        {showQr ? (
+          <img
+            src={qrDataUrl}
+            alt="QR"
+            style={{ width: 76, height: 76, imageRendering: 'pixelated', display: 'block' }}
+          />
+        ) : (
+          // Placeholder when QR is disabled
+          <div
+            className="flex items-center justify-center border border-dashed border-gray-200 rounded"
+            style={{ width: 76, height: 76 }}
+          >
+            <QrCode className="h-7 w-7 text-gray-200" />
+          </div>
+        )}
+      </div>
+
+      {/* ── Bottom: manual fallback code ── */}
+      <p className="font-mono text-[10px] font-bold text-gray-400 tracking-wider text-center leading-none">
+        {shortCode ? `[ #${shortCode} ]` : ''}
+      </p>
     </div>
   )
 }
@@ -1491,8 +1433,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                 </div>
               </div>
 
-              {/* Premium label card grid */}
-              <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-0.5 rounded-xl">
+              {/* Premium label card grid — square cards, flex-wrap */}
+              <div className="flex flex-wrap gap-2.5 max-h-[560px] overflow-y-auto rounded-xl content-start">
                 {allItems.map(({ item }) => (
                   <LabelCardPreview
                     key={item.id}
