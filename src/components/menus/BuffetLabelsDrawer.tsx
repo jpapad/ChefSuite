@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import QRCode from 'qrcode'
-import { AlignCenter, AlignLeft, AlignRight, Globe, Loader2, Printer, QrCode, Save, ShieldCheck, ShieldX, Tag, Trash2, Wrench } from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight, Check, Globe, Loader2, Printer, QrCode, Save, ShieldCheck, ShieldX, Tag, Trash2, Wrench } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { ImageUpload } from '../ui/ImageUpload'
 import { cn } from '../../lib/cn'
-import { buildPreviewHtml, getDims, LABEL_FONTS, previewIframeHeight, printLabels } from '../../lib/printLabels'
+import { ALLERGEN_EN, buildPreviewHtml, getDims, LABEL_FONTS, previewIframeHeight, printLabels } from '../../lib/printLabels'
 import type { LabelSettings, LabelSize, LabelSizePreset } from '../../lib/printLabels'
 import type { MenuWithSections, MenuItem, Recipe } from '../../types/database.types'
 import { supabase } from '../../lib/supabase'
@@ -33,6 +33,142 @@ async function validateQrDataUrl(dataUrl: string): Promise<boolean> {
     img.onerror = () => resolve(false)
     img.src = dataUrl
   })
+}
+
+// ── Premium Label Card (drawer preview) ──────────────────────────────────────
+
+const QR_BORDER: Record<QrStatus, string> = {
+  pending:      'border-gray-200',
+  validating:   'border-gray-200',
+  verified:     'border-emerald-300',
+  'auto-fixed': 'border-amber-300',
+  failed:       'border-red-400 animate-pulse',
+}
+
+const QR_BADGE: Partial<Record<QrStatus, { cls: string; label: string }>> = {
+  verified:     { cls: 'bg-emerald-50 text-emerald-700 border-emerald-100',  label: '✓ Ελέγχθηκε' },
+  'auto-fixed': { cls: 'bg-amber-50 text-amber-700 border-amber-100',        label: '⚡ Διορθώθηκε' },
+  failed:       { cls: 'bg-red-50 text-red-700 border-red-100',              label: '⚠ Αποτυχία' },
+}
+
+interface LabelCardProps {
+  item: MenuItem
+  recipe: Recipe | undefined
+  menu: MenuWithSections
+  settings: LabelSettings
+  qrDataUrl: string | undefined
+  shortCode: string | undefined
+  status: QrStatus | undefined
+  selected: boolean
+  onToggle: () => void
+}
+
+function LabelCardPreview({ item, recipe, menu, settings, qrDataUrl, shortCode, status, selected, onToggle }: LabelCardProps) {
+  const allergens = recipe?.allergens ?? []
+  const border    = status ? QR_BORDER[status] : 'border-gray-200'
+  const badge     = status ? QR_BADGE[status] : undefined
+  const showQr    = settings.showQr && !!qrDataUrl
+
+  return (
+    <div
+      onClick={onToggle}
+      className={cn(
+        'relative w-full h-[190px] bg-white rounded-xl border-2 cursor-pointer transition-all shrink-0 overflow-hidden select-none',
+        border,
+        selected
+          ? 'ring-2 ring-brand-orange ring-offset-2 ring-offset-[#0d0d0d]'
+          : 'hover:border-gray-300 opacity-50',
+      )}
+    >
+      {/* Selection dot */}
+      <div className={cn(
+        'absolute top-2.5 left-2.5 z-10 h-4 w-4 rounded-full border-2 flex items-center justify-center transition shrink-0',
+        selected ? 'bg-brand-orange border-brand-orange' : 'border-gray-300 bg-white',
+      )}>
+        {selected && <Check className="h-2.5 w-2.5 text-white" />}
+      </div>
+
+      {/* Validation status badge — hidden when printing */}
+      {badge && (
+        <div className={cn(
+          'absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold print:hidden',
+          badge.cls,
+        )}>
+          {badge.label}
+        </div>
+      )}
+
+      {/* Card body */}
+      <div className="flex h-full px-3 pt-3 pb-2.5">
+        {/* ── Left column: typography + allergens ── */}
+        <div className="flex flex-col min-w-0 flex-1 pl-5">
+          {/* Brand / menu name */}
+          <p className="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 truncate">
+            {menu.name}
+          </p>
+
+          {/* Greek / source title */}
+          <p className="text-[13px] font-black tracking-tight text-gray-900 uppercase leading-tight line-clamp-2">
+            {item.name}
+          </p>
+
+          {/* English subtitle */}
+          {item.name_el && (
+            <p className="text-[10px] font-medium text-gray-400 italic mt-0.5 leading-tight line-clamp-1">
+              {item.name_el}
+            </p>
+          )}
+
+          {/* Description */}
+          {settings.showDescription && (item.description_el ?? item.description) && (
+            <p className="text-[9px] text-gray-400 leading-relaxed mt-1.5 line-clamp-2">
+              {item.description_el ?? item.description}
+            </p>
+          )}
+
+          {/* Allergen badges */}
+          {settings.showAllergens && allergens.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-auto pt-1">
+              {allergens.slice(0, 6).map((a) => (
+                <span
+                  key={a}
+                  className={cn(
+                    'text-[7px] font-semibold px-1 py-0.5 rounded border leading-none',
+                    a === 'vegan' || a === 'vegetarian'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      : 'bg-gray-50 text-gray-600 border-gray-100',
+                  )}
+                >
+                  {ALLERGEN_EN[a] ?? a}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Right column: QR + short code ── */}
+        {showQr && (
+          <div className="flex flex-col items-center justify-center gap-1.5 border-l border-gray-100 pl-3 ml-2 shrink-0">
+            <div className="bg-white border border-gray-100 rounded-sm p-0.5">
+              <img
+                src={qrDataUrl}
+                alt="QR"
+                style={{ width: 72, height: 72, imageRendering: 'pixelated', display: 'block' }}
+              />
+            </div>
+            {shortCode && (
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-[6px] font-semibold text-gray-400 uppercase tracking-widest">CODE</span>
+                <span className="font-mono text-[10px] font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded tracking-wider">
+                  #{shortCode}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ── Custom preset persistence ────────────────────────────────────────────────
@@ -1314,10 +1450,16 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
               </div>
             )}
 
-            {/* ── Item selection ── */}
-            <div className="space-y-2">
+            {/* ── Label cards (selection + preview combined) ── */}
+            <div className="space-y-3">
+              {/* Section header */}
               <div className="flex items-center justify-between gap-2">
-                <label className="text-sm font-medium text-white/70">{t('menus.labels.selectItems')}</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-white/70">{t('menus.labels.selectItems')}</span>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/50">
+                    {selectedItems.length}/{allItems.length}
+                  </span>
+                </div>
                 <div className="flex gap-2">
                   <button type="button"
                     onClick={() => setSelectedIds(new Set(allItems.map((fi) => fi.item.id)))}
@@ -1332,69 +1474,28 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                   </button>
                 </div>
               </div>
-              <div className="space-y-px max-h-52 overflow-y-auto rounded-xl border border-glass-border">
-                {allItems.map(({ item, sectionName }) => {
-                  const qrStatus = settings.showQr ? qrValidation.get(item.id) : undefined
-                  return (
-                    <label key={item.id}
-                      className={cn(
-                        'flex items-center gap-3 px-3 py-2 cursor-pointer transition hover:bg-white/5 first:rounded-t-xl last:rounded-b-xl',
-                        !selectedIds.has(item.id) && 'opacity-40',
-                        qrStatus === 'failed' && 'border-l-2 border-red-500/60',
-                        qrStatus === 'auto-fixed' && 'border-l-2 border-sky-400/50',
-                      )}
-                    >
-                      <input type="checkbox"
-                        checked={selectedIds.has(item.id)}
-                        onChange={() => toggleItem(item.id)}
-                        className="h-4 w-4 rounded accent-brand-orange shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.name}</p>
-                        <p className="text-xs text-white/40 truncate">{sectionName}</p>
-                      </div>
-                      {/* Per-item QR validation status badge */}
-                      {qrStatus === 'validating' && (
-                        <Loader2 className="h-3 w-3 animate-spin text-white/30 shrink-0" />
-                      )}
-                      {qrStatus === 'verified' && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/20">
-                          <ShieldCheck className="h-2.5 w-2.5" /> OK
-                        </span>
-                      )}
-                      {qrStatus === 'auto-fixed' && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 font-semibold border border-sky-500/20">
-                          <Wrench className="h-2.5 w-2.5" /> Fix
-                        </span>
-                      )}
-                      {qrStatus === 'failed' && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-semibold border border-red-500/20">
-                          <ShieldX className="h-2.5 w-2.5" /> ⚠
-                        </span>
-                      )}
-                    </label>
-                  )
-                })}
+
+              {/* Premium label card grid */}
+              <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-0.5 rounded-xl">
+                {allItems.map(({ item }) => (
+                  <LabelCardPreview
+                    key={item.id}
+                    item={item}
+                    recipe={item.recipe_id ? recipeMap.get(item.recipe_id) : undefined}
+                    menu={menu}
+                    settings={settings}
+                    qrDataUrl={effectiveQrMap.get(item.id)}
+                    shortCode={shortCodeMap.get(item.id)}
+                    status={qrValidation.get(item.id)}
+                    selected={selectedIds.has(item.id)}
+                    onToggle={() => toggleItem(item.id)}
+                  />
+                ))}
               </div>
             </div>
 
-            {/* ── Preview ── */}
-            {previewItem && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-white/70">{t('menus.labels.previewTitle')}</span>
-                  <span className="text-xs text-white/30">{t('menus.labels.previewHint')}</span>
-                </div>
-                <div className="rounded-xl overflow-hidden border border-glass-border bg-[#f0f0f0]">
-                  <iframe
-                    ref={iframeRef}
-                    title="label-preview"
-                    className="w-full border-0 block"
-                    style={{ height: iframeH }}
-                  />
-                </div>
-              </div>
-            )}
+            {/* Hidden iframe keeps the preview effect alive (srcdoc written but not displayed) */}
+            <iframe ref={iframeRef} title="label-preview" className="sr-only" style={{ height: iframeH }} />
 
             {/* ── Print ── */}
             <div className="flex gap-2 pt-2">

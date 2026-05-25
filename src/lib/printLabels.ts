@@ -89,7 +89,7 @@ export const SIZE_CSS: Record<LabelSizePreset, { w: string; h: string; nameSize:
   large:  { w: '210mm', h: '100mm', nameSize: '24pt', descSize: '11pt', gap: '10mm' },
 }
 
-const ALLERGEN_EN: Record<string, string> = {
+export const ALLERGEN_EN: Record<string, string> = {
   gluten: 'Gluten', dairy: 'Dairy', eggs: 'Eggs', fish: 'Fish', shellfish: 'Shellfish',
   nuts: 'Nuts', peanuts: 'Peanuts', soy: 'Soy', sesame: 'Sesame', celery: 'Celery',
   mustard: 'Mustard', sulphites: 'Sulphites', lupin: 'Lupin', molluscs: 'Molluscs',
