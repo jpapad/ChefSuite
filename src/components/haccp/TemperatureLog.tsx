@@ -213,7 +213,7 @@ interface TemperatureLogProps {
 }
 
 export function TemperatureLog({ appliances, logs, shift, onLog, onDeleteLog, loading }: TemperatureLogProps) {
-  const [resettingId, setResettingId] = useState<string | null>(null)
+  const [, setResettingId] = useState<string | null>(null)
 
   const logMap = new Map(logs.map((l) => [l.appliance_id, l]))
   const loggedCount = appliances.filter((a) => logMap.has(a.id)).length
@@ -222,7 +222,7 @@ export function TemperatureLog({ appliances, logs, shift, onLog, onDeleteLog, lo
     return log && isOutOfRange(log.temperature, a)
   }).length
 
-  async function handleReset(applianceId: string, logId: string) {
+  async function handleReset(_applianceId: string, logId: string) {
     setResettingId(logId)
     try { await onDeleteLog(logId) }
     finally { setResettingId(null) }

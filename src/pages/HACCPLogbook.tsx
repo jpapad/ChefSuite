@@ -230,7 +230,7 @@ export default function HACCPLogbook() {
     return a && (l.temperature < a.min_temp || l.temperature > a.max_temp)
   }).length
 
-  const cleanDone  = cleaning.tasks.filter((t) => !!cleaning.getDoneLog(t)).length
+  const cleanDone  = cleaning.tasks.filter((t) => !!cleaning.getDoneLog(t.id)).length
   const cleanTotal = cleaning.tasks.length
 
   return (
@@ -352,7 +352,7 @@ export default function HACCPLogbook() {
               appliances={logbook.appliances}
               logs={logbook.logs}
               shift={shift}
-              onLog={logbook.logTemperature}
+              onLog={(id, temp, ca) => { void logbook.logTemperature(id, temp, ca) }}
               onDeleteLog={logbook.deleteLog}
               loading={logbook.loadingAppliances || logbook.loadingLogs}
             />
@@ -360,8 +360,8 @@ export default function HACCPLogbook() {
         ) : (
           <CleaningChecklist
             tasks={cleaning.tasks}
-            getDoneLog={cleaning.getDoneLog}
-            onCheck={cleaning.logTask}
+            getDoneLog={(task) => cleaning.getDoneLog(task.id)}
+            onCheck={(taskId) => { void cleaning.logTask(taskId) }}
             onUncheck={cleaning.unlogTask}
             loading={cleaning.loadingTasks || cleaning.loadingLogs}
           />
