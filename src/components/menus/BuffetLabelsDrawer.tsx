@@ -321,51 +321,37 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     const origin = window.location.origin
     Promise.all(
       allItems.map(async ({ item }) => {
-        // Keep payload short: truncate descriptions to reduce QR density
-        const trunc = (s: string | null | undefined, max = 100) =>
-          s ? s.slice(0, max) : undefined
-        const extra = extraNames.get(item.id)
-        const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
-        // n = Greek name as fallback; worker language names below
-        const payload: Record<string, string> = { n: item.name.slice(0, 60) }
-        const nameBg = extra?.name_bg ?? item.name_bg ?? recipe?.name_bg
-        const nuk = extra?.name_uk ?? item.name_uk
-        const nro = extra?.name_ro ?? item.name_ro
-        const nsr = extra?.name_sr ?? item.name_sr
-        const nsk = extra?.name_sk ?? item.name_sk
-        const npl = extra?.name_pl ?? item.name_pl
-        const ncs = extra?.name_cs ?? item.name_cs
-        if (nameBg) payload.nb  = nameBg.slice(0, 60)
-        if (nuk)    payload.nuk = nuk.slice(0, 60)
-        if (nro)    payload.nro = nro.slice(0, 60)
-        if (nsr)    payload.nsr = nsr.slice(0, 60)
-        if (nsk)    payload.nsk = nsk.slice(0, 60)
-        if (npl)    payload.npl = npl.slice(0, 60)
-        if (ncs)    payload.ncs = ncs.slice(0, 60)
-        // English description as fallback; translated descriptions override per language
-        const de = trunc(item.description_el ?? recipe?.description_el); if (de) payload.de = de
-        const db = trunc(extra?.desc_bg ?? item.description_bg ?? recipe?.description_bg); if (db) payload.db = db
-        const duk = extra?.desc_uk ? extra.desc_uk.slice(0, 100) : undefined; if (duk) payload.duk = duk
-        const dro = extra?.desc_ro ? extra.desc_ro.slice(0, 100) : undefined; if (dro) payload.dro = dro
-        const dsr = extra?.desc_sr ? extra.desc_sr.slice(0, 100) : undefined; if (dsr) payload.dsr = dsr
-        const dsk = extra?.desc_sk ? extra.desc_sk.slice(0, 100) : undefined; if (dsk) payload.dsk = dsk
-        const dpl = extra?.desc_pl ? extra.desc_pl.slice(0, 100) : undefined; if (dpl) payload.dpl = dpl
-        const dcs = extra?.desc_cs ? extra.desc_cs.slice(0, 100) : undefined; if (dcs) payload.dcs = dcs
-        const jsonBytes = new TextEncoder().encode(JSON.stringify(payload))
-        let binary = ''
-        jsonBytes.forEach((b) => { binary += String.fromCharCode(b) })
-        const url = `${origin}/dish?d=${encodeURIComponent(btoa(binary))}`
-        const dataUrl = await QRCode.toDataURL(url, {
-          width: 600,
-          margin: 4,
-          errorCorrectionLevel: 'H',
-          color: { dark: '#000000', light: '#ffffff' },
-        })
-        return [item.id, dataUrl, url] as const
+        try {
+          // Names only (no descriptions) — keeps URL short enough for QR level Q
+          const crop = (s: string | null | undefined) => s ? s.slice(0, 40) : undefined
+          const extra = extraNames.get(item.id)
+          const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
+          const payload: Record<string, string> = { n: item.name.slice(0, 40) }
+          const nb  = crop(extra?.name_bg ?? item.name_bg ?? recipe?.name_bg); if (nb)  payload.nb  = nb
+          const nuk = crop(extra?.name_uk ?? item.name_uk);                     if (nuk) payload.nuk = nuk
+          const nro = crop(extra?.name_ro ?? item.name_ro);                     if (nro) payload.nro = nro
+          const nsr = crop(extra?.name_sr ?? item.name_sr);                     if (nsr) payload.nsr = nsr
+          const nsk = crop(extra?.name_sk ?? item.name_sk);                     if (nsk) payload.nsk = nsk
+          const npl = crop(extra?.name_pl ?? item.name_pl);                     if (npl) payload.npl = npl
+          const ncs = crop(extra?.name_cs ?? item.name_cs);                     if (ncs) payload.ncs = ncs
+          const jsonBytes = new TextEncoder().encode(JSON.stringify(payload))
+          let binary = ''
+          jsonBytes.forEach((b) => { binary += String.fromCharCode(b) })
+          const url = `${origin}/dish?d=${encodeURIComponent(btoa(binary))}`
+          const dataUrl = await QRCode.toDataURL(url, {
+            width: 600,
+            margin: 4,
+            errorCorrectionLevel: 'Q',
+            color: { dark: '#000000', light: '#ffffff' },
+          })
+          return [item.id, dataUrl, url] as const
+        } catch {
+          return null
+        }
       })
-    ).then((triples) => {
-      setQrMap(new Map(triples.map(([id, dataUrl]) => [id, dataUrl])))
-      urlMapRef.current = new Map(triples.map(([id, , url]) => [id, url]))
+    ).then((results) => {
+      setQrMap(new Map(results.flatMap((r) => r ? [[r[0], r[1]] as [string, string]] : [])))
+      urlMapRef.current = new Map(results.flatMap((r) => r ? [[r[0], r[2]] as [string, string]] : []))
     }).catch((err) => {
       console.error('QR generation failed:', err)
     }).finally(() => {
