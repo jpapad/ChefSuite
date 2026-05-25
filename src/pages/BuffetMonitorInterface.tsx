@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Activity, ArrowLeft, Loader2, RefreshCw } from 'lucide-react'
+import { Activity, ArrowLeft, Hash, Loader2, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
@@ -57,7 +57,11 @@ export default function BuffetMonitorInterface() {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
   const [statusMap, setStatusMap] = useState<Map<string, BuffetLiveStatus>>(new Map())
   const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState<string | null>(null)
+  const [updating, setUpdating]     = useState<string | null>(null)
+  const [codeQuery, setCodeQuery]   = useState('')
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   // Toast notifications when kitchen dispatches
@@ -206,6 +210,25 @@ export default function BuffetMonitorInterface() {
 
   const activeMenu = menus.find((m) => m.id === activeMenuId)
 
+  // Short code map mirrors the label drawer: 1-indexed, padded to 3 digits
+  const shortCodeItemMap = useMemo<Map<string, BuffetItem>>(() => {
+    const items = activeMenu?.items ?? []
+    return new Map(items.map((item, i) => [String(i + 1).padStart(3, '0'), item]))
+  }, [activeMenu])
+
+  function handleCodeInput(raw: string) {
+    const val = raw.replace(/\D/g, '').slice(0, 3)
+    setCodeQuery(val)
+    if (val.length < 3) return
+    const item = shortCodeItemMap.get(val)
+    if (!item) return
+    if (highlightTimer.current) clearTimeout(highlightTimer.current)
+    setHighlightedId(item.menu_item_id)
+    const el = cardRefs.current.get(item.menu_item_id)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    highlightTimer.current = setTimeout(() => setHighlightedId(null), 3000)
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -224,6 +247,21 @@ export default function BuffetMonitorInterface() {
           <span className="ml-1 shrink-0 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold tracking-wider text-emerald-400 uppercase">
             {t('buffetPulse.liveIndicator')}
           </span>
+        </div>
+        {/* Manual short-code lookup (Plan B when QR scan fails) */}
+        <div className="flex items-center gap-1 rounded-xl bg-white/10 px-2 border border-white/20 focus-within:border-emerald-400/60 focus-within:bg-white/15 transition-colors">
+          <Hash className="h-4 w-4 text-white/40 shrink-0" />
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={3}
+            placeholder="000"
+            value={codeQuery}
+            onChange={(e) => handleCodeInput(e.target.value)}
+            onBlur={() => setTimeout(() => setCodeQuery(''), 1500)}
+            className="w-10 bg-transparent py-2 text-sm font-mono font-bold text-white placeholder:text-white/25 focus:outline-none"
+            aria-label="Αναζήτηση με 3-ψήφιο κωδικό"
+          />
         </div>
         <button
           onClick={() => { void loadMenus(); void loadStatus() }}
@@ -278,20 +316,39 @@ export default function BuffetMonitorInterface() {
                 : currentStatus === 'low'  ? 'bg-amber-600'
                 : 'bg-emerald-700'
 
+              const isHighlighted = highlightedId === item.menu_item_id
+              // Short code for display on card
+              const itemIndex = (activeMenu?.items ?? []).indexOf(item)
+              const shortCode = itemIndex >= 0 ? String(itemIndex + 1).padStart(3, '0') : null
+
               return (
                 <div
                   key={item.menu_item_id}
-                  className="rounded-2xl overflow-hidden flex flex-col shadow-lg"
-                  style={{ backgroundColor: '#1f2937' }}   // explicit gray-800
+                  ref={(el) => { if (el) cardRefs.current.set(item.menu_item_id, el) }}
+                  className={cn(
+                    'rounded-2xl overflow-hidden flex flex-col shadow-lg transition-all duration-300',
+                    isHighlighted ? 'ring-4 ring-yellow-400 scale-[1.02]' : '',
+                  )}
+                  style={{ backgroundColor: '#1f2937' }}
                 >
                   {/* ── Name block (colored by status) ──────────────── */}
                   <div className={cn('px-5 py-5 flex flex-col gap-1', nameBg)}>
-                    <p
-                      className="text-2xl font-black leading-snug tracking-tight"
-                      style={{ color: '#ffffff' }}          // explicit white
-                    >
-                      {item.item_name}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p
+                        className="text-2xl font-black leading-snug tracking-tight flex-1"
+                        style={{ color: '#ffffff' }}
+                      >
+                        {item.item_name}
+                      </p>
+                      {shortCode && (
+                        <span
+                          className="shrink-0 rounded-lg px-2 py-1 text-xs font-mono font-bold tracking-widest"
+                          style={{ backgroundColor: 'rgba(0,0,0,0.25)', color: 'rgba(255,255,255,0.85)' }}
+                        >
+                          #{shortCode}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <span
                         className="text-xs font-bold uppercase tracking-widest"

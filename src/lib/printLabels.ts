@@ -321,6 +321,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       bottom: ${sm ? '2mm' : '3mm'};
       right: ${sm ? '2mm' : '3mm'};
       display: flex; flex-direction: column; align-items: center;
+      background: #ffffff;
       ${settings.qrBorder ? `
         border: ${settings.qrBorderWidth ?? 1}px solid ${settings.qrBorderColor ?? '#333'};
         border-radius: ${settings.qrBorderRadius ?? 2}mm;
@@ -331,8 +332,18 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       width: ${settings.qrSizeMm ?? 35}mm;
       height: ${settings.qrSizeMm ?? 35}mm;
       image-rendering: crisp-edges;
-      opacity: 0.9;
       display: block;
+      background: #ffffff;
+    }
+    .label-short-code {
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: 700;
+      font-size: ${sm ? '6pt' : '8pt'};
+      color: #111111;
+      text-align: center;
+      letter-spacing: 0.06em;
+      margin-top: 1mm;
+      width: ${settings.qrSizeMm ?? 35}mm;
     }
     .label-qr-msg {
       font-size: ${settings.qrLabelSize ?? 7}pt;
@@ -401,7 +412,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
   `
 }
 
-function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, d: Dims, qrDataUrl?: string): string {
+function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, d: Dims, qrDataUrl?: string, shortCode?: string): string {
   const allergenBadges = settings.showAllergens && recipe?.allergens?.length
     ? recipe.allergens.map((a) => allergenBadgeHtml(a, d.w <= 100, settings.allergenLang, settings.allergenIconSet === 'custom', settings.allergenSize)).join('')
     : ''
@@ -428,10 +439,14 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
         const msgEl = settings.qrLabel
           ? `<div class="label-qr-msg">${settings.qrLabel}</div>`
           : ''
+        const codeEl = shortCode
+          ? `<div class="label-short-code">ΚΩΔ: #${shortCode}</div>`
+          : ''
         return `<div class="label-qr-wrap">
   ${settings.qrLabelPos === 'above' ? msgEl : ''}
   <img src="${qrDataUrl}" class="label-qr" alt="" />
   ${settings.qrLabelPos !== 'above' ? msgEl : ''}
+  ${codeEl}
 </div>`
       })()
     : ''
@@ -480,7 +495,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
 </div>`
 }
 
-export function buildPreviewHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, qrDataUrl?: string): string {
+export function buildPreviewHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSettings, qrDataUrl?: string, shortCode?: string): string {
   const d = getDims(settings)
   const scale = TARGET_W / (d.w * MM_TO_PX)
 
@@ -494,16 +509,16 @@ export function buildPreviewHtml(item: MenuItem, recipe: Recipe | undefined, set
   </style>
 </head>
 <body>
-  ${labelHtml(item, recipe, settings, d, qrDataUrl)}
+  ${labelHtml(item, recipe, settings, d, qrDataUrl, shortCode)}
 </body>
 </html>`
 }
 
-export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], settings: LabelSettings, qrMap?: Map<string, string>): void {
+export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], settings: LabelSettings, qrMap?: Map<string, string>, shortCodeMap?: Map<string, string>): void {
   const d = getDims(settings)
   const recipeMap = new Map(recipes.map((r) => [r.id, r]))
   const labelsHtml = items
-    .map((item) => labelHtml(item, item.recipe_id ? recipeMap.get(item.recipe_id) : undefined, settings, d, qrMap?.get(item.id)))
+    .map((item) => labelHtml(item, item.recipe_id ? recipeMap.get(item.recipe_id) : undefined, settings, d, qrMap?.get(item.id), shortCodeMap?.get(item.id)))
     .join('\n')
 
   // Collect all unique allergen keys present in selected items

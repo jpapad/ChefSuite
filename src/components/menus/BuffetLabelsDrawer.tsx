@@ -159,6 +159,12 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
   const recipeMap = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes])
 
+  // Short code map: item.id → zero-padded 3-digit position (e.g. "001")
+  const shortCodeMap = useMemo<Map<string, string>>(
+    () => new Map(allItems.map(({ item }, i) => [item.id, String(i + 1).padStart(3, '0')])),
+    [allItems],
+  )
+
   // Generate QR data URLs for each item
   useEffect(() => {
     if (!settings.showQr) {
@@ -204,9 +210,10 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
         jsonBytes.forEach((b) => { binary += String.fromCharCode(b) })
         const url = `${origin}/dish?d=${encodeURIComponent(btoa(binary))}`
         const dataUrl = await QRCode.toDataURL(url, {
-          width: 400,
-          margin: 2,
-          errorCorrectionLevel: 'L',
+          width: 600,
+          margin: 4,
+          errorCorrectionLevel: 'H',
+          color: { dark: '#000000', light: '#ffffff' },
         })
         return [item.id, dataUrl] as const
       })
@@ -375,15 +382,16 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
   useEffect(() => {
     if (!previewItem) return
-    const qrDataUrl = settings.showQr ? qrMap.get(previewItem.id) : undefined
-    const html = buildPreviewHtml(previewItem, previewRecipe, settings, qrDataUrl)
+    const qrDataUrl  = settings.showQr ? qrMap.get(previewItem.id) : undefined
+    const shortCode  = settings.showQr ? shortCodeMap.get(previewItem.id) : undefined
+    const html = buildPreviewHtml(previewItem, previewRecipe, settings, qrDataUrl, shortCode)
     const iframe = iframeRef.current
     if (iframe) iframe.srcdoc = html
-  }, [previewItem, previewRecipe, settings, qrMap])
+  }, [previewItem, previewRecipe, settings, qrMap, shortCodeMap])
 
   const handlePrint = useCallback(() => {
     if (selectedItems.length === 0) return
-    printLabels(selectedItems, menu, recipes, settings, settings.showQr ? qrMap : undefined)
+    printLabels(selectedItems, menu, recipes, settings, settings.showQr ? qrMap : undefined, settings.showQr ? shortCodeMap : undefined)
   }, [selectedItems, menu, recipes, settings, qrMap])
 
   // ── Static option lists ────────────────────────────────────────────────────
