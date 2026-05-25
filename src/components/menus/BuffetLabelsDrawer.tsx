@@ -37,6 +37,7 @@ async function validateQrDataUrl(dataUrl: string): Promise<boolean> {
 
 // ── Premium Label Card (drawer preview) ──────────────────────────────────────
 
+// Card border per validation state
 const QR_BORDER: Record<QrStatus, string> = {
   pending:      'border-gray-200',
   validating:   'border-gray-200',
@@ -45,10 +46,11 @@ const QR_BORDER: Record<QrStatus, string> = {
   failed:       'border-red-400 animate-pulse',
 }
 
+// Bottom-left status badge per state (print:hidden in JSX)
 const QR_BADGE: Partial<Record<QrStatus, { cls: string; label: string }>> = {
-  verified:     { cls: 'bg-emerald-50 text-emerald-700 border-emerald-100',  label: '✓ Ελέγχθηκε' },
-  'auto-fixed': { cls: 'bg-amber-50 text-amber-700 border-amber-100',        label: '⚡ Διορθώθηκε' },
-  failed:       { cls: 'bg-red-50 text-red-700 border-red-100',              label: '⚠ Αποτυχία' },
+  verified:     { cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: '✓ Ελέγχθηκε' },
+  'auto-fixed': { cls: 'bg-amber-50  text-amber-700  border-amber-100',     label: '⚡ Διορθώθηκε' },
+  failed:       { cls: 'bg-red-50    text-red-700    border-red-100',       label: '⚠ Αποτυχία' },
 }
 
 interface LabelCardProps {
@@ -80,7 +82,7 @@ function LabelCardPreview({ item, recipe, menu, settings, qrDataUrl, shortCode, 
           : 'hover:border-gray-300 opacity-50',
       )}
     >
-      {/* Selection dot */}
+      {/* ── Selection dot ── */}
       <div className={cn(
         'absolute top-2.5 left-2.5 z-10 h-4 w-4 rounded-full border-2 flex items-center justify-center transition shrink-0',
         selected ? 'bg-brand-orange border-brand-orange' : 'border-gray-300 bg-white',
@@ -88,84 +90,98 @@ function LabelCardPreview({ item, recipe, menu, settings, qrDataUrl, shortCode, 
         {selected && <Check className="h-2.5 w-2.5 text-white" />}
       </div>
 
-      {/* Validation status badge — hidden when printing */}
+      {/* ── Validation badge — bottom-left, never printed ── */}
       {badge && (
         <div className={cn(
-          'absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold print:hidden',
+          'absolute bottom-2 left-2.5 z-10 flex items-center gap-0.5 rounded-md border px-1.5 py-[3px] text-[8px] font-semibold print:hidden',
           badge.cls,
         )}>
           {badge.label}
         </div>
       )}
 
-      {/* Card body */}
-      <div className="flex h-full px-3 pt-3 pb-2.5">
-        {/* ── Left column: typography + allergens ── */}
-        <div className="flex flex-col min-w-0 flex-1 pl-5">
-          {/* Brand / menu name */}
-          <p className="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 truncate">
+      {/* ── Card body ── */}
+      <div className="flex flex-col h-full px-3 pt-2.5 pb-2.5">
+
+        {/* Brand header — full width, separated by hairline */}
+        <div className="pl-5 border-b border-gray-50 pb-1.5 mb-2 shrink-0">
+          <p className="text-[9px] font-black tracking-[0.2em] text-gray-400 uppercase truncate">
             {menu.name}
           </p>
-
-          {/* Greek / source title */}
-          <p className="text-[13px] font-black tracking-tight text-gray-900 uppercase leading-tight line-clamp-2">
-            {item.name}
-          </p>
-
-          {/* English subtitle */}
-          {item.name_el && (
-            <p className="text-[10px] font-medium text-gray-400 italic mt-0.5 leading-tight line-clamp-1">
-              {item.name_el}
-            </p>
-          )}
-
-          {/* Description */}
-          {settings.showDescription && (item.description_el ?? item.description) && (
-            <p className="text-[9px] text-gray-400 leading-relaxed mt-1.5 line-clamp-2">
-              {item.description_el ?? item.description}
-            </p>
-          )}
-
-          {/* Allergen badges */}
-          {settings.showAllergens && allergens.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-auto pt-1">
-              {allergens.slice(0, 6).map((a) => (
-                <span
-                  key={a}
-                  className={cn(
-                    'text-[7px] font-semibold px-1 py-0.5 rounded border leading-none',
-                    a === 'vegan' || a === 'vegetarian'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                      : 'bg-gray-50 text-gray-600 border-gray-100',
-                  )}
-                >
-                  {ALLERGEN_EN[a] ?? a}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* ── Right column: QR + short code ── */}
-        {showQr && (
-          <div className="flex flex-col items-center justify-center gap-1.5 border-l border-gray-100 pl-3 ml-2 shrink-0">
-            <div className="bg-white border border-gray-100 rounded-sm p-0.5">
-              <img
-                src={qrDataUrl}
-                alt="QR"
-                style={{ width: 72, height: 72, imageRendering: 'pixelated', display: 'block' }}
-              />
-            </div>
-            {shortCode && (
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-[6px] font-semibold text-gray-400 uppercase tracking-widest">CODE</span>
-                <span className="font-mono text-[10px] font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded tracking-wider">
-                  #{shortCode}
-                </span>
+        {/* Two-column body */}
+        <div className="flex flex-1 min-h-0">
+
+          {/* ── Left column: title hierarchy + allergens ── */}
+          <div className="flex flex-col min-w-0 flex-1 pr-2">
+
+            {/* Greek / source title */}
+            <p className="text-base font-black tracking-tight text-gray-900 uppercase leading-tight truncate">
+              {item.name}
+            </p>
+
+            {/* English subtitle */}
+            {item.name_el && (
+              <p className="text-xs font-semibold text-gray-400 italic mt-0.5 tracking-wide truncate">
+                {item.name_el}
+              </p>
+            )}
+
+            {/* Description */}
+            {settings.showDescription && (item.description_el ?? item.description) && (
+              <p className="text-[10px] text-gray-400 leading-relaxed mt-2 line-clamp-2 font-medium print:text-gray-600">
+                {item.description_el ?? item.description}
+              </p>
+            )}
+
+            {/* Allergen badges — pushed to bottom; extra padding when status badge occupies corner */}
+            {settings.showAllergens && allergens.length > 0 && (
+              <div className={cn('flex flex-wrap gap-1 mt-auto', badge ? 'pb-5' : 'pb-0')}>
+                {allergens.slice(0, 5).map((a) => (
+                  <span
+                    key={a}
+                    className={cn(
+                      'text-[7px] font-semibold px-1.5 py-0.5 rounded-md border leading-none',
+                      a === 'vegan' || a === 'vegetarian'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100 print:bg-white print:border-black print:text-black'
+                        : 'bg-gray-50 text-gray-600 border-gray-100 print:bg-white print:border-black print:text-black',
+                    )}
+                  >
+                    {ALLERGEN_EN[a] ?? a}
+                  </span>
+                ))}
               </div>
             )}
           </div>
-        )}
+
+          {/* ── Right column: QR + Manual Code ── */}
+          {showQr && (
+            <div className="flex flex-col items-center justify-center shrink-0 border-l border-gray-50 pl-3 print:border-l-gray-200">
+              {/* QR image — white padded block for camera clearance */}
+              <div className="bg-white border border-gray-100 rounded-sm p-1">
+                <img
+                  src={qrDataUrl}
+                  alt="QR"
+                  style={{ width: 68, height: 68, imageRendering: 'pixelated', display: 'block' }}
+                />
+              </div>
+
+              {/* Short code block */}
+              {shortCode && (
+                <div className="flex flex-col items-center mt-1.5">
+                  <span className="text-[7px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-0.5">
+                    MANUAL CODE
+                  </span>
+                  <span className="font-mono text-[11px] font-black text-gray-700 bg-gray-100 border border-gray-200/50 px-2 py-0.5 rounded-md tracking-wider print:bg-white print:border-black">
+                    #{shortCode}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   )
