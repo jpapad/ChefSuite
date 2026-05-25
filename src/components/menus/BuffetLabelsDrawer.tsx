@@ -37,17 +37,17 @@ async function validateQrDataUrl(dataUrl: string): Promise<boolean> {
 
 // ── Premium Label Card (drawer preview) ──────────────────────────────────────
 
-// Validation state → card border (screen only; print always resets to gray-200)
+// Validation → card border colour (screen only; print resets)
 const QR_BORDER: Record<QrStatus, string> = {
   pending:      'border-gray-200',
   validating:   'border-gray-200',
-  verified:     'border-emerald-300',
-  'auto-fixed': 'border-amber-300',
-  failed:       'border-red-400 animate-pulse',
+  verified:     'border-gray-800 shadow-md',
+  'auto-fixed': 'border-amber-400 shadow-amber-100/60 shadow-md',
+  failed:       'border-red-400 shadow-red-100/60 shadow-md animate-pulse',
 }
 
 interface LabelCardProps {
-  item:      MenuItem         // kept for parent API compatibility
+  item:      MenuItem
   recipe:    Recipe | undefined
   menu:      MenuWithSections
   settings:  LabelSettings
@@ -58,8 +58,9 @@ interface LabelCardProps {
   onToggle:  () => void
 }
 
-// Luxury-minimal square card: brand → QR → code. No dish text on the label.
-function LabelCardPreview({ menu, settings, qrDataUrl, shortCode, status, selected, onToggle }: LabelCardProps) {
+// Quiet Luxury · 160×160 square · brand (absolute TL) + code (absolute TR)
+// + bilingual titles (centre) + QR-in-frame + SCAN ME badge (bottom)
+function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, selected, onToggle }: LabelCardProps) {
   const border = status ? QR_BORDER[status] : 'border-gray-200'
   const showQr = settings.showQr && !!qrDataUrl
 
@@ -67,64 +68,83 @@ function LabelCardPreview({ menu, settings, qrDataUrl, shortCode, status, select
     <div
       onClick={onToggle}
       className={cn(
-        // Fixed square — never breaks the print grid
-        'relative w-[140px] h-[140px] bg-white rounded-xl border cursor-pointer',
-        'flex flex-col items-center justify-between p-3 shrink-0 select-none transition-all',
-        // Screen: validation colour; Print: always thin gray
+        'relative w-[160px] h-[160px] bg-transparent rounded-2xl border cursor-pointer select-none',
+        'flex flex-col justify-between p-3 shrink-0 transition-all',
         border,
-        'print:border-gray-200 print:ring-0',
+        'print:border-gray-400 print:shadow-none print:ring-0',
         selected
           ? 'ring-2 ring-brand-orange ring-offset-1 ring-offset-[#0d0d0d]'
-          : 'opacity-40 hover:opacity-65',
+          : 'opacity-40 hover:opacity-70',
       )}
     >
-      {/* Selection dot */}
+      {/* ── Selection dot (UI only, never printed) ── */}
       <div className={cn(
-        'absolute top-1.5 left-1.5 z-10 h-3.5 w-3.5 rounded-full border-2',
-        'flex items-center justify-center transition shrink-0',
-        selected ? 'bg-brand-orange border-brand-orange' : 'border-gray-300 bg-white',
+        'absolute top-1 left-1 z-20 h-3 w-3 rounded-full border-2',
+        'flex items-center justify-center transition shrink-0 print:hidden',
+        selected ? 'bg-brand-orange border-brand-orange' : 'border-gray-500 bg-transparent',
       )}>
-        {selected && <Check className="h-2 w-2 text-white" />}
+        {selected && <Check className="h-1.5 w-1.5 text-white" />}
       </div>
 
-      {/* ── Top: logo or brand name ── */}
-      <div className="w-full flex items-center justify-center pt-0.5">
+      {/* ── Absolute top-left: logo or brand name ── */}
+      <div className="absolute top-3.5 left-3.5 max-w-[80px]">
         {settings.logoUrl ? (
           <img
             src={settings.logoUrl}
             alt="logo"
-            className="max-h-[18px] max-w-full object-contain"
+            className="max-h-[14px] max-w-full object-contain object-left"
           />
         ) : (
-          <p className="text-[8px] font-black tracking-[0.25em] text-gray-400 uppercase text-center leading-tight line-clamp-2">
+          <span className="text-[7px] font-black tracking-[0.2em] text-gray-400 uppercase leading-none line-clamp-1">
             {menu.name}
-          </p>
+          </span>
         )}
       </div>
 
-      {/* ── Centre: QR Code ── */}
-      <div className="flex items-center justify-center">
+      {/* ── Absolute top-right: fallback short code ── */}
+      {shortCode && (
+        <span className="absolute top-3.5 right-3.5 font-mono text-[9px] font-bold text-gray-300 tracking-wider">
+          #{shortCode}
+        </span>
+      )}
+
+      {/* ── Centre: bilingual title block ── */}
+      <div className="mt-6 text-center px-1">
+        {item.name_el && (
+          <p className="text-[11px] font-semibold text-gray-400 tracking-wide line-clamp-1 leading-tight">
+            {item.name_el}
+          </p>
+        )}
+        <p className={cn(
+          'text-[12px] font-black text-gray-900 uppercase tracking-tight leading-tight line-clamp-1',
+          item.name_el ? 'mt-0.5' : '',
+        )}>
+          {item.name}
+        </p>
+      </div>
+
+      {/* ── Bottom: QR frame + SCAN ME badge ── */}
+      <div className="flex justify-center pb-2">
         {showQr ? (
-          <img
-            src={qrDataUrl}
-            alt="QR"
-            style={{ width: 76, height: 76, imageRendering: 'pixelated', display: 'block' }}
-          />
+          <div className="relative p-1.5 bg-white border border-gray-100 rounded-xl shadow-sm">
+            <img
+              src={qrDataUrl}
+              alt="QR"
+              style={{ width: 58, height: 58, imageRendering: 'pixelated', display: 'block' }}
+            />
+            <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-black text-white text-[6px] font-black tracking-widest px-1.5 py-[3px] rounded-full uppercase shadow-sm whitespace-nowrap">
+              SCAN ME
+            </div>
+          </div>
         ) : (
-          // Placeholder when QR is disabled
           <div
-            className="flex items-center justify-center border border-dashed border-gray-200 rounded"
-            style={{ width: 76, height: 76 }}
+            className="flex items-center justify-center border border-dashed border-gray-200 rounded-xl"
+            style={{ width: 58, height: 58 }}
           >
-            <QrCode className="h-7 w-7 text-gray-200" />
+            <QrCode className="h-6 w-6 text-gray-200" />
           </div>
         )}
       </div>
-
-      {/* ── Bottom: manual fallback code ── */}
-      <p className="font-mono text-[10px] font-bold text-gray-400 tracking-wider text-center leading-none">
-        {shortCode ? `[ #${shortCode} ]` : ''}
-      </p>
     </div>
   )
 }
@@ -1434,7 +1454,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
               </div>
 
               {/* Premium label card grid — square cards, flex-wrap */}
-              <div className="flex flex-wrap gap-2.5 max-h-[560px] overflow-y-auto rounded-xl content-start">
+              <div className="flex flex-wrap gap-3 max-h-[600px] overflow-y-auto rounded-xl content-start">
                 {allItems.map(({ item }) => (
                   <LabelCardPreview
                     key={item.id}
