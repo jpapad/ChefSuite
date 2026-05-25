@@ -352,7 +352,7 @@ export default function HACCPLogbook() {
               appliances={logbook.appliances}
               logs={logbook.logs}
               shift={shift}
-              onLog={(id, temp, ca) => { void logbook.logTemperature(id, temp, ca) }}
+              onLog={async (id, temp, ca) => { await logbook.logTemperature(id, temp, ca) }}
               onDeleteLog={logbook.deleteLog}
               loading={logbook.loadingAppliances || logbook.loadingLogs}
             />
@@ -361,7 +361,7 @@ export default function HACCPLogbook() {
           <CleaningChecklist
             tasks={cleaning.tasks}
             getDoneLog={(task) => cleaning.getDoneLog(task.id)}
-            onCheck={(taskId) => { void cleaning.logTask(taskId) }}
+            onCheck={async (taskId) => { await cleaning.logTask(taskId) }}
             onUncheck={cleaning.unlogTask}
             loading={cleaning.loadingTasks || cleaning.loadingLogs}
           />
