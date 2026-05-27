@@ -48,7 +48,6 @@ const QR_BORDER: Record<QrStatus, string> = {
 
 interface LabelCardProps {
   item:      MenuItem
-  recipe:    Recipe | undefined
   menu:      MenuWithSections
   settings:  LabelSettings
   qrDataUrl: string | undefined
@@ -1166,7 +1165,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                     )}
                   >
                     <span className={cn(
-                      'inline-block h-3.5 w-3.5 transform rounded-full bg-white-fixed transition-transform',
+                      'inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform',
                       settings[key] ? 'translate-x-[18px]' : 'translate-x-[3px]',
                     )} />
                   </button>
@@ -1214,7 +1213,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                     onClick={() => set('qrBorder', !settings.qrBorder)}
                     className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0',
                       settings.qrBorder ? 'bg-brand-orange' : 'bg-white/20')}>
-                    <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white-fixed transition-transform',
+                    <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform',
                       settings.qrBorder ? 'translate-x-[18px]' : 'translate-x-[3px]')} />
                   </button>
                 </label>
@@ -1446,7 +1445,6 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                   <LabelCardPreview
                     key={item.id}
                     item={item}
-                    recipe={item.recipe_id ? recipeMap.get(item.recipe_id) : undefined}
                     menu={menu}
                     settings={settings}
                     qrDataUrl={effectiveQrMap.get(item.id)}
