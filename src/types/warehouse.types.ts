@@ -55,6 +55,7 @@ export interface WhOrder {
   expected_delivery_date: string | null
   received_at: string | null
   invoice_total: number | null
+  invoice_pdf_path: string | null
   created_at: string
   // joined
   wh_suppliers?: Pick<WhSupplier, 'id' | 'name'> | null
@@ -113,6 +114,7 @@ export interface WhSupplierCatalog {
   uploaded_by_name: string | null
   total_items: number
   status: string
+  pdf_path: string | null
   uploaded_at: string
   // joined
   wh_suppliers?: Pick<WhSupplier, 'id' | 'name'> | null
@@ -214,6 +216,7 @@ export type WarehousePage =
   | 'storage'
   | 'orders'
   | 'inventory'
+  | 'catalogs'
   | 'price-comparison'
   | 'schedule'
   | 'import'

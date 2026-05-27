@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Package, Building2, FolderOpen, MapPin, ShoppingCart,
-  ClipboardList, CalendarDays, FileSpreadsheet, ArrowLeft,
+  ClipboardList, CalendarDays, FileSpreadsheet, ArrowLeft, BookOpen,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { WareProducts }          from '../components/warehouse/WareProducts'
@@ -12,6 +12,7 @@ import { WareOrders }            from '../components/warehouse/WareOrders'
 import { WareInventory }         from '../components/warehouse/WareInventory'
 import { WareSchedule }          from '../components/warehouse/WareSchedule'
 import { WareImportExcel }       from '../components/warehouse/WareImportExcel'
+import { WareCatalogs }          from '../components/warehouse/WareCatalogs'
 import type { WarehousePage }    from '../types/warehouse.types'
 
 interface NavItem {
@@ -29,6 +30,7 @@ const NAV: NavItem[] = [
   { id: 'suppliers',        label: 'Προμηθευτές',     sublabel: 'Στοιχεία & ημέρες',       icon: Building2,       color: 'text-violet-400 bg-violet-500/10' },
   { id: 'categories',       label: 'Κατηγορίες',      sublabel: 'Οργάνωση προϊόντων',      icon: FolderOpen,      color: 'text-amber-400 bg-amber-500/10' },
   { id: 'storage',          label: 'Θέσεις',          sublabel: 'Ψυγεία & αποθήκες',       icon: MapPin,          color: 'text-rose-400 bg-rose-500/10' },
+  { id: 'catalogs',         label: 'Τιμοκατάλογοι',   sublabel: 'PDF ανά προμηθευτή',      icon: BookOpen,        color: 'text-indigo-400 bg-indigo-500/10' },
   { id: 'schedule',         label: 'Πρόγραμμα',       sublabel: 'Ημερολόγιο παραδόσεων',   icon: CalendarDays,    color: 'text-teal-400 bg-teal-500/10' },
   { id: 'import',           label: 'Εισαγωγή Excel',  sublabel: 'Μαζική εισαγωγή',         icon: FileSpreadsheet, color: 'text-lime-400 bg-lime-500/10' },
 ]
@@ -71,6 +73,7 @@ export default function Warehouse() {
       {page === 'suppliers' && <WareSuppliers onNavigate={navigateTo} />}
       {page === 'categories'&& <WareCategories onNavigate={navigateTo} />}
       {page === 'storage'   && <WareStorageLocations onNavigate={navigateTo} />}
+      {page === 'catalogs'  && <WareCatalogs />}
       {page === 'schedule'  && <WareSchedule />}
       {page === 'import'    && <WareImportExcel />}
 

@@ -2,12 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   ShoppingCart, Plus, ChevronRight, ChevronLeft, Trash2, Search,
   CheckCircle2, Clock, XCircle, Package, ChevronDown, ChevronUp,
-  ReceiptText, AlertTriangle,
+  ReceiptText, AlertTriangle, FileUp, FileText, ExternalLink,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/cn'
 import { useAuth } from '../../contexts/AuthContext'
 import { whLog } from '../../lib/warehouseLog'
+import { uploadWarehouseDoc, getWarehouseDocUrl } from '../../lib/warehouseStorage'
 import type { WhOrder, WhOrderItem, WhSupplier, WhProduct, WhOrderStatus } from '../../types/warehouse.types'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -74,6 +75,8 @@ export function WareOrders() {
   const [receiving, setReceiving]     = useState(false)
   const [invoiceTotal, setInvoiceTotal] = useState('')
   const [receiveItems, setReceiveItems] = useState<{ id: string; received: string; invoice_price: string }[]>([])
+  const [invoicePdf, setInvoicePdf]   = useState<File | null>(null)
+  const [invoicePdfUrl, setInvoicePdfUrl] = useState<string | null>(null)
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -116,6 +119,12 @@ export function WareOrders() {
       invoice_price: String(it.invoice_price ?? it.unit_price ?? ''),
     })))
     setInvoiceTotal(String(order.invoice_total ?? ''))
+    setInvoicePdf(null)
+    if (order.invoice_pdf_path) {
+      getWarehouseDocUrl(order.invoice_pdf_path).then(setInvoicePdfUrl)
+    } else {
+      setInvoicePdfUrl(null)
+    }
     setView('detail')
   }
 
@@ -235,12 +244,19 @@ export function WareOrders() {
       })
     )
 
+    // Upload invoice PDF if provided
+    let pdfPath: string | null = selectedOrder.invoice_pdf_path ?? null
+    if (invoicePdf) {
+      pdfPath = await uploadWarehouseDoc('invoices', selectedOrder.id, invoicePdf)
+    }
+
     // Mark order received
     const total = invoiceTotal ? parseFloat(invoiceTotal) : null
     await supabase.from('wh_orders').update({
       status: 'received',
       received_at: new Date().toISOString(),
       invoice_total: total,
+      invoice_pdf_path: pdfPath,
     }).eq('id', selectedOrder.id)
 
     whLog(user?.id, user?.email, profile?.role, 'RECEIVE_ORDER',
@@ -655,17 +671,39 @@ export function WareOrders() {
             <p className="text-sm font-semibold text-white flex items-center gap-2">
               <ReceiptText className="h-4 w-4 text-white/40" /> Παραλαβή Παραγγελίας
             </p>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Σύνολο τιμολογίου (€)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={invoiceTotal}
-                onChange={(e) => setInvoiceTotal(e.target.value)}
-                placeholder={subtotal > 0 ? subtotal.toFixed(2) : '0.00'}
-                className="w-full rounded-xl border border-glass-border bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-brand-orange/50 [appearance:textfield]"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Σύνολο τιμολογίου (€)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={invoiceTotal}
+                  onChange={(e) => setInvoiceTotal(e.target.value)}
+                  placeholder={subtotal > 0 ? subtotal.toFixed(2) : '0.00'}
+                  className="w-full rounded-xl border border-glass-border bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-brand-orange/50 [appearance:textfield]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/60">Τιμολόγιο PDF</label>
+                <label className={cn(
+                  'flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm cursor-pointer transition',
+                  invoicePdf
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                    : 'border-glass-border bg-white/5 text-white/40 hover:bg-white/10',
+                )}>
+                  <FileUp className="h-4 w-4 shrink-0" />
+                  <span className="truncate text-xs">
+                    {invoicePdf ? invoicePdf.name : 'Επιλογή PDF…'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => setInvoicePdf(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -691,10 +729,26 @@ export function WareOrders() {
         )}
 
         {/* Summary for received orders */}
-        {selectedOrder.status === 'received' && selectedOrder.invoice_total != null && (
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center justify-between">
-            <span className="text-sm text-emerald-400 font-semibold">Τιμολόγιο</span>
-            <span className="text-lg font-bold text-emerald-400">{selectedOrder.invoice_total.toFixed(2)}€</span>
+        {selectedOrder.status === 'received' && (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-emerald-400 font-semibold flex items-center gap-2">
+                <ReceiptText className="h-4 w-4" /> Τιμολόγιο
+              </span>
+              {selectedOrder.invoice_total != null && (
+                <span className="text-lg font-bold text-emerald-400">{selectedOrder.invoice_total.toFixed(2)}€</span>
+              )}
+            </div>
+            {invoicePdfUrl && (
+              <button
+                onClick={() => window.open(invoicePdfUrl, '_blank')}
+                className="flex items-center gap-2 text-xs text-sky-400 hover:text-sky-300 transition"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Προβολή τιμολογίου PDF
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            )}
           </div>
         )}
       </div>
