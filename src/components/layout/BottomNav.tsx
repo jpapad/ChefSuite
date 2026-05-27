@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Monitor, MessageSquare, Thermometer, Home,
+  LayoutDashboard, Monitor, MessageSquare, Home,
   MoreHorizontal, X, ChefHat, ClipboardList,
   Users, CalendarDays, TrendingUp, Radio, BookOpen,
   Flame, TimerIcon, Heart, Bot, Scale,
