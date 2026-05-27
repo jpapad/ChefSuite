@@ -38,6 +38,7 @@ export const ALL_MODULES = [
   'pos-settings',
   'buffet-pulse',
   'haccp-logbook',
+  'warehouse',
 ] as const
 
 export type AppModule = (typeof ALL_MODULES)[number]
@@ -49,7 +50,7 @@ export const MODULE_GROUPS: { labelKey: string; modules: AppModule[] }[] = [
   },
   {
     labelKey: 'nav.groups.procurement',
-    modules: ['inventory', 'suppliers', 'orders', 'waste', 'price-tracking', 'stocktake'],
+    modules: ['inventory', 'suppliers', 'orders', 'waste', 'price-tracking', 'stocktake', 'warehouse'],
   },
   {
     labelKey: 'nav.groups.team',
@@ -107,6 +108,7 @@ export const MODULE_LABEL_KEY: Record<AppModule, string> = {
   'costing': 'nav.costing',
   'buffet-pulse': 'nav.buffetPulse',
   'haccp-logbook': 'nav.haccpLogbook',
+  'warehouse': 'nav.warehouse',
 }
 
 export function usePermissions() {

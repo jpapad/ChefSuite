@@ -57,6 +57,7 @@ const BuffetPulse             = lazy(() => import('./pages/BuffetPulse'))
 const BuffetMonitorInterface  = lazy(() => import('./pages/BuffetMonitorInterface'))
 const KitchenBuffetKDS        = lazy(() => import('./pages/KitchenBuffetKDS'))
 const HACCPLogbook            = lazy(() => import('./pages/HACCPLogbook'))
+const Warehouse               = lazy(() => import('./pages/Warehouse'))
 
 export default function App() {
   return (
@@ -134,6 +135,7 @@ export default function App() {
                 <Route path="ingredients" element={<PermissionGuard module="ingredients"><IngredientsEncyclopedia /></PermissionGuard>} />
                 <Route path="pos-settings" element={<PermissionGuard module="pos-settings"><PosSettings /></PermissionGuard>} />
                 <Route path="buffet-pulse" element={<PermissionGuard module="buffet-pulse"><BuffetPulse /></PermissionGuard>} />
+                <Route path="warehouse" element={<PermissionGuard module="warehouse"><Warehouse /></PermissionGuard>} />
               </Route>
 
               {/* Fullscreen buffet interfaces — no AppShell sidebar */}

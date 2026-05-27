@@ -161,6 +161,7 @@ export function Sidebar() {
       items: [
         { to: '/inventory', label: t('nav.inventory'), icon: Package, module: 'inventory' as AppModule },
         { to: '/stocktake', label: t('nav.stocktake'), icon: ClipboardList, module: 'stocktake' as AppModule },
+        { to: '/warehouse', label: t('nav.warehouse'), icon: Building2, module: 'warehouse' as AppModule },
         { to: '/suppliers', label: t('nav.suppliers'), icon: Truck, module: 'suppliers' as AppModule },
         { to: '/orders', label: t('nav.purchaseOrders'), icon: ClipboardCheck, module: 'orders' as AppModule },
         { to: '/waste', label: t('nav.wasteLog'), icon: Trash2, module: 'waste' as AppModule },
