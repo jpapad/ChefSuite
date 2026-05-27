@@ -153,19 +153,14 @@ export function Sidebar() {
         { to: '/haccp', label: t('nav.haccp'), icon: Thermometer, module: 'haccp' as AppModule },
         { to: '/haccp-logbook', label: t('nav.haccpLogbook'), icon: BookLock, module: 'haccp-logbook' as AppModule },
         { to: '/labels', label: t('nav.labels'), icon: Tag, module: 'labels' as AppModule },
+        { to: '/waste', label: t('nav.wasteLog'), icon: Trash2, module: 'waste' as AppModule },
       ],
     },
     {
       id: 'procurement',
       label: t('nav.groups.procurement'),
       items: [
-        { to: '/inventory', label: t('nav.inventory'), icon: Package, module: 'inventory' as AppModule },
-        { to: '/stocktake', label: t('nav.stocktake'), icon: ClipboardList, module: 'stocktake' as AppModule },
         { to: '/warehouse', label: t('nav.warehouse'), icon: Building2, module: 'warehouse' as AppModule },
-        { to: '/suppliers', label: t('nav.suppliers'), icon: Truck, module: 'suppliers' as AppModule },
-        { to: '/orders', label: t('nav.purchaseOrders'), icon: ClipboardCheck, module: 'orders' as AppModule },
-        { to: '/waste', label: t('nav.wasteLog'), icon: Trash2, module: 'waste' as AppModule },
-        { to: '/price-tracking', label: t('nav.priceTracking'), icon: LineChart, module: 'price-tracking' as AppModule },
       ],
     },
     {

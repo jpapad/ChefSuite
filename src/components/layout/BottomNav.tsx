@@ -28,17 +28,13 @@ const MORE_GROUPS = [
       { to: '/menus',     labelKey: 'nav.menus',     icon: UtensilsCrossed, module: 'menus'    },
       { to: '/prep',      labelKey: 'nav.prep',      icon: ClipboardList,   module: 'prep'     },
       { to: '/labels',    labelKey: 'nav.labels',    icon: Tag,             module: 'labels'   },
+      { to: '/waste',     labelKey: 'nav.wasteLog',  icon: Trash2,          module: 'waste'    },
     ],
   },
   {
     labelKey: 'nav.groups.procurement',
     items: [
-      { to: '/inventory',     labelKey: 'nav.inventory',      icon: Package,       module: 'inventory'     },
-      { to: '/stocktake',     labelKey: 'nav.stocktake',      icon: ClipboardCheck, module: 'stocktake'   },
-      { to: '/suppliers',     labelKey: 'nav.suppliers',      icon: Truck,         module: 'suppliers'     },
-      { to: '/orders',        labelKey: 'nav.purchaseOrders', icon: ClipboardCheck, module: 'orders'       },
-      { to: '/waste',         labelKey: 'nav.wasteLog',       icon: Trash2,        module: 'waste'         },
-      { to: '/price-tracking', labelKey: 'nav.priceTracking', icon: LineChart,     module: 'price-tracking'},
+      { to: '/warehouse', labelKey: 'nav.warehouse', icon: Building2, module: 'warehouse' },
     ],
   },
   {
