@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Monitor, MessageSquare, Thermometer,
+  LayoutDashboard, Monitor, MessageSquare, Thermometer, Home,
   MoreHorizontal, X, ChefHat, ClipboardList,
   Users, CalendarDays, TrendingUp, Radio, BookOpen,
   Flame, TimerIcon, Heart, Bot, Scale,
@@ -14,10 +14,10 @@ import { cn } from '../../lib/cn'
 import { usePermissions } from '../../hooks/usePermissions'
 
 const PRIMARY_ITEMS = [
-  { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true },
-  { to: '/kds',   labelKey: 'nav.kds',    icon: Monitor },
-  { to: '/chat',  labelKey: 'nav.chat',   icon: MessageSquare },
-  { to: '/haccp', labelKey: 'nav.haccp',  icon: Thermometer },
+  { to: '/',          labelKey: 'nav.home',      icon: Home,            end: true },
+  { to: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/kds',       labelKey: 'nav.kds',       icon: Monitor },
+  { to: '/chat',      labelKey: 'nav.chat',       icon: MessageSquare },
 ]
 
 const MORE_GROUPS = [

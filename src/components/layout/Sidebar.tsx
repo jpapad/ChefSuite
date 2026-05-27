@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
+  Home,
   ChefHat,
   Users,
   Flame,
@@ -140,7 +141,8 @@ export function Sidebar() {
       id: 'kitchen',
       label: t('nav.groups.kitchen'),
       items: [
-        { to: '/', label: t('nav.dashboard'), icon: LayoutDashboard, end: true, module: 'dashboard' as AppModule },
+        { to: '/',          label: t('nav.home'),      icon: Home,            end: true, module: 'dashboard' as AppModule },
+        { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, module: 'dashboard' as AppModule },
         { to: '/recipes', label: t('nav.recipes'), icon: ChefHat, module: 'recipes' as AppModule },
         { to: '/regional-recipes', label: 'Τοπικές Συνταγές', icon: MapPin, module: 'regional-recipes' as AppModule },
         { to: '/menus', label: t('nav.menus'), icon: UtensilsCrossed, module: 'menus' as AppModule },

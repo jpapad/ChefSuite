@@ -11,6 +11,7 @@
     "prepAssignedBody": "Προετοιμασία για {{date}}"
   },
   "nav": {
+    "home": "Αρχική",
     "dashboard": "Πίνακας",
     "recipes": "Συνταγές",
     "inventory": "Αποθήκη",

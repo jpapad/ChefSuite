@@ -8,6 +8,7 @@ import { AppShell } from './components/layout/AppShell'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { PageLoader } from './components/ui/PageLoader'
 
+const AppLaunchpad       = lazy(() => import('./pages/AppLaunchpad'))
 const Dashboard          = lazy(() => import('./pages/Dashboard'))
 const Recipes            = lazy(() => import('./pages/Recipes'))
 const RegionalRecipes    = lazy(() => import('./pages/RegionalRecipes'))
@@ -96,7 +97,8 @@ export default function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Dashboard />} />
+                <Route index element={<AppLaunchpad />} />
+                <Route path="dashboard" element={<Dashboard />} />
                 <Route path="recipes" element={<PermissionGuard module="recipes"><Recipes /></PermissionGuard>} />
                 <Route path="regional-recipes" element={<PermissionGuard module="regional-recipes"><RegionalRecipes /></PermissionGuard>} />
                 <Route path="inventory" element={<PermissionGuard module="inventory"><Inventory /></PermissionGuard>} />
