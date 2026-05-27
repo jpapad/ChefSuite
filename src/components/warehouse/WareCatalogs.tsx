@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { BookOpen, Plus, Trash2, FileText, ExternalLink, Upload, X, Building2 } from 'lucide-react'
+import { Plus, Trash2, FileText, ExternalLink, Upload, X, Building2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/cn'
 import { useAuth } from '../../contexts/AuthContext'
