@@ -3,7 +3,7 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X } from 'lucide-
 import * as XLSX from 'xlsx'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/cn'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth } from '../../contexts/AuthContext'
 import { whLog } from '../../lib/warehouseLog'
 
 interface ParsedRow {
@@ -73,7 +73,7 @@ function parseRows(sheet: XLSX.WorkSheet): ParsedRow[] {
 }
 
 export function WareImportExcel() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [rows, setRows]         = useState<ParsedRow[]>([])
@@ -127,7 +127,7 @@ export function WareImportExcel() {
     const skipped = rows.length - valid.length
 
     if (!error) {
-      whLog(user?.id, user?.email, user?.role, 'IMPORT_PRODUCTS',
+      whLog(user?.id, user?.email, profile?.role, 'IMPORT_PRODUCTS',
         fileName, `${valid.length} εισήχθηκαν, ${skipped} παρεστράφηκαν`)
       setDone({ imported: valid.length, skipped })
       setRows([])
@@ -240,7 +240,7 @@ export function WareImportExcel() {
                     <td className="px-2 py-1.5">
                       {r._ok
                         ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                        : <AlertTriangle className="h-3.5 w-3.5 text-red-400" title={r._error} />
+                        : <AlertTriangle className="h-3.5 w-3.5 text-red-400" aria-label={r._error} />
                       }
                     </td>
                   </tr>

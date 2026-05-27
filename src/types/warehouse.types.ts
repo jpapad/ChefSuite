@@ -38,8 +38,8 @@ export interface WhProduct {
   current_stock: number
   notes: string | null
   created_at: string
-  // joined
-  categories?: Pick<WhCategory, 'id' | 'name'> | null
+  // joined (aliases match Supabase select aliases)
+  wh_categories?: Pick<WhCategory, 'id' | 'name'> | null
   wh_suppliers?: Pick<WhSupplier, 'id' | 'name'> | null
   wh_storage_locations?: Pick<WhStorageLocation, 'id' | 'name'> | null
 }

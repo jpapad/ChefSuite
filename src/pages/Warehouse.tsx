@@ -37,7 +37,7 @@ export default function Warehouse() {
   const [page, setPage] = useState<WarehousePage | null>(null)
   const [productFilter, setProductFilter] = useState<Record<string, string>>({})
 
-  function navigateTo(target: 'products', filter: Record<string, string>) {
+  function navigateTo(_target: 'products', filter: Record<string, string>) {
     setProductFilter(filter)
     setPage('products')
   }

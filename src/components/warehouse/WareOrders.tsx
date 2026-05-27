@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/cn'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth } from '../../contexts/AuthContext'
 import { whLog } from '../../lib/warehouseLog'
 import type { WhOrder, WhOrderItem, WhSupplier, WhProduct, WhOrderStatus } from '../../types/warehouse.types'
 
@@ -46,7 +46,7 @@ interface DraftItem {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export function WareOrders() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   // ── List view state ──
   const [orders, setOrders]       = useState<WhOrder[]>([])
@@ -191,7 +191,7 @@ export function WareOrders() {
       }))
     )
 
-    whLog(user?.id, user?.email, user?.role, 'CREATE_ORDER', wizardSupplier.name,
+    whLog(user?.id, user?.email, profile?.role, 'CREATE_ORDER', wizardSupplier.name,
       `${draftItems.length} προϊόντα`)
     setSaving(false)
     setView('list')
@@ -243,7 +243,7 @@ export function WareOrders() {
       invoice_total: total,
     }).eq('id', selectedOrder.id)
 
-    whLog(user?.id, user?.email, user?.role, 'RECEIVE_ORDER',
+    whLog(user?.id, user?.email, profile?.role, 'RECEIVE_ORDER',
       selectedOrder.wh_suppliers?.name ?? null,
       `Τιμολόγιο: ${total ?? '–'}€`)
 
@@ -256,7 +256,7 @@ export function WareOrders() {
     if (!selectedOrder) return
     if (!confirm('Ακύρωση παραγγελίας;')) return
     await supabase.from('wh_orders').update({ status: 'cancelled' }).eq('id', selectedOrder.id)
-    whLog(user?.id, user?.email, user?.role, 'CANCEL_ORDER',
+    whLog(user?.id, user?.email, profile?.role, 'CANCEL_ORDER',
       selectedOrder.wh_suppliers?.name ?? null)
     setView('list')
     void fetchOrders()

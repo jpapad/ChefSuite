@@ -5,16 +5,16 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/cn'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth } from '../../contexts/AuthContext'
 import { whLog } from '../../lib/warehouseLog'
 import type {
-  WhInventorySession, WhInventorySessionItem, WhProduct, WhCategory,
+  WhInventorySession, WhInventorySessionItem,
 } from '../../types/warehouse.types'
 
 type View = 'list' | 'session'
 
 export function WareInventory() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   const [sessions, setSessions]       = useState<WhInventorySession[]>([])
   const [view, setView]               = useState<View>('list')
@@ -81,7 +81,7 @@ export function WareInventory() {
         wh_storage_locations?: { name: string } | null
       }
       await supabase.from('wh_inventory_session_items').insert(
-        (products as RawProduct[]).map((p) => ({
+        (products as unknown as RawProduct[]).map((p) => ({
           session_id: session.id,
           product_id: p.id,
           product_name: p.name,
@@ -95,7 +95,7 @@ export function WareInventory() {
       )
     }
 
-    whLog(user?.id, user?.email, user?.role, 'CREATE_INVENTORY', newName.trim(),
+    whLog(user?.id, user?.email, profile?.role, 'CREATE_INVENTORY', newName.trim(),
       `${(products ?? []).length} προϊόντα`)
     setCreating(false)
     setShowNew(false)
@@ -120,7 +120,7 @@ export function WareInventory() {
     )
 
     await supabase.from('wh_inventory_sessions').update({ is_draft: false }).eq('id', activeSession.id)
-    whLog(user?.id, user?.email, user?.role, 'PUBLISH_INVENTORY', activeSession.name)
+    whLog(user?.id, user?.email, profile?.role, 'PUBLISH_INVENTORY', activeSession.name)
     setSaving(false)
     setView('list')
     void fetchSessions()

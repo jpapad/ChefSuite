@@ -6,7 +6,6 @@ import type { WhCategory } from '../../types/warehouse.types'
 
 interface Props { onNavigate: (page: 'products', filter: Record<string, string>) => void }
 
-const EMPTY: Omit<WhCategory, 'id' | 'created_at'> = { name: '', group_name: null }
 
 export function WareCategories({ onNavigate }: Props) {
   const [categories, setCategories]   = useState<WhCategory[]>([])
