@@ -1,11 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Monitor, MessageSquare, Thermometer,
-  MoreHorizontal, X, ChefHat, Package, ClipboardList,
+  MoreHorizontal, X, ChefHat, ClipboardList,
   Users, CalendarDays, TrendingUp, Radio, BookOpen,
-  Flame, ClipboardCheck, TimerIcon, Heart, Bot, Scale,
+  Flame, TimerIcon, Heart, Bot, Scale,
   BookMarked, Layers, FlaskConical, HelpCircle, UtensilsCrossed,
-  Truck, Trash2, LineChart, BarChart3, Award, Star,
+  Trash2, BarChart3, Award, Star,
   CalendarCheck, CreditCard, Tag, Calculator, Building2,
 } from 'lucide-react'
 import { useState } from 'react'
