@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers, ShieldAlert } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers, ShieldAlert, ArrowLeft } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../components/ui/Input'
@@ -26,6 +26,19 @@ import { RECIPE_CATEGORIES } from '../components/recipes/RecipeForm'
 import type { ImportedRecipe } from '../lib/gemini'
 import type { ExcelMenuRow } from '../lib/excelMenu'
 import type { Recipe, RecipeCategory, RecipeDifficulty, RecipeIngredientDraft, RecipeVersion } from '../types/database.types'
+
+const CATEGORY_META: Record<RecipeCategory, { emoji: string; label: string }> = {
+  appetizer: { emoji: '🥗', label: 'Ορεκτικά' },
+  soup:      { emoji: '🍜', label: 'Σούπες' },
+  salad:     { emoji: '🥙', label: 'Σαλάτες' },
+  main:      { emoji: '🍖', label: 'Κύρια Πιάτα' },
+  side:      { emoji: '🥦', label: 'Συνοδευτικά' },
+  sauce:     { emoji: '🫙', label: 'Σάλτσες' },
+  bread:     { emoji: '🍞', label: 'Ψωμιά' },
+  dessert:   { emoji: '🍰', label: 'Γλυκά' },
+  beverage:  { emoji: '🥤', label: 'Ποτά' },
+  other:     { emoji: '🍽️', label: 'Άλλα' },
+}
 
 export default function Recipes() {
   const { t } = useTranslation()
@@ -55,6 +68,8 @@ export default function Recipes() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [groupedView, setGroupedView] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const [filterUncategorized, setFilterUncategorized] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -82,10 +97,22 @@ export default function Recipes() {
       if (q && !r.title.toLowerCase().includes(q)) return false
       if (activeAllergens.length && !activeAllergens.every((a) => r.allergens.includes(a))) return false
       if (activeCategory && r.category !== activeCategory) return false
+      if (filterUncategorized && r.category !== null) return false
       if (filterAllergenFree && r.allergens.filter(a => !a.startsWith('no_')).length > 0) return false
       return true
     })
-  }, [recipes, query, activeAllergens, activeCategory, filterAllergenFree])
+  }, [recipes, query, activeAllergens, activeCategory, filterUncategorized, filterAllergenFree])
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<RecipeCategory | '_none', number>()
+    for (const r of recipes) {
+      const key = r.category ?? '_none'
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    return counts
+  }, [recipes])
+
+  const showCategoryBrowser = !showAll && !activeCategory && !filterUncategorized && !query.trim() && !loading && recipes.length > 0
 
   const groupedRecipes = useMemo(() => {
     if (!groupedView) return null
@@ -329,7 +356,7 @@ export default function Recipes() {
           <p className="text-white/60 mt-1">{t('recipes.subtitle')}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {recipes.length > 0 && (
+          {recipes.length > 0 && !showCategoryBrowser && (
             <>
               <Button
                 variant="secondary"
@@ -411,83 +438,84 @@ export default function Recipes() {
               placeholder={t('recipes.searchPlaceholder')}
               leftIcon={<Search className="h-5 w-5" />}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); if (e.target.value) setShowAll(true) }}
             />
           </div>
-          {usedCategories.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-white/50">{t('recipes.filterCategory')}</span>
-              {usedCategories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategory((prev) => prev === cat ? null : cat)}
-                  className={
-                    'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
-                    (activeCategory === cat
-                      ? 'bg-brand-orange border-brand-orange text-white-fixed'
-                      : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
-                  }
-                >
-                  {t(`recipes.categories.${cat}`)}
-                  {activeCategory === cat && <X className="h-3 w-3" />}
-                </button>
-              ))}
-            </div>
-          )}
 
-          <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => { setFilterAllergenFree((v) => !v); setActiveAllergens([]) }}
-                className={
-                  'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
-                  (filterAllergenFree
-                    ? 'bg-green-500/20 border-green-500/50 text-green-300'
-                    : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
-                }
-              >
-                <span className="text-base leading-none">✓</span>
-                Χωρίς αλλεργιογόνα
-                {filterAllergenFree && <X className="h-3 w-3" />}
-              </button>
-
-              {allAllergens.filter(a => !a.startsWith('no_')).map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => { toggleAllergen(a); setFilterAllergenFree(false) }}
-                  className={
-                    'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
-                    (activeAllergens.includes(a)
-                      ? 'bg-brand-orange border-brand-orange text-white-fixed'
-                      : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
-                  }
-                >
-                  {a}
-                  {activeAllergens.includes(a) && <X className="h-3 w-3" />}
-                </button>
-              ))}
-              {(activeAllergens.length > 0 || activeCategory || filterAllergenFree) && (
-                <button
-                  type="button"
-                  onClick={() => { setActiveAllergens([]); setActiveCategory(null); setFilterAllergenFree(false) }}
-                  className="text-xs text-white/50 hover:text-white underline"
-                >
-                  {t('recipes.clearFilters')}
-                </button>
+          {!showCategoryBrowser && (
+            <>
+              {usedCategories.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-white/50">{t('recipes.filterCategory')}</span>
+                  {usedCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory((prev) => prev === cat ? null : cat)}
+                      className={
+                        'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
+                        (activeCategory === cat
+                          ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                          : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
+                      }
+                    >
+                      {t(`recipes.categories.${cat}`)}
+                      {activeCategory === cat && <X className="h-3 w-3" />}
+                    </button>
+                  ))}
+                </div>
               )}
-            </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setFilterAllergenFree((v) => !v); setActiveAllergens([]) }}
+                  className={
+                    'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
+                    (filterAllergenFree
+                      ? 'bg-green-500/20 border-green-500/50 text-green-300'
+                      : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
+                  }
+                >
+                  <span className="text-base leading-none">✓</span>
+                  Χωρίς αλλεργιογόνα
+                  {filterAllergenFree && <X className="h-3 w-3" />}
+                </button>
+
+                {allAllergens.filter(a => !a.startsWith('no_')).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => { toggleAllergen(a); setFilterAllergenFree(false) }}
+                    className={
+                      'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
+                      (activeAllergens.includes(a)
+                        ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                        : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
+                    }
+                  >
+                    {a}
+                    {activeAllergens.includes(a) && <X className="h-3 w-3" />}
+                  </button>
+                ))}
+                {(activeAllergens.length > 0 || activeCategory || filterAllergenFree || filterUncategorized) && (
+                  <button
+                    type="button"
+                    onClick={() => { setActiveAllergens([]); setActiveCategory(null); setFilterAllergenFree(false); setFilterUncategorized(false) }}
+                    className="text-xs text-white/50 hover:text-white underline"
+                  >
+                    {t('recipes.clearFilters')}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
       {loading ? (
         <GlassCard>
           <p className="text-white/60">{t('recipes.loadingRecipes')}</p>
-        </GlassCard>
-      ) : filtered.length === 0 && recipes.length > 0 ? (
-        <GlassCard>
-          <p className="text-white/60">{t('recipes.noMatch')}</p>
         </GlassCard>
       ) : recipes.length === 0 ? (
         <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
@@ -504,8 +532,97 @@ export default function Recipes() {
             {t('recipes.empty.cta')}
           </Button>
         </GlassCard>
+      ) : showCategoryBrowser ? (
+        /* ── Category Browser ── */
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {/* All Recipes tile */}
+          <button
+            type="button"
+            onClick={() => { setShowAll(true); setFilterUncategorized(false); setActiveCategory(null) }}
+            className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 py-6 px-3 text-center"
+          >
+            <span className="text-3xl leading-none">🍽️</span>
+            <p className="font-semibold text-sm text-white leading-tight">Όλες οι Συνταγές</p>
+            <p className="text-white/40 text-xs">{recipes.length}</p>
+          </button>
+
+          {/* Per-category tiles */}
+          {RECIPE_CATEGORIES.filter((cat) => (categoryCounts.get(cat) ?? 0) > 0).map((cat) => {
+            const meta = CATEGORY_META[cat]
+            const count = categoryCounts.get(cat) ?? 0
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => { setActiveCategory(cat); setShowAll(false); setFilterUncategorized(false) }}
+                className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-brand-orange/10 hover:border-brand-orange/30 transition-all active:scale-95 py-6 px-3 text-center"
+              >
+                <span className="text-3xl leading-none">{meta.emoji}</span>
+                <p className="font-semibold text-sm text-white leading-tight">{meta.label}</p>
+                <p className="text-white/40 text-xs">{count}</p>
+              </button>
+            )
+          })}
+
+          {/* Uncategorized tile */}
+          {(categoryCounts.get('_none') ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => { setActiveCategory(null); setFilterUncategorized(true); setShowAll(false) }}
+              className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 py-6 px-3 text-center"
+            >
+              <span className="text-3xl leading-none">📋</span>
+              <p className="font-semibold text-sm text-white leading-tight">Χωρίς κατηγορία</p>
+              <p className="text-white/40 text-xs">{categoryCounts.get('_none')}</p>
+            </button>
+          )}
+        </div>
       ) : (
         <>
+          {/* Back to browser breadcrumb */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => { setActiveCategory(null); setShowAll(false); setFilterUncategorized(false); setQuery(''); setActiveAllergens([]); setFilterAllergenFree(false); setGroupedView(false) }}
+              className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Κατηγορίες
+            </button>
+            {activeCategory && (
+              <>
+                <span className="text-white/20">/</span>
+                <span className="text-sm font-medium text-white">
+                  {CATEGORY_META[activeCategory]?.emoji} {CATEGORY_META[activeCategory]?.label}
+                </span>
+              </>
+            )}
+            {filterUncategorized && (
+              <>
+                <span className="text-white/20">/</span>
+                <span className="text-sm font-medium text-white">📋 Χωρίς κατηγορία</span>
+              </>
+            )}
+            {showAll && !activeCategory && !filterUncategorized && (
+              <>
+                <span className="text-white/20">/</span>
+                <span className="text-sm font-medium text-white">Όλες οι Συνταγές</span>
+              </>
+            )}
+            {query.trim() && (
+              <>
+                <span className="text-white/20">/</span>
+                <span className="text-sm font-medium text-white">"{query.trim()}"</span>
+              </>
+            )}
+          </div>
+
+          {filtered.length === 0 && (
+            <GlassCard>
+              <p className="text-white/60">{t('recipes.noMatch')}</p>
+            </GlassCard>
+          )}
+
           {groupedView && groupedRecipes ? (
             <div className="space-y-8">
               {groupedRecipes.map((group) => (
