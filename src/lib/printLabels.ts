@@ -406,6 +406,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       -webkit-line-clamp: ${sm ? 2 : 3};
       -webkit-box-orient: vertical; overflow: hidden;
       font-size: ${Math.round(d.descPt * (settings.descSizeScale ?? 1))}pt;
+      max-height: ${Math.round(d.descPt * (settings.descSizeScale ?? 1) * 1.4 * (sm ? 2 : 3))}pt;
       ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .tags { font-size: ${sm ? '6pt' : '8pt'}; color: #555; font-family: Arial, sans-serif; margin-top: auto; ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''} }
@@ -537,8 +538,8 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
   <style>
     ${labelCss(settings, d)}
     @page { size: A4; margin: 10mm }
-    .grid { display: grid; grid-template-columns: repeat(${settings.labelsPerRow ?? 3}, 1fr); gap: 5mm }
-    .label { width: 100% !important; height: auto !important; min-height: ${d.h}mm; }
+    .grid { display: grid; grid-template-columns: repeat(${settings.labelsPerRow ?? 3}, 1fr); gap: 5mm; align-items: start; }
+    .label { width: 100% !important; height: ${d.h}mm !important; overflow: hidden; }
   </style>
 </head>
 <body>
