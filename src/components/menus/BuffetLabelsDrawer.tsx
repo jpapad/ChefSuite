@@ -246,7 +246,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
   // Stores the original payload URLs so the auto-fix can re-render them at higher resolution
   const urlMapRef = useRef<Map<string, string>>(new Map())
   // Extra-language translations (RO/SL/UK/TR/SR) — loaded from DB or freshly translated
-  const [extraNames, setExtraNames] = useState<Map<string, TranslatedItemExtra>>(new Map())
+  const [_extraNames, setExtraNames] = useState<Map<string, TranslatedItemExtra>>(new Map())
   const [translatingExtra, setTranslatingExtra] = useState(false)
   const [extraTranslateDone, setExtraTranslateDone] = useState(false)
   const [extraTranslateError, setExtraTranslateError] = useState<string | null>(null)
