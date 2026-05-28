@@ -321,22 +321,8 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     Promise.all(
       allItems.map(async ({ item }) => {
         try {
-          // Names only (no descriptions) — keeps URL short enough for QR level Q
-          const crop = (s: string | null | undefined) => s ? s.slice(0, 40) : undefined
-          const extra = extraNames.get(item.id)
-          const recipe = item.recipe_id ? recipeMap.get(item.recipe_id) : undefined
-          const payload: Record<string, string> = { n: item.name.slice(0, 40) }
-          const nb  = crop(extra?.name_bg ?? item.name_bg ?? recipe?.name_bg); if (nb)  payload.nb  = nb
-          const nuk = crop(extra?.name_uk ?? item.name_uk);                     if (nuk) payload.nuk = nuk
-          const nro = crop(extra?.name_ro ?? item.name_ro);                     if (nro) payload.nro = nro
-          const nsr = crop(extra?.name_sr ?? item.name_sr);                     if (nsr) payload.nsr = nsr
-          const nsk = crop(extra?.name_sk ?? item.name_sk);                     if (nsk) payload.nsk = nsk
-          const npl = crop(extra?.name_pl ?? item.name_pl);                     if (npl) payload.npl = npl
-          const ncs = crop(extra?.name_cs ?? item.name_cs);                     if (ncs) payload.ncs = ncs
-          const jsonBytes = new TextEncoder().encode(JSON.stringify(payload))
-          let binary = ''
-          jsonBytes.forEach((b) => { binary += String.fromCharCode(b) })
-          const url = `${origin}/dish?d=${encodeURIComponent(btoa(binary))}`
+          // Use item ID — translations are fetched live from DB when scanned
+          const url = `${origin}/dish?id=${item.id}`
           const dataUrl = await QRCode.toDataURL(url, {
             width: 600,
             margin: 4,
@@ -356,7 +342,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
     }).finally(() => {
       setGeneratingQr(false)
     })
-  }, [settings.showQr, allItems, extraNames, recipeMap])
+  }, [settings.showQr, allItems, recipeMap])
 
   // Validate every generated QR; auto-fix failures with same URL at higher resolution
   useEffect(() => {

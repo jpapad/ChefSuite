@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+
+// ── Payload shape ─────────────────────────────────────────────────────────────
 
 interface DishPayload {
   n: string     // primary name (Greek fallback)
@@ -10,7 +13,7 @@ interface DishPayload {
   nsk?: string  // Slovak
   npl?: string  // Polish
   ncs?: string  // Czech
-  de?: string   // English description (fallback)
+  de?: string   // description (fallback)
   db?: string   // Bulgarian description
   duk?: string  // Ukrainian description
   dro?: string  // Romanian description
@@ -33,6 +36,8 @@ const LANG_META: Record<Lang, { flag: string; label: string; native: string }> =
   cs:  { flag: '🇨🇿', label: 'Czech',      native: 'Čeština'    },
 }
 
+// ── Legacy: decode names from URL (?d=BASE64) ─────────────────────────────────
+
 function decode(raw: string): DishPayload | null {
   try {
     const binary = atob(raw)
@@ -48,15 +53,37 @@ function decode(raw: string): DishPayload | null {
   }
 }
 
-export default function DishInfo() {
-  const [params] = useSearchParams()
-  const payload = useMemo(() => {
-    const d = params.get('d')
-    return d ? decode(d) : null
-  }, [params])
+// ── Live: map DB row → DishPayload ────────────────────────────────────────────
 
+type DishRow = Record<string, string | null | Record<string, string | null>>
+
+function rowToPayload(row: DishRow): DishPayload {
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined)
+  const extra = (row.descriptions_extra ?? {}) as Record<string, string | null>
+  return {
+    n:   str(row.name_el) ?? str(row.name) ?? '—',
+    nb:  str(row.name_bg),
+    nuk: str(row.name_uk),
+    nro: str(row.name_ro),
+    nsr: str(row.name_sr),
+    nsk: str(row.name_sk),
+    npl: str(row.name_pl),
+    ncs: str(row.name_cs),
+    de:  str(row.description_el) ?? str(row.description),
+    db:  str(row.description_bg) ?? str(extra?.bg),
+    duk: str(extra?.uk),
+    dro: str(extra?.ro),
+    dsr: str(extra?.sr),
+    dsk: str(extra?.sk),
+    dpl: str(extra?.pl),
+    dcs: str(extra?.cs),
+  }
+}
+
+// ── Shared display component ──────────────────────────────────────────────────
+
+function DishCard({ payload }: { payload: DishPayload }) {
   const available = useMemo<Lang[]>(() => {
-    if (!payload) return []
     const langs: Lang[] = []
     if (payload.nb)  langs.push('bg')
     if (payload.nuk) langs.push('uk')
@@ -68,9 +95,7 @@ export default function DishInfo() {
     return langs
   }, [payload])
 
-  // Default to first available worker language, fall back to Greek
   const defaultLang = useMemo<Lang>(() => {
-    if (!payload) return 'el'
     if (payload.nb)  return 'bg'
     if (payload.nuk) return 'uk'
     if (payload.nro) return 'ro'
@@ -82,21 +107,7 @@ export default function DishInfo() {
   }, [payload])
 
   const [lang, setLang] = useState<Lang>(defaultLang)
-
-  if (!payload) {
-    return (
-      <div
-        style={{ '--app-white': '255 255 255' } as React.CSSProperties}
-        className="min-h-screen bg-[#0f1117] flex items-center justify-center p-6"
-      >
-        <div className="text-center space-y-3">
-          <p className="text-4xl">🍽️</p>
-          <p className="text-white text-base font-medium">Μη έγκυρο QR code</p>
-          <p className="text-white/50 text-sm">Invalid or expired QR code.</p>
-        </div>
-      </div>
-    )
-  }
+  const currentLang = available.includes(lang) ? lang : (available[0] ?? 'el')
 
   const name =
     lang === 'bg' ? (payload.nb  ?? payload.n) :
@@ -118,66 +129,124 @@ export default function DishInfo() {
     lang === 'cs' ? (payload.dcs ?? payload.de ?? null) :
     (payload.de ?? null)
 
-  const currentLang = available.includes(lang) ? lang : (available[0] ?? 'el')
-
   return (
+    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
+      {available.length > 0 && (
+        <div className="overflow-hidden rounded-t-2xl border-b border-white/10">
+          <div className="flex overflow-x-scroll scrollbar-none">
+            {/* Always show Greek first */}
+            <button
+              type="button"
+              onClick={() => setLang('el')}
+              className={[
+                'flex-shrink-0 flex flex-col items-center gap-0.5 py-3 px-4 text-xs font-medium transition',
+                currentLang === 'el'
+                  ? 'bg-emerald-500/15 text-emerald-300 border-b-2 border-emerald-400'
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+              ].join(' ')}
+            >
+              <span className="text-lg leading-none">{LANG_META.el.flag}</span>
+              <span>{LANG_META.el.native}</span>
+            </button>
+            {available.map((l) => {
+              const meta = LANG_META[l]
+              return (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLang(l)}
+                  className={[
+                    'flex-shrink-0 flex flex-col items-center gap-0.5 py-3 px-4 text-xs font-medium transition',
+                    currentLang === l
+                      ? 'bg-emerald-500/15 text-emerald-300 border-b-2 border-emerald-400'
+                      : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                  ].join(' ')}
+                >
+                  <span className="text-lg leading-none">{meta.flag}</span>
+                  <span>{meta.native}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      <div className="p-6 space-y-4">
+        <h1 className="text-2xl font-bold text-white leading-tight">{name}</h1>
+        {desc ? (
+          <p className="text-white/70 text-base leading-relaxed">{desc}</p>
+        ) : (
+          <p className="text-white/25 text-sm italic">No description available.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function DishInfo() {
+  const [params] = useSearchParams()
+  const id = params.get('id')
+  const d  = params.get('d')
+
+  // Live mode (?id=UUID) — fetch from database
+  const [livePayload, setLivePayload] = useState<DishPayload | null>(null)
+  const [loading,     setLoading]     = useState(false)
+  const [notFound,    setNotFound]    = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    setLoading(true)
+    supabase
+      .rpc('get_dish_public', { item_id: id })
+      .then(({ data, error }) => {
+        setLoading(false)
+        const row = Array.isArray(data) ? data[0] : data
+        if (error || !row) { setNotFound(true); return }
+        setLivePayload(rowToPayload(row as DishRow))
+      })
+  }, [id])
+
+  // Legacy mode (?d=BASE64) — decode from URL
+  const legacyPayload = useMemo(() => d ? decode(d) : null, [d])
+
+  const payload = id ? livePayload : legacyPayload
+
+  const shell = (children: React.ReactNode) => (
     <div
       style={{ '--app-white': '255 255 255' } as React.CSSProperties}
       className="min-h-screen bg-[#0f1117] flex flex-col items-center px-4 py-10"
     >
-      {/* Header */}
       <div className="mb-8 text-center">
         <div className="inline-flex items-center gap-2 text-white/30 text-xs tracking-widest uppercase">
-          <span>🍽️</span>
-          <span>ChefSuite</span>
+          <span>🍽️</span><span>ChefSuite</span>
         </div>
       </div>
-
-      {/* Card */}
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
-
-        {/* Language picker — separate overflow-hidden wrapper so scroll isn't blocked */}
-        {available.length > 1 && (
-          <div className="overflow-hidden rounded-t-2xl border-b border-white/10">
-            <div className="flex overflow-x-scroll scrollbar-none">
-              {available.map((l) => {
-                const meta = LANG_META[l]
-                return (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => setLang(l)}
-                    className={[
-                      'flex-shrink-0 flex flex-col items-center gap-0.5 py-3 px-4 text-xs font-medium transition',
-                      currentLang === l
-                        ? 'bg-emerald-500/15 text-emerald-300 border-b-2 border-emerald-400'
-                        : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-                    ].join(' ')}
-                  >
-                    <span className="text-lg leading-none">{meta.flag}</span>
-                    <span>{meta.native}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          <h1 className="text-2xl font-bold text-white leading-tight">{name}</h1>
-          {desc ? (
-            <p className="text-white/70 text-base leading-relaxed">{desc}</p>
-          ) : (
-            <p className="text-white/25 text-sm italic">No description available.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <p className="mt-8 text-white/15 text-xs">
-        Powered by ChefSuite
-      </p>
+      {children}
+      <p className="mt-8 text-white/15 text-xs">Powered by ChefSuite</p>
     </div>
   )
+
+  if (loading) {
+    return shell(
+      <div className="flex flex-col items-center gap-3 text-white/40">
+        <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+        <p className="text-sm">Φόρτωση…</p>
+      </div>
+    )
+  }
+
+  if (notFound || (!payload && !loading)) {
+    return shell(
+      <div className="text-center space-y-3">
+        <p className="text-4xl">🍽️</p>
+        <p className="text-white text-base font-medium">Μη έγκυρο QR code</p>
+        <p className="text-white/50 text-sm">Invalid or expired QR code.</p>
+      </div>
+    )
+  }
+
+  if (!payload) return null
+
+  return shell(<DishCard payload={payload} />)
 }
