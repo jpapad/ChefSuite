@@ -361,9 +361,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
     .logo { width: ${settings.logoMaxW}mm; max-height: ${settings.logoMaxH}mm; object-fit: contain; object-position: left center; }
     .logo-placeholder { width: 1px }
     .allergens {
-      flex: 0 0 auto;
       display: flex; flex-wrap: wrap; gap: 1.5mm;
-      max-height: ${sm ? '8mm' : '11mm'}; overflow: hidden;
       ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .allergen {
@@ -375,18 +373,16 @@ function labelCss(settings: LabelSettings, d: Dims): string {
     }
     .label-name {
       font-weight: bold; line-height: 1.15; color: #111;
-      flex: 0 0 auto; display: flex; align-items: center;
+      flex: 1; display: flex; align-items: center;
       justify-content: ${settings.nameAlign === 'center' ? 'center' : settings.nameAlign === 'right' ? 'flex-end' : 'space-between'}; gap: 3mm;
       text-align: ${settings.nameAlign};
       font-size: ${d.namePt}pt;
       word-break: break-word; overflow-wrap: break-word;
-      max-height: ${Math.round(d.namePt * 1.2 * 3.2)}pt; overflow: hidden;
       ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .label-name-both {
-      flex: 0 0 auto; display: flex; align-items: flex-start;
+      flex: 1; display: flex; align-items: flex-start;
       justify-content: space-between; gap: 3mm;
-      max-height: ${Math.round(d.namePt * 1.2 * 3.2)}pt; overflow: hidden;
       ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
     .label-name-lines {
@@ -405,16 +401,14 @@ function labelCss(settings: LabelSettings, d: Dims): string {
     }
     .price { font-size: 0.7em; color: #555; white-space: nowrap; }
     .label-desc {
-      flex: 1 1 auto; min-height: 0;
       color: #444; font-style: italic; line-height: 1.4;
       display: -webkit-box;
-      -webkit-line-clamp: ${sm ? 2 : 4};
+      -webkit-line-clamp: ${sm ? 2 : 3};
       -webkit-box-orient: vertical; overflow: hidden;
       font-size: ${Math.round(d.descPt * (settings.descSizeScale ?? 1))}pt;
-      max-height: ${Math.round(d.descPt * (settings.descSizeScale ?? 1) * 1.4 * (sm ? 2 : 4))}pt;
       ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''}
     }
-    .tags { flex: 0 0 auto; font-size: ${sm ? '6pt' : '8pt'}; color: #555; font-family: Arial, sans-serif; ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''} }
+    .tags { font-size: ${sm ? '6pt' : '8pt'}; color: #555; font-family: Arial, sans-serif; margin-top: auto; ${settings.showQr ? `padding-right: ${(settings.qrSizeMm ?? 35) + 4}mm;` : ''} }
   `
 }
 
@@ -543,8 +537,8 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
   <style>
     ${labelCss(settings, d)}
     @page { size: A4; margin: 10mm }
-    .grid { display: grid; grid-template-columns: repeat(${settings.labelsPerRow ?? 3}, 1fr); gap: 5mm; align-items: start; }
-    .label { width: 100% !important; height: ${d.h}mm !important; overflow: hidden; }
+    .grid { display: grid; grid-template-columns: repeat(${settings.labelsPerRow ?? 3}, 1fr); gap: 5mm }
+    .label { width: 100% !important; height: auto !important; min-height: ${d.h}mm; }
   </style>
 </head>
 <body>
