@@ -1,5 +1,5 @@
 import { useState, type FormEvent, useEffect } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 interface Ember {
@@ -23,6 +23,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
   const [introPhase, setIntroPhase] = useState<'showing' | 'fading' | 'done'>('showing')
   const [embers, setEmbers]     = useState<Ember[]>([])
+  const [logoFailed, setLogoFailed] = useState(false)
 
   // Generate ember particles once
   useEffect(() => {
@@ -123,18 +124,28 @@ export default function Login() {
           <div className="text-center select-none">
             {/* Logo mark */}
             <div style={{ animation: 'logoReveal 1.6s cubic-bezier(0.34,1.56,0.64,1) forwards' }}>
-              <div
-                className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-[2rem] text-white font-black text-4xl tracking-tight"
-                style={{
-                  background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)',
-                  boxShadow: '0 16px 56px rgba(197,160,89,0.45), 0 4px 16px rgba(0,0,0,0.08)',
-                }}
-              >
-                CS
-              </div>
-              <h1 className="text-4xl font-black tracking-tight text-neutral-800">
-                Chef<span style={{ color: '#C5A059' }}>Suite</span>
-              </h1>
+              {logoFailed ? (
+                <div
+                  className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-[2rem] text-white font-black text-4xl tracking-tight"
+                  style={{
+                    background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)',
+                    boxShadow: '0 16px 56px rgba(197,160,89,0.45), 0 4px 16px rgba(0,0,0,0.08)',
+                  }}
+                >
+                  CS
+                </div>
+              ) : (
+                <img
+                  src="/logo.png"
+                  alt="ChefSuite"
+                  onError={() => setLogoFailed(true)}
+                  className="mx-auto mb-2 h-44 w-auto"
+                  style={{
+                    mixBlendMode: 'multiply',
+                    filter: 'drop-shadow(0 12px 32px rgba(197,160,89,0.25)) drop-shadow(0 4px 12px rgba(0,0,0,0.08))',
+                  }}
+                />
+              )}
             </div>
 
             {/* Tagline */}
@@ -172,16 +183,29 @@ export default function Login() {
         }}
       >
         {/* Logo above card */}
-        <div className="mb-10 flex flex-col items-center">
-          <div
-            className="flex h-20 w-20 items-center justify-center rounded-[1.5rem] text-white font-black text-2xl tracking-tight"
-            style={{
-              background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)',
-              boxShadow: '0 8px 32px rgba(197,160,89,0.35)',
-            }}
-          >
-            CS
-          </div>
+        <div className="mb-8 flex flex-col items-center">
+          {logoFailed ? (
+            <div
+              className="flex h-20 w-20 items-center justify-center rounded-[1.5rem] text-white font-black text-2xl tracking-tight"
+              style={{
+                background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)',
+                boxShadow: '0 8px 32px rgba(197,160,89,0.35)',
+              }}
+            >
+              CS
+            </div>
+          ) : (
+            <img
+              src="/logo.png"
+              alt="ChefSuite"
+              onError={() => setLogoFailed(true)}
+              className="h-28 w-auto"
+              style={{
+                mixBlendMode: 'multiply',
+                filter: 'drop-shadow(0 8px 24px rgba(197,160,89,0.2)) drop-shadow(0 2px 8px rgba(0,0,0,0.06))',
+              }}
+            />
+          )}
         </div>
 
         {/* Glass card */}
@@ -195,17 +219,9 @@ export default function Login() {
             boxShadow: '0 20px 60px rgba(197,160,89,0.15), 0 4px 16px rgba(0,0,0,0.04)',
           }}
         >
-          <div className="flex items-center gap-3 mb-7">
-            <div
-              className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-black text-base"
-              style={{ background: 'linear-gradient(135deg, #d8b08c, #C5A059)' }}
-            >
-              CS
-            </div>
-            <div>
-              <div className="text-base font-bold text-neutral-800 leading-tight">Sign in</div>
-              <div className="text-xs text-neutral-500">to your ChefSuite kitchen</div>
-            </div>
+          <div className="mb-7">
+            <div className="text-xl font-bold text-neutral-800 leading-tight">Σύνδεση</div>
+            <div className="text-sm text-neutral-500 mt-0.5">Καλώς ήρθες στην κουζίνα σου</div>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
@@ -260,10 +276,35 @@ export default function Login() {
                 </svg>
               )}
             </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 pt-1">
+              <span className="h-px flex-1 bg-neutral-200" />
+              <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">ή</span>
+              <span className="h-px flex-1 bg-neutral-200" />
+            </div>
+
+            {/* Team links */}
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to="/signup"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white/50 hover:bg-white hover:border-neutral-400 transition py-2.5 text-xs font-semibold text-neutral-700"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                Δημιουργία ομάδας
+              </Link>
+              <Link
+                to="/onboarding"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white/50 hover:bg-white hover:border-neutral-400 transition py-2.5 text-xs font-semibold text-neutral-700"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Σύνδεση σε ομάδα
+              </Link>
+            </div>
           </form>
         </div>
 
-        <p className="mt-6 text-xs text-neutral-500 text-center">
+        <p className="mt-5 text-xs text-neutral-500 text-center">
           Protected kitchen access · ChefSuite
         </p>
       </div>
