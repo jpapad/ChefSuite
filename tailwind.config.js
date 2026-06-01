@@ -5,7 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
       },
       colors: {
         // "white" is theme-aware — used for all text-white/X, bg-white/X, border-white/X
@@ -13,8 +14,15 @@ export default {
         // Literal white for icons/text on colored backgrounds
         'white-fixed': '#ffffff',
         'brand-orange': '#C4956A',
+        'copper': '#C5A059',
+        'copper-soft': '#d8b08c',
         'chef-dark': '#0e0905',
         'glass-border': 'rgba(255, 255, 255, 0.55)',
+        neutral: {
+          50: '#fafaf9', 100: '#f5f5f4', 200: '#e7e5e4',
+          300: '#d6d3d1', 400: '#a8a29e', 500: '#78716c',
+          600: '#57534e', 700: '#44403c', 800: '#292524', 900: '#1c1917',
+        },
       },
       boxShadow: {
         glass:         '0 2px 16px rgba(0,0,0,0.06)',

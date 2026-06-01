@@ -52,6 +52,68 @@ body {
   background-attachment: fixed;
 }
 
+/* ── Login page animations ── */
+@keyframes auroraMove {
+  0%   { transform: translate(-10%, -8%) scale(1); }
+  50%  { transform: translate(12%, 8%) scale(1.2); }
+  100% { transform: translate(-10%, -8%) scale(1); }
+}
+@keyframes logoReveal {
+  0%   { opacity: 0; transform: scale(0.8) translateY(20px); filter: blur(10px); }
+  60%  { opacity: 1; transform: scale(1.05) translateY(0);   filter: blur(0); }
+  80%  { transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1);                    filter: blur(0); }
+}
+@keyframes taglineReveal {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes introFadeOut {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); pointer-events: none; }
+}
+@keyframes loginFadeIn {
+  0%   { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes emberRise {
+  0%   { transform: translateY(0)      translateX(0);          opacity: 0; }
+  10%  { opacity: var(--ember-opacity, 0.3); }
+  80%  { opacity: var(--ember-opacity, 0.3); }
+  100% { transform: translateY(-100vh) translateX(var(--ember-dx, 0px)); opacity: 0; }
+}
+.copper-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(197,160,89,0.3);
+}
+.copper-btn:hover:not(:disabled) {
+  background-color: #d8b08c !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(197,160,89,0.4);
+}
+.copper-btn:active:not(:disabled) { transform: translateY(0); }
+.copper-btn::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%; width: 42%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.45), transparent);
+  transform: translateX(-160%) skewX(-18deg);
+  animation: copperShimmer 4s ease-in-out infinite;
+}
+@keyframes copperShimmer {
+  0%      { transform: translateX(-160%) skewX(-18deg); }
+  60%,100%{ transform: translateX(340%) skewX(-18deg); }
+}
+.login-input:focus {
+  outline: none;
+  border-color: rgba(197,160,89,0.6) !important;
+  background: rgba(255,255,255,0.9) !important;
+  box-shadow: 0 0 0 3px rgba(197,160,89,0.15);
+}
+
 /* ── Glass utilities (defined here so they hot-reload without server restart) ── */
 .glass {
   background-color: rgba(255, 255, 255, 0.60);
