@@ -136,7 +136,7 @@ export default function Login() {
                 </div>
               ) : (
                 <img
-                  src="/logo.png"
+                  src="/Chefsuite.png"
                   alt="ChefSuite"
                   onError={() => setLogoFailed(true)}
                   className="mx-auto mb-2 h-44 w-auto"
@@ -196,7 +196,7 @@ export default function Login() {
             </div>
           ) : (
             <img
-              src="/logo.png"
+              src="/Chefsuite.png"
               alt="ChefSuite"
               onError={() => setLogoFailed(true)}
               className="h-28 w-auto"
