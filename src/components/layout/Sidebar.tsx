@@ -56,7 +56,9 @@ export function Sidebar() {
   const { profile, user, myTeams, switchTeam } = useAuth()
   const { t } = useTranslation()
   const { can } = usePermissions()
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
   const [flyoutOpen, setFlyoutOpen] = useState(false)
+  const [flyoutTop, setFlyoutTop] = useState(0)
   const [search, setSearch] = useState('')
   const sidebarRef = useRef<HTMLElement>(null)
   const flyoutRef  = useRef<HTMLDivElement>(null)
@@ -159,6 +161,19 @@ export function Sidebar() {
   const query = search.trim().toLowerCase()
   const filteredItems = query ? allItems.filter((item) => item.label.toLowerCase().includes(query)) : null
 
+  function openGroup(groupId: string, buttonEl: HTMLButtonElement) {
+    if (flyoutOpen && activeGroupId === groupId) {
+      setFlyoutOpen(false)
+      setActiveGroupId(null)
+      return
+    }
+    const rect = buttonEl.getBoundingClientRect()
+    setFlyoutTop(rect.top)
+    setActiveGroupId(groupId)
+    setFlyoutOpen(true)
+    setSearch('')
+  }
+
   function toggleLang() {
     const cycle = ['en', 'el', 'bg']
     const next = cycle[(cycle.indexOf(i18n.language) + 1) % cycle.length]
@@ -237,15 +252,16 @@ export function Sidebar() {
           if (visibleItems.length === 0) return null
           const meta = GROUP_META[group.id]
           const GroupIcon = meta?.icon ?? LayoutDashboard
+          const isActive = flyoutOpen && activeGroupId === group.id
           return (
             <button
               key={group.id}
               type="button"
               title={group.label}
-              onClick={() => setFlyoutOpen((v) => !v)}
+              onClick={(e) => openGroup(group.id, e.currentTarget)}
               className={cn(
                 iconBtn,
-                flyoutOpen && 'bg-white/5 text-white/60',
+                isActive && 'bg-white/10 text-white',
               )}
             >
               <GroupIcon className={cn('h-4 w-4', meta?.color)} />
@@ -278,52 +294,63 @@ export function Sidebar() {
         <Languages className="h-4 w-4" />
       </button>
 
-      {/* ── Flyout Panel ── */}
-      {flyoutOpen && (
-        <div
-          ref={flyoutRef}
-          className="absolute left-full top-0 ml-3 w-56 rounded-3xl overflow-y-auto scrollbar-none"
-          style={{
-            maxHeight: 'calc(100vh - 2rem)',
-            background: 'rgba(8, 16, 26, 0.94)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            backdropFilter: 'blur(28px)',
-            boxShadow: '0 16px 48px rgba(0,0,0,0.65)',
-            zIndex: 50,
-          }}
-        >
-          <div className="p-3 flex flex-col gap-0.5">
-            {/* Search */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
-              <input
-                ref={searchRef}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setFlyoutOpen(false) } }}
-                placeholder={t('nav.search')}
-                className="w-full rounded-xl pl-8 pr-8 py-2 text-sm text-white placeholder:text-white/25 bg-white/5 border border-white/8 outline-none focus:border-[rgba(197,160,89,0.4)] transition"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
+      {/* ── Flyout Panel (fixed, above everything) ── */}
+      {flyoutOpen && activeGroupId && (() => {
+        const group = groups.find((g) => g.id === activeGroupId)
+        if (!group) return null
+        const visibleItems = group.items.filter((item) => can(item.module))
+        const meta = GROUP_META[group.id]
+        const GroupIcon = meta?.icon ?? LayoutDashboard
 
-            {/* Results or grouped nav */}
-            {filteredItems ? (
-              filteredItems.length > 0 ? (
-                filteredItems.map(({ to, label, icon: Icon, end }) => (
+        const filteredGroupItems = search.trim()
+          ? visibleItems.filter((i) => i.label.toLowerCase().includes(search.trim().toLowerCase()))
+          : visibleItems
+
+        return (
+          <div
+            ref={flyoutRef}
+            className="fixed w-56 rounded-3xl overflow-y-auto scrollbar-none"
+            style={{
+              left: '84px',
+              top: `${flyoutTop}px`,
+              maxHeight: `calc(100vh - ${flyoutTop}px - 16px)`,
+              background: 'rgba(8, 16, 26, 0.97)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(28px)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.70)',
+              zIndex: 9999,
+            }}
+          >
+            <div className="p-3 flex flex-col gap-0.5">
+              {/* Group header */}
+              <div className="flex items-center gap-2 px-2 pb-2 mb-1 border-b border-white/8">
+                <GroupIcon className={cn('h-4 w-4 shrink-0', meta?.color)} />
+                <span className="text-xs font-bold uppercase tracking-widest text-white/60">
+                  {group.label}
+                </span>
+              </div>
+
+              {/* Search */}
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
+                <input
+                  ref={searchRef}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setFlyoutOpen(false); setActiveGroupId(null) } }}
+                  placeholder="Αναζήτηση…"
+                  className="w-full rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder:text-white/25 bg-white/5 border border-white/8 outline-none focus:border-[rgba(197,160,89,0.4)] transition"
+                />
+              </div>
+
+              {/* Items */}
+              {filteredGroupItems.length > 0 ? (
+                filteredGroupItems.map(({ to, label, icon: Icon, end }) => (
                   <NavLink
                     key={to}
                     to={to}
                     end={end}
-                    onClick={() => { setFlyoutOpen(false); setSearch('') }}
+                    onClick={() => { setFlyoutOpen(false); setActiveGroupId(null); setSearch('') }}
                     className={flyoutNavLink}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
@@ -331,70 +358,12 @@ export function Sidebar() {
                   </NavLink>
                 ))
               ) : (
-                <p className="text-center text-xs text-white/25 py-4">{t('nav.noResults')}</p>
-              )
-            ) : (
-              groups.map((group) => {
-                const visibleItems = group.items.filter((item) => can(item.module))
-                if (visibleItems.length === 0) return null
-                const meta = GROUP_META[group.id]
-                const GroupIcon = meta?.icon ?? LayoutDashboard
-                return (
-                  <div key={group.id} className="mb-2">
-                    <div className="flex items-center gap-2 px-3 py-1.5">
-                      <GroupIcon className={cn('h-3 w-3 shrink-0', meta?.color)} />
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">
-                        {group.label}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      {visibleItems.map(({ to, label, icon: Icon, end }) => (
-                        <NavLink
-                          key={to}
-                          to={to}
-                          end={end}
-                          onClick={() => { setFlyoutOpen(false); setSearch('') }}
-                          className={flyoutNavLink}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{label}</span>
-                        </NavLink>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-
-            {/* Team switcher */}
-            {myTeams.length > 1 && (
-              <div className="mt-2 pt-2 border-t border-white/8">
-                <div className="flex items-center gap-2 px-3 py-1.5">
-                  <Building2 className="h-3 w-3 text-white/25 shrink-0" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">Restaurant</span>
-                </div>
-                {myTeams.map((team) => {
-                  const isActive = team.id === profile?.team_id
-                  return (
-                    <button
-                      key={team.id}
-                      type="button"
-                      onClick={() => { void switchTeam(team.id); setFlyoutOpen(false) }}
-                      className={cn(
-                        'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-xl',
-                        isActive ? 'text-[#C5A059]' : 'text-white/55 hover:text-white hover:bg-white/5',
-                      )}
-                    >
-                      <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', isActive ? 'bg-[#C5A059]' : 'bg-white/20')} />
-                      <span className="truncate">{team.name}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+                <p className="text-center text-xs text-white/25 py-3">{t('nav.noResults')}</p>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </aside>
   )
 }

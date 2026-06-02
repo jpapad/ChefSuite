@@ -50,9 +50,14 @@ export function Drawer({ open, onClose, title, children, footer }: DrawerProps) 
         aria-label={typeof title === 'string' ? title : undefined}
         className={cn(
           'absolute right-0 top-0 h-full w-full max-w-lg',
-          'bg-[#f5f0e8]/95 backdrop-blur-xl border-l border-white/60 flex flex-col transition-transform duration-300 ease-out',
+          'flex flex-col transition-transform duration-300 ease-out border-l',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
+        style={{
+          background: 'rgba(10, 18, 30, 0.96)',
+          borderColor: 'rgba(255,255,255,0.09)',
+          backdropFilter: 'blur(28px)',
+        }}
       >
         <header className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
           <h2 className="text-xl font-semibold">{title}</h2>
