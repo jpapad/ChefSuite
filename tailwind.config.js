@@ -17,7 +17,7 @@ export default {
         'copper': '#C5A059',
         'copper-soft': '#d8b08c',
         'chef-dark': '#0e0905',
-        'glass-border': 'rgba(255, 255, 255, 0.55)',
+        'glass-border': 'rgba(255, 255, 255, 0.08)',
         neutral: {
           50: '#fafaf9', 100: '#f5f5f4', 200: '#e7e5e4',
           300: '#d6d3d1', 400: '#a8a29e', 500: '#78716c',

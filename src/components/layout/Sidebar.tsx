@@ -1,44 +1,12 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  Home,
-  ChefHat,
-  Users,
-  Flame,
-  ClipboardList,
-  TrendingUp,
-  Thermometer,
-  MessageSquare,
-  Monitor,
-  Radio,
-  Languages,
-  UtensilsCrossed,
-  Trash2,
-  CalendarDays,
-  ClipboardCheck,
-  TimerIcon,
-  CalendarCheck,
-  Star,
-  BarChart3,
-  Award,
-  BookOpen,
-  Heart,
-  Bot,
-  ChevronDown,
-  Search,
-  X,
-  Scale,
-  BookMarked,
-  Layers,
-  HelpCircle,
-  FlaskConical,
-  CreditCard,
-  Building2,
-  Tag,
-  Calculator,
-  MapPin,
-  Activity,
-  BookLock,
+  LayoutDashboard, Home, ChefHat, Users, ClipboardList,
+  TrendingUp, MessageSquare, Monitor, Radio, Languages,
+  UtensilsCrossed, Trash2, CalendarDays, ClipboardCheck,
+  TimerIcon, CalendarCheck, Star, BarChart3, Award,
+  BookOpen, Heart, Bot, Search, X, Scale, BookMarked,
+  Layers, HelpCircle, FlaskConical, CreditCard, Building2,
+  Tag, Calculator, MapPin, Activity, BookLock, Thermometer,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -63,354 +31,370 @@ interface NavGroup {
   items: NavItem[]
 }
 
-const STORAGE_KEY = 'chefsuite_sidebar_collapsed'
-
-function loadCollapsed(): Set<string> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
-  } catch {
-    return new Set()
-  }
-}
-
-function saveCollapsed(set: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]))
-}
-
 function getInitials(name: string | null | undefined): string {
   if (!name) return '?'
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0] ?? '')
-    .join('')
-    .toUpperCase()
+  return name.split(' ').slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase()
 }
 
-function getFirstName(name: string | null | undefined): string {
-  if (!name) return 'Chef'
-  return name.split(' ')[0] ?? 'Chef'
+const PRIMARY_NAV: { to: string; icon: LucideIcon; end?: boolean; labelKey: string; module: AppModule }[] = [
+  { to: '/',          icon: Home,            end: true,  labelKey: 'nav.home',      module: 'dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, end: false, labelKey: 'nav.dashboard', module: 'dashboard' },
+  { to: '/kds',       icon: Monitor,         end: false, labelKey: 'nav.kds',       module: 'kds'       },
+  { to: '/chat',      icon: MessageSquare,   end: false, labelKey: 'nav.chat',      module: 'chat'      },
+]
+
+const GROUP_META: Record<string, { icon: LucideIcon; color: string }> = {
+  kitchen:     { icon: ChefHat,       color: 'text-amber-400'  },
+  procurement: { icon: Building2,     color: 'text-blue-400'   },
+  team:        { icon: Users,         color: 'text-green-400'  },
+  revenue:     { icon: TrendingUp,    color: 'text-purple-400' },
+  comms:       { icon: MessageSquare, color: 'text-pink-400'   },
+  library:     { icon: BookMarked,    color: 'text-cyan-400'   },
 }
 
 export function Sidebar() {
   const { profile, user, myTeams, switchTeam } = useAuth()
   const { t } = useTranslation()
   const { can } = usePermissions()
-  const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
+  const [flyoutOpen, setFlyoutOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [teamDropdownOpen, setTeamDropdownOpen] = useState(false)
-  const searchRef = useRef<HTMLInputElement>(null)
-  const teamSwitcherRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => { saveCollapsed(collapsed) }, [collapsed])
+  const sidebarRef = useRef<HTMLElement>(null)
+  const flyoutRef  = useRef<HTMLDivElement>(null)
+  const searchRef  = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!teamDropdownOpen) return
-    function onClickOutside(e: MouseEvent) {
-      if (teamSwitcherRef.current && !teamSwitcherRef.current.contains(e.target as Node)) {
-        setTeamDropdownOpen(false)
-      }
+    if (!flyoutOpen) return
+    function handleClick(e: MouseEvent) {
+      if (
+        flyoutRef.current?.contains(e.target as Node) ||
+        sidebarRef.current?.contains(e.target as Node)
+      ) return
+      setFlyoutOpen(false)
+      setSearch('')
     }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [teamDropdownOpen])
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [flyoutOpen])
 
-  // ⌘K / Ctrl+K focuses the search bar
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        searchRef.current?.focus()
+        setFlyoutOpen(true)
+        setTimeout(() => searchRef.current?.focus(), 50)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  function toggleGroup(id: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
   const groups: NavGroup[] = [
     {
-      id: 'kitchen',
-      label: t('nav.groups.kitchen'),
+      id: 'kitchen', label: t('nav.groups.kitchen'),
       items: [
-        { to: '/',          label: t('nav.home'),      icon: Home,            end: true, module: 'dashboard' as AppModule },
-        { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, module: 'dashboard' as AppModule },
-        { to: '/recipes', label: t('nav.recipes'), icon: ChefHat, module: 'recipes' as AppModule },
-        { to: '/regional-recipes', label: 'Τοπικές Συνταγές', icon: MapPin, module: 'regional-recipes' as AppModule },
-        { to: '/menus', label: t('nav.menus'), icon: UtensilsCrossed, module: 'menus' as AppModule },
-        { to: '/prep', label: t('nav.prep'), icon: ClipboardList, module: 'prep' as AppModule },
-        { to: '/kds', label: t('nav.kds'), icon: Monitor, module: 'kds' as AppModule },
-        { to: '/buffet-pulse', label: t('nav.buffetPulse'), icon: Activity, module: 'buffet-pulse' as AppModule },
-        { to: '/haccp', label: t('nav.haccp'), icon: Thermometer, module: 'haccp' as AppModule },
-        { to: '/haccp-logbook', label: t('nav.haccpLogbook'), icon: BookLock, module: 'haccp-logbook' as AppModule },
-        { to: '/labels', label: t('nav.labels'), icon: Tag, module: 'labels' as AppModule },
-        { to: '/waste', label: t('nav.wasteLog'), icon: Trash2, module: 'waste' as AppModule },
+        { to: '/',                 label: t('nav.home'),        icon: Home,            end: true,  module: 'dashboard'    },
+        { to: '/dashboard',        label: t('nav.dashboard'),   icon: LayoutDashboard,             module: 'dashboard'    },
+        { to: '/recipes',          label: t('nav.recipes'),     icon: ChefHat,                     module: 'recipes'      },
+        { to: '/regional-recipes', label: 'Τοπικές Συνταγές',   icon: MapPin,                      module: 'regional-recipes' },
+        { to: '/menus',            label: t('nav.menus'),       icon: UtensilsCrossed,             module: 'menus'        },
+        { to: '/prep',             label: t('nav.prep'),        icon: ClipboardList,               module: 'prep'         },
+        { to: '/kds',              label: t('nav.kds'),         icon: Monitor,                     module: 'kds'          },
+        { to: '/buffet-pulse',     label: t('nav.buffetPulse'), icon: Activity,                    module: 'buffet-pulse' },
+        { to: '/haccp',            label: t('nav.haccp'),       icon: Thermometer,                 module: 'haccp'        },
+        { to: '/haccp-logbook',    label: t('nav.haccpLogbook'),icon: BookLock,                    module: 'haccp-logbook'},
+        { to: '/labels',           label: t('nav.labels'),      icon: Tag,                         module: 'labels'       },
+        { to: '/waste',            label: t('nav.wasteLog'),    icon: Trash2,                      module: 'waste'        },
       ],
     },
     {
-      id: 'procurement',
-      label: t('nav.groups.procurement'),
+      id: 'procurement', label: t('nav.groups.procurement'),
       items: [
-        { to: '/warehouse', label: t('nav.warehouse'), icon: Building2, module: 'warehouse' as AppModule },
+        { to: '/warehouse', label: t('nav.warehouse'), icon: Building2, module: 'warehouse' },
       ],
     },
     {
-      id: 'team',
-      label: t('nav.groups.team'),
+      id: 'team', label: t('nav.groups.team'),
       items: [
-        { to: '/team', label: t('nav.team'), icon: Users, module: 'team' as AppModule },
-        { to: '/shifts', label: t('nav.shifts'), icon: CalendarDays, module: 'shifts' as AppModule },
-        { to: '/timeclock', label: t('nav.timeclock'), icon: TimerIcon, module: 'timeclock' as AppModule },
-        { to: '/staff-performance', label: t('nav.staffPerformance'), icon: Award, module: 'staff-performance' as AppModule },
-        { to: '/handover', label: t('nav.handover'), icon: ClipboardCheck, module: 'handover' as AppModule },
+        { to: '/team',             label: t('nav.team'),             icon: Users,         module: 'team'             },
+        { to: '/shifts',           label: t('nav.shifts'),           icon: CalendarDays,  module: 'shifts'           },
+        { to: '/timeclock',        label: t('nav.timeclock'),        icon: TimerIcon,     module: 'timeclock'        },
+        { to: '/staff-performance',label: t('nav.staffPerformance'), icon: Award,         module: 'staff-performance'},
+        { to: '/handover',         label: t('nav.handover'),         icon: ClipboardCheck,module: 'handover'         },
       ],
     },
     {
-      id: 'revenue',
-      label: t('nav.groups.revenue'),
+      id: 'revenue', label: t('nav.groups.revenue'),
       items: [
-        { to: '/menu-engineering', label: t('nav.menuEngineering'), icon: Star,        module: 'menu-engineering' as AppModule },
-        { to: '/costing',         label: t('nav.costing'),          icon: Calculator,    module: 'costing'         as AppModule },
-        { to: '/reservations',    label: t('nav.reservations'),    icon: CalendarCheck, module: 'reservations'    as AppModule },
-        { to: '/analytics',       label: t('nav.analytics'),       icon: TrendingUp,    module: 'analytics'       as AppModule },
-        { to: '/pl',              label: t('nav.profitLoss'),       icon: BarChart3,     module: 'pl'              as AppModule },
-        { to: '/pos-settings',    label: t('nav.posSettings'),      icon: CreditCard,    module: 'pos-settings'    as AppModule },
+        { to: '/menu-engineering', label: t('nav.menuEngineering'), icon: Star,         module: 'menu-engineering' },
+        { to: '/costing',          label: t('nav.costing'),         icon: Calculator,   module: 'costing'          },
+        { to: '/reservations',     label: t('nav.reservations'),    icon: CalendarCheck,module: 'reservations'     },
+        { to: '/analytics',        label: t('nav.analytics'),       icon: TrendingUp,   module: 'analytics'        },
+        { to: '/pl',               label: t('nav.profitLoss'),      icon: BarChart3,    module: 'pl'               },
+        { to: '/pos-settings',     label: t('nav.posSettings'),     icon: CreditCard,   module: 'pos-settings'     },
       ],
     },
     {
-      id: 'comms',
-      label: t('nav.groups.comms'),
+      id: 'comms', label: t('nav.groups.comms'),
       items: [
-        { to: '/chat', label: t('nav.chat'), icon: MessageSquare, module: 'chat' as AppModule },
-        { to: '/walkie', label: t('nav.walkie'), icon: Radio, module: 'walkie' as AppModule },
-        { to: '/journal', label: t('nav.journal'), icon: BookOpen, module: 'journal' as AppModule },
-        { to: '/pulse', label: t('nav.pulse'), icon: Heart, module: 'pulse' as AppModule },
-        { to: '/copilot', label: t('nav.copilot'), icon: Bot, module: 'copilot' as AppModule },
+        { to: '/chat',    label: t('nav.chat'),    icon: MessageSquare, module: 'chat'    },
+        { to: '/walkie',  label: t('nav.walkie'),  icon: Radio,         module: 'walkie'  },
+        { to: '/journal', label: t('nav.journal'), icon: BookOpen,      module: 'journal' },
+        { to: '/pulse',   label: t('nav.pulse'),   icon: Heart,         module: 'pulse'   },
+        { to: '/copilot', label: t('nav.copilot'), icon: Bot,           module: 'copilot' },
       ],
     },
     {
-      id: 'library',
-      label: t('nav.groups.library'),
+      id: 'library', label: t('nav.groups.library'),
       items: [
-        { to: '/culinary-tools', label: t('nav.culinaryTools'), icon: Scale,          module: 'culinary-tools' as AppModule },
-        { to: '/glossary',       label: t('nav.glossary'),      icon: BookMarked,     module: 'glossary'       as AppModule },
-        { to: '/techniques',     label: t('nav.techniques'),    icon: Layers,         module: 'techniques'     as AppModule },
-        { to: '/ingredients',    label: t('nav.ingredients'),   icon: FlaskConical,   module: 'ingredients'    as AppModule },
-        { to: '/help',           label: t('nav.help'),          icon: HelpCircle,     module: 'help'           as AppModule },
+        { to: '/culinary-tools', label: t('nav.culinaryTools'), icon: Scale,       module: 'culinary-tools' },
+        { to: '/glossary',       label: t('nav.glossary'),      icon: BookMarked,  module: 'glossary'       },
+        { to: '/techniques',     label: t('nav.techniques'),    icon: Layers,      module: 'techniques'     },
+        { to: '/ingredients',    label: t('nav.ingredients'),   icon: FlaskConical,module: 'ingredients'    },
+        { to: '/help',           label: t('nav.help'),          icon: HelpCircle,  module: 'help'           },
       ],
     },
   ]
 
   const allItems = groups.flatMap((g) => g.items).filter((item) => can(item.module))
   const query = search.trim().toLowerCase()
-  const filteredItems = query
-    ? allItems.filter((item) => item.label.toLowerCase().includes(query))
-    : null
+  const filteredItems = query ? allItems.filter((item) => item.label.toLowerCase().includes(query)) : null
 
   function toggleLang() {
     const cycle = ['en', 'el', 'bg']
     const next = cycle[(cycle.indexOf(i18n.language) + 1) % cycle.length]
     void i18n.changeLanguage(next)
     localStorage.setItem('chefsuite_lang', next)
-    if (user) {
-      void supabase.from('profiles').update({ preferred_lang: next }).eq('id', user.id)
-    }
+    if (user) void supabase.from('profiles').update({ preferred_lang: next }).eq('id', user.id)
   }
 
-  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  const iconBtn = 'flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200 text-white/35 hover:bg-white/8 hover:text-white/80'
+
+  const flyoutNavLink = ({ isActive }: { isActive: boolean }) =>
     cn(
       'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all',
       isActive
-        ? 'bg-gradient-to-r from-brand-orange/20 to-brand-orange/5 text-white shadow-[inset_2px_0_0_#C4956A]'
+        ? 'text-[#C5A059] shadow-[inset_2px_0_0_#C5A059] bg-[rgba(197,160,89,0.12)]'
         : 'text-white/50 hover:bg-white/5 hover:text-white/90',
     )
 
   return (
-    <aside className="hidden md:flex md:w-56 md:flex-col glass-strong border-r border-white/8 py-4 px-3 gap-1 overflow-y-auto">
-
+    <aside
+      ref={sidebarRef}
+      className="hidden md:flex flex-col items-center w-16 shrink-0 rounded-[2.5rem] py-5 gap-1 relative"
+      style={{
+        background: 'rgba(10, 18, 28, 0.75)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.55)',
+      }}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-2 pt-1 pb-3 border-b border-white/6 mb-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange shadow-[0_0_16px_rgba(196,149,106,0.6)]">
-          <Flame className="h-5 w-5 text-white-fixed" />
-        </div>
-        <div>
-          <div className="text-base font-semibold leading-none tracking-tight">Chefsuite</div>
-          <div className="text-[11px] text-white/35 mt-0.5">Culinary Ops</div>
-        </div>
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-[14px] font-black text-sm text-white-fixed mb-2 shrink-0"
+        style={{
+          background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)',
+          boxShadow: '0 0 20px rgba(197,160,89,0.35)',
+        }}
+      >
+        CS
       </div>
 
-      {/* Team switcher — only visible when user belongs to 2+ teams */}
-      {myTeams.length > 1 && (
-        <div className="relative mb-1" ref={teamSwitcherRef}>
-          <button
-            type="button"
-            onClick={() => setTeamDropdownOpen((prev) => !prev)}
-            className="flex w-full items-center gap-2 px-2 py-2 rounded-xl hover:bg-white/5 transition-all"
+      <div className="h-px w-8 bg-white/8 shrink-0" />
+
+      {/* Primary Nav */}
+      <div className="flex flex-col items-center gap-0.5 w-full px-2">
+        {PRIMARY_NAV.filter((item) => can(item.module)).map(({ to, icon: Icon, end, labelKey }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            title={t(labelKey)}
+            onClick={() => setFlyoutOpen(false)}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200',
+                isActive
+                  ? 'text-white-fixed shadow-[0_0_20px_rgba(197,160,89,0.3)]'
+                  : 'text-white/40 hover:bg-white/8 hover:text-white',
+              )
+            }
+            style={({ isActive }) =>
+              isActive ? { background: '#C5A059' } : {}
+            }
           >
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-orange/15">
-              <Building2 className="h-3.5 w-3.5 text-brand-orange" />
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <div className="text-[10px] text-white/35 leading-none uppercase tracking-wider">Restaurant</div>
-              <div className="text-xs font-semibold text-white/80 truncate leading-none mt-0.5">
-                {myTeams.find((t) => t.id === profile?.team_id)?.name ?? '—'}
-              </div>
-            </div>
-            <ChevronDown
-              className={cn('h-3 w-3 text-white/30 shrink-0 transition-transform duration-200', teamDropdownOpen && 'rotate-180')}
-            />
-          </button>
+            <Icon className="h-5 w-5" />
+          </NavLink>
+        ))}
+      </div>
 
-          {teamDropdownOpen && (
-            <div className="absolute left-0 right-0 mt-1 z-50 glass-strong gradient-border rounded-xl py-1 shadow-xl">
-              {myTeams.map((t) => {
-                const isActive = t.id === profile?.team_id
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      void switchTeam(t.id)
-                      setTeamDropdownOpen(false)
-                    }}
-                    className={cn(
-                      'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-lg',
-                      isActive
-                        ? 'text-brand-orange'
-                        : 'text-white/55 hover:text-white hover:bg-white/5',
-                    )}
-                  >
-                    <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', isActive ? 'bg-brand-orange' : 'bg-white/20')} />
-                    <span className="truncate">{t.name}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      <div className="h-px w-8 bg-white/8 shrink-0" />
 
-      {/* Profile section */}
+      {/* Group icons */}
+      <div className="flex flex-col items-center gap-0.5 w-full px-2 flex-1">
+        {groups.map((group) => {
+          const visibleItems = group.items.filter((item) => can(item.module))
+          if (visibleItems.length === 0) return null
+          const meta = GROUP_META[group.id]
+          const GroupIcon = meta?.icon ?? LayoutDashboard
+          return (
+            <button
+              key={group.id}
+              type="button"
+              title={group.label}
+              onClick={() => setFlyoutOpen((v) => !v)}
+              className={cn(
+                iconBtn,
+                flyoutOpen && 'bg-white/5 text-white/60',
+              )}
+            >
+              <GroupIcon className={cn('h-4 w-4', meta?.color)} />
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="h-px w-8 bg-white/8 shrink-0" />
+
+      {/* Profile */}
       <NavLink
         to="/profile"
+        title={profile?.full_name ?? 'Profile'}
+        onClick={() => setFlyoutOpen(false)}
         className={({ isActive }) =>
-          cn(
-            'flex items-center gap-3 px-2 py-2.5 rounded-xl transition-all group mb-1',
-            isActive ? 'bg-white/8' : 'hover:bg-white/5',
-          )
+          cn('flex items-center justify-center h-10 w-10 rounded-2xl transition-all', isActive ? 'bg-white/10' : 'hover:bg-white/8')
         }
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-orange to-[#8B5E3C] text-white-fixed text-xs font-bold shadow-[0_0_12px_rgba(196,149,106,0.45)] select-none">
+        <div
+          className="h-8 w-8 rounded-xl flex items-center justify-center text-white-fixed text-[10px] font-bold select-none"
+          style={{ background: 'linear-gradient(135deg, #d8b08c, #C5A059)' }}
+        >
           {getInitials(profile?.full_name)}
-        </div>
-        <div className="min-w-0">
-          <div className="text-[10px] text-white/35 leading-none mb-0.5 uppercase tracking-wider">Hello,</div>
-          <div className="text-sm font-semibold truncate leading-none text-white/80 group-hover:text-white transition-colors">
-            {getFirstName(profile?.full_name)}
-          </div>
         </div>
       </NavLink>
 
-      {/* Search bar */}
-      <div className="relative mb-3">
-        <div
-          className={cn(
-            'glass gradient-border flex items-center gap-2 rounded-xl px-3 h-9 transition-all',
-            'focus-within:ring-1 focus-within:ring-brand-orange/40 focus-within:bg-white/6',
-          )}
-        >
-          <Search className="h-3.5 w-3.5 text-white/30 shrink-0" />
-          <input
-            ref={searchRef}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && setSearch('')}
-            placeholder={t('nav.search')}
-            className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/25 min-w-0"
-          />
-          {search ? (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="text-white/30 hover:text-white/70 transition shrink-0"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          ) : (
-            <kbd className="text-white/20 text-[10px] font-mono bg-white/5 rounded px-1.5 py-0.5 shrink-0 leading-none">
-              ⌘K
-            </kbd>
-          )}
-        </div>
-      </div>
+      {/* Language */}
+      <button type="button" onClick={toggleLang} title="Language" className={iconBtn}>
+        <Languages className="h-4 w-4" />
+      </button>
 
-      {/* Nav — search results or grouped */}
-      <nav className="flex flex-col gap-0.5 flex-1">
-        {filteredItems ? (
-          filteredItems.length > 0 ? (
-            filteredItems.map(({ to, label, icon: Icon, end }) => (
-              <NavLink key={to} to={to} end={end} className={navLinkClass}
-                onClick={() => setSearch('')}>
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{label}</span>
-              </NavLink>
-            ))
-          ) : (
-            <p className="text-center text-xs text-white/25 py-4">{t('nav.noResults')}</p>
-          )
-        ) : (
-          groups.map((group) => {
-            const visibleItems = group.items.filter((item) => can(item.module))
-            if (visibleItems.length === 0) return null
-            const isOpen = !collapsed.has(group.id)
-            return (
-              <div key={group.id} className="mb-1">
+      {/* ── Flyout Panel ── */}
+      {flyoutOpen && (
+        <div
+          ref={flyoutRef}
+          className="absolute left-full top-0 ml-3 w-56 rounded-3xl overflow-y-auto scrollbar-none"
+          style={{
+            maxHeight: 'calc(100vh - 2rem)',
+            background: 'rgba(8, 16, 26, 0.94)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            backdropFilter: 'blur(28px)',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.65)',
+            zIndex: 50,
+          }}
+        >
+          <div className="p-3 flex flex-col gap-0.5">
+            {/* Search */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
+              <input
+                ref={searchRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setFlyoutOpen(false) } }}
+                placeholder={t('nav.search')}
+                className="w-full rounded-xl pl-8 pr-8 py-2 text-sm text-white placeholder:text-white/25 bg-white/5 border border-white/8 outline-none focus:border-[rgba(197,160,89,0.4)] transition"
+              />
+              {search && (
                 <button
                   type="button"
-                  onClick={() => toggleGroup(group.id)}
-                  className="flex w-full items-center justify-between px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-widest text-white/25 hover:text-white/45 transition select-none"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
                 >
-                  <span>{group.label}</span>
-                  <ChevronDown
-                    className={cn('h-3 w-3 transition-transform duration-200', !isOpen && '-rotate-90')}
-                  />
+                  <X className="h-3.5 w-3.5" />
                 </button>
+              )}
+            </div>
 
-                {isOpen && (
-                  <div className="flex flex-col gap-0.5 mt-0.5">
-                    {visibleItems.map(({ to, label, icon: Icon, end }) => (
-                      <NavLink key={to} to={to} end={end} className={navLinkClass}>
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{label}</span>
-                      </NavLink>
-                    ))}
+            {/* Results or grouped nav */}
+            {filteredItems ? (
+              filteredItems.length > 0 ? (
+                filteredItems.map(({ to, label, icon: Icon, end }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    onClick={() => { setFlyoutOpen(false); setSearch('') }}
+                    className={flyoutNavLink}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </NavLink>
+                ))
+              ) : (
+                <p className="text-center text-xs text-white/25 py-4">{t('nav.noResults')}</p>
+              )
+            ) : (
+              groups.map((group) => {
+                const visibleItems = group.items.filter((item) => can(item.module))
+                if (visibleItems.length === 0) return null
+                const meta = GROUP_META[group.id]
+                const GroupIcon = meta?.icon ?? LayoutDashboard
+                return (
+                  <div key={group.id} className="mb-2">
+                    <div className="flex items-center gap-2 px-3 py-1.5">
+                      <GroupIcon className={cn('h-3 w-3 shrink-0', meta?.color)} />
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">
+                        {group.label}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {visibleItems.map(({ to, label, icon: Icon, end }) => (
+                        <NavLink
+                          key={to}
+                          to={to}
+                          end={end}
+                          onClick={() => { setFlyoutOpen(false); setSearch('') }}
+                          className={flyoutNavLink}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{label}</span>
+                        </NavLink>
+                      ))}
+                    </div>
                   </div>
-                )}
-              </div>
-            )
-          })
-        )}
-      </nav>
+                )
+              })
+            )}
 
-      {/* Language toggle */}
-      <div className="pt-2 border-t border-white/6">
-        <button
-          type="button"
-          onClick={toggleLang}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition text-white/35 hover:bg-white/5 hover:text-white/70"
-        >
-          <Languages className="h-4 w-4 shrink-0" />
-          <span>{ i18n.language === 'en' ? 'Ελληνικά' : i18n.language === 'el' ? 'Български' : 'English' }</span>
-        </button>
-      </div>
+            {/* Team switcher */}
+            {myTeams.length > 1 && (
+              <div className="mt-2 pt-2 border-t border-white/8">
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <Building2 className="h-3 w-3 text-white/25 shrink-0" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">Restaurant</span>
+                </div>
+                {myTeams.map((team) => {
+                  const isActive = team.id === profile?.team_id
+                  return (
+                    <button
+                      key={team.id}
+                      type="button"
+                      onClick={() => { void switchTeam(team.id); setFlyoutOpen(false) }}
+                      className={cn(
+                        'flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-xl',
+                        isActive ? 'text-[#C5A059]' : 'text-white/55 hover:text-white hover:bg-white/5',
+                      )}
+                    >
+                      <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', isActive ? 'bg-[#C5A059]' : 'bg-white/20')} />
+                      <span className="truncate">{team.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
