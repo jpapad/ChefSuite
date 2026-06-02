@@ -4,7 +4,7 @@ import {
   TrendingUp, MessageSquare, Monitor, Radio, Languages,
   UtensilsCrossed, Trash2, CalendarDays, ClipboardCheck,
   TimerIcon, CalendarCheck, Star, BarChart3, Award,
-  BookOpen, Heart, Bot, Search, X, Scale, BookMarked,
+  BookOpen, Heart, Bot, Search, Scale, BookMarked,
   Layers, HelpCircle, FlaskConical, CreditCard, Building2,
   Tag, Calculator, MapPin, Activity, BookLock, Thermometer,
   type LucideIcon,
@@ -53,7 +53,7 @@ const GROUP_META: Record<string, { icon: LucideIcon; color: string }> = {
 }
 
 export function Sidebar() {
-  const { profile, user, myTeams, switchTeam } = useAuth()
+  const { profile, user } = useAuth()
   const { t } = useTranslation()
   const { can } = usePermissions()
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
@@ -157,9 +157,6 @@ export function Sidebar() {
     },
   ]
 
-  const allItems = groups.flatMap((g) => g.items).filter((item) => can(item.module))
-  const query = search.trim().toLowerCase()
-  const filteredItems = query ? allItems.filter((item) => item.label.toLowerCase().includes(query)) : null
 
   function openGroup(groupId: string, buttonEl: HTMLButtonElement) {
     if (flyoutOpen && activeGroupId === groupId) {
