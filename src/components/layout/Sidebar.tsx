@@ -7,7 +7,7 @@ import {
   BookOpen, Heart, Bot, Search, X, Scale, BookMarked,
   Layers, HelpCircle, FlaskConical, CreditCard, Building2,
   Tag, Calculator, MapPin, Activity, BookLock, Thermometer,
-  ChevronLeft, type LucideIcon,
+  type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,14 +36,6 @@ function getInitials(name: string | null | undefined): string {
   return name.split(' ').slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase()
 }
 
-const STORAGE_KEY = 'chefsuite_sidebar_collapsed'
-function loadCollapsed(): Set<string> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
-  } catch { return new Set() }
-}
-
 const PRIMARY_NAV: { to: string; icon: LucideIcon; end?: boolean; labelKey: string; module: AppModule }[] = [
   { to: '/',          icon: Home,            end: true,  labelKey: 'nav.home',      module: 'dashboard' },
   { to: '/dashboard', icon: LayoutDashboard, end: false, labelKey: 'nav.dashboard', module: 'dashboard' },
@@ -64,20 +56,17 @@ export function Sidebar() {
   const { profile, user } = useAuth()
   const { t } = useTranslation()
   const { can } = usePermissions()
-  const [expanded, setExpanded] = useState(false)
-  const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...collapsed]))
-  }, [collapsed])
-
+  // Close panel on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setActiveGroupId(null); setSearch('') }
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        setExpanded(true)
+        setActiveGroupId('kitchen') // open kitchen group with search focused
         setTimeout(() => searchRef.current?.focus(), 150)
       }
     }
@@ -152,16 +141,9 @@ export function Sidebar() {
     },
   ]
 
-  const allItems = groups.flatMap((g) => g.items).filter((item) => can(item.module))
-  const query = search.trim().toLowerCase()
-  const filteredItems = query ? allItems.filter((item) => item.label.toLowerCase().includes(query)) : null
-
-  function toggleGroup(id: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+  function toggleGroup(groupId: string) {
+    setActiveGroupId((prev) => (prev === groupId ? null : groupId))
+    setSearch('')
   }
 
   function toggleLang() {
@@ -172,6 +154,8 @@ export function Sidebar() {
     if (user) void supabase.from('profiles').update({ preferred_lang: next }).eq('id', user.id)
   }
 
+  const iconBtnCls = 'flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200 text-white/35 hover:bg-white/8 hover:text-white/80'
+
   const navLinkCls = ({ isActive }: { isActive: boolean }) =>
     cn(
       'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all',
@@ -180,215 +164,174 @@ export function Sidebar() {
         : 'text-white/50 hover:bg-white/5 hover:text-white/90',
     )
 
-  const iconBtnCls = 'flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200 text-white/35 hover:bg-white/8 hover:text-white/80'
+  // Active group data
+  const activeGroup = activeGroupId ? groups.find((g) => g.id === activeGroupId) : null
+  const activeGroupMeta = activeGroupId ? GROUP_META[activeGroupId] : null
+  const ActiveGroupIcon = activeGroupMeta?.icon ?? LayoutDashboard
+  const activeItems = activeGroup ? activeGroup.items.filter((item) => can(item.module)) : []
+  const query = search.trim().toLowerCase()
+  const filteredItems = query ? activeItems.filter((item) => item.label.toLowerCase().includes(query)) : activeItems
 
   return (
-    <aside
-      className={cn(
-        'hidden md:flex flex-col shrink-0 rounded-[2rem] overflow-hidden transition-all duration-300 ease-in-out',
-        expanded ? 'w-56' : 'w-16',
-      )}
-      style={{
-        background: 'rgba(10, 18, 28, 0.75)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        backdropFilter: 'blur(28px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.55)',
-      }}
-    >
-      {/* ── COLLAPSED: icon-only strip ── */}
-      {!expanded && (
-        <div className="flex flex-col items-center py-5 gap-1 h-full">
-          {/* Logo */}
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-[14px] font-black text-sm text-white-fixed mb-2 shrink-0 cursor-pointer"
-            style={{ background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)', boxShadow: '0 0 20px rgba(197,160,89,0.35)' }}
-            onClick={() => setExpanded(true)}
-          >
-            CS
-          </div>
+    // Outer wrapper — flex row, grows naturally with the panel
+    <div className="hidden md:flex flex-row gap-3 shrink-0">
 
-          <div className="h-px w-8 bg-white/8 shrink-0" />
-
-          {/* Primary Nav */}
-          <div className="flex flex-col items-center gap-0.5 w-full px-2">
-            {PRIMARY_NAV.filter((item) => can(item.module)).map(({ to, icon: Icon, end, labelKey }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                title={t(labelKey)}
-                className={({ isActive }) => cn(
-                  'flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200',
-                  isActive ? 'text-white-fixed shadow-[0_0_20px_rgba(197,160,89,0.3)]' : 'text-white/40 hover:bg-white/8 hover:text-white',
-                )}
-                style={({ isActive }) => isActive ? { background: '#C5A059' } : {}}
-              >
-                <Icon className="h-5 w-5" />
-              </NavLink>
-            ))}
-          </div>
-
-          <div className="h-px w-8 bg-white/8 shrink-0" />
-
-          {/* Group icons */}
-          <div className="flex flex-col items-center gap-0.5 w-full px-2 flex-1">
-            {groups.map((group) => {
-              const visibleItems = group.items.filter((item) => can(item.module))
-              if (visibleItems.length === 0) return null
-              const meta = GROUP_META[group.id]
-              const GroupIcon = meta?.icon ?? LayoutDashboard
-              return (
-                <button
-                  key={group.id}
-                  type="button"
-                  title={group.label}
-                  onClick={() => setExpanded(true)}
-                  className={iconBtnCls}
-                >
-                  <GroupIcon className={cn('h-4 w-4', meta?.color)} />
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="h-px w-8 bg-white/8 shrink-0" />
-
-          {/* Profile + Lang */}
-          <NavLink to="/profile" title={profile?.full_name ?? 'Profile'}
-            className={({ isActive }) => cn('flex items-center justify-center h-10 w-10 rounded-2xl transition-all', isActive ? 'bg-white/10' : 'hover:bg-white/8')}
-          >
-            <div className="h-8 w-8 rounded-xl flex items-center justify-center text-white-fixed text-[10px] font-bold"
-              style={{ background: 'linear-gradient(135deg, #d8b08c, #C5A059)' }}>
-              {getInitials(profile?.full_name)}
-            </div>
-          </NavLink>
-          <button type="button" onClick={toggleLang} title="Language" className={iconBtnCls}>
-            <Languages className="h-4 w-4" />
-          </button>
+      {/* ── Icon strip ── */}
+      <aside
+        className="flex flex-col items-center w-16 shrink-0 rounded-[2.5rem] py-5 gap-1"
+        style={{
+          background: 'rgba(10, 18, 28, 0.75)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(28px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.55)',
+        }}
+      >
+        {/* Logo */}
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-[14px] font-black text-sm text-white-fixed mb-2 shrink-0"
+          style={{ background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)', boxShadow: '0 0 20px rgba(197,160,89,0.35)' }}
+        >
+          CS
         </div>
-      )}
 
-      {/* ── EXPANDED: full nav ── */}
-      {expanded && (
-        <div className="flex flex-col h-full overflow-y-auto scrollbar-none py-4 px-3 gap-1">
-          {/* Header */}
-          <div className="flex items-center justify-between px-2 pt-1 pb-3 border-b border-white/6 mb-1">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-black text-xs text-white-fixed"
-                style={{ background: 'linear-gradient(135deg, #d8b08c, #C5A059)', boxShadow: '0 0 14px rgba(197,160,89,0.3)' }}>
-                CS
-              </div>
-              <div>
-                <div className="text-sm font-semibold leading-none">Chefsuite</div>
-                <div className="text-[10px] text-white/35 mt-0.5">Culinary Ops</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => { setExpanded(false); setSearch('') }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/8 transition"
+        <div className="h-px w-8 bg-white/8 shrink-0" />
+
+        {/* Primary nav */}
+        <div className="flex flex-col items-center gap-0.5 w-full px-2">
+          {PRIMARY_NAV.filter((item) => can(item.module)).map(({ to, icon: Icon, end, labelKey }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              title={t(labelKey)}
+              onClick={() => setActiveGroupId(null)}
+              className={({ isActive }) => cn(
+                'flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200',
+                isActive ? 'text-white-fixed shadow-[0_0_20px_rgba(197,160,89,0.3)]' : 'text-white/40 hover:bg-white/8 hover:text-white',
+              )}
+              style={({ isActive }) => isActive ? { background: '#C5A059' } : {}}
             >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
+              <Icon className="h-5 w-5" />
+            </NavLink>
+          ))}
+        </div>
+
+        <div className="h-px w-8 bg-white/8 shrink-0" />
+
+        {/* Group icons */}
+        <div className="flex flex-col items-center gap-0.5 w-full px-2 flex-1">
+          {groups.map((group) => {
+            const visibleItems = group.items.filter((item) => can(item.module))
+            if (visibleItems.length === 0) return null
+            const meta = GROUP_META[group.id]
+            const GroupIcon = meta?.icon ?? LayoutDashboard
+            const isActive = activeGroupId === group.id
+            return (
+              <button
+                key={group.id}
+                type="button"
+                title={group.label}
+                onClick={() => toggleGroup(group.id)}
+                className={cn(
+                  iconBtnCls,
+                  isActive && 'bg-white/10 text-white ring-1 ring-white/15',
+                )}
+              >
+                <GroupIcon className={cn('h-4 w-4', meta?.color)} />
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="h-px w-8 bg-white/8 shrink-0" />
+
+        {/* Profile + Lang */}
+        <NavLink
+          to="/profile"
+          title={profile?.full_name ?? 'Profile'}
+          onClick={() => setActiveGroupId(null)}
+          className={({ isActive }) => cn('flex items-center justify-center h-10 w-10 rounded-2xl transition-all', isActive ? 'bg-white/10' : 'hover:bg-white/8')}
+        >
+          <div className="h-8 w-8 rounded-xl flex items-center justify-center text-white-fixed text-[10px] font-bold select-none"
+            style={{ background: 'linear-gradient(135deg, #d8b08c, #C5A059)' }}>
+            {getInitials(profile?.full_name)}
           </div>
+        </NavLink>
+        <button type="button" onClick={toggleLang} title="Language" className={iconBtnCls}>
+          <Languages className="h-4 w-4" />
+        </button>
+      </aside>
 
-          {/* Profile */}
-          <NavLink to="/profile"
-            className={({ isActive }) => cn('flex items-center gap-3 px-2 py-2 rounded-xl transition-all group mb-1', isActive ? 'bg-white/8' : 'hover:bg-white/5')}
+      {/* ── Nav panel — appears inline, pushes content ── */}
+      <div
+        className={cn(
+          'overflow-hidden transition-all duration-300 ease-in-out shrink-0',
+          activeGroupId ? 'w-52 opacity-100' : 'w-0 opacity-0',
+        )}
+      >
+        {activeGroup && (
+          <div
+            className="w-52 h-full rounded-3xl flex flex-col py-3 px-2"
+            style={{
+              background: 'rgba(10, 18, 28, 0.80)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              backdropFilter: 'blur(28px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.50)',
+            }}
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white-fixed text-xs font-bold"
-              style={{ background: 'linear-gradient(135deg, #d8b08c, #C5A059)', boxShadow: '0 0 12px rgba(197,160,89,0.4)' }}>
-              {getInitials(profile?.full_name)}
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] text-white/35 leading-none mb-0.5 uppercase tracking-wider">Hello,</div>
-              <div className="text-sm font-semibold truncate leading-none text-white/80 group-hover:text-white transition-colors">
-                {profile?.full_name?.split(' ')[0] ?? 'Chef'}
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-white/8">
+              <div className="flex items-center gap-2">
+                <ActiveGroupIcon className={cn('h-4 w-4 shrink-0', activeGroupMeta?.color)} />
+                <span className="text-xs font-bold uppercase tracking-widest text-white/60">
+                  {activeGroup.label}
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => { setActiveGroupId(null); setSearch('') }}
+                className="h-6 w-6 flex items-center justify-center rounded-lg text-white/25 hover:text-white/60 hover:bg-white/8 transition"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-          </NavLink>
 
-          {/* Search */}
-          <div className="relative mb-2">
-            <div className="flex items-center gap-2 rounded-xl px-3 h-9 bg-white/5 border border-white/8 focus-within:border-[rgba(197,160,89,0.4)] transition-all">
-              <Search className="h-3.5 w-3.5 text-white/30 shrink-0" />
+            {/* Search */}
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
               <input
                 ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Escape' && setSearch('')}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setActiveGroupId(null) } }}
                 placeholder={t('nav.search')}
-                className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/25 min-w-0"
+                className="w-full rounded-xl pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/25 bg-white/5 border border-white/8 outline-none focus:border-[rgba(197,160,89,0.4)] transition"
               />
-              {search && (
-                <button type="button" onClick={() => setSearch('')} className="text-white/30 hover:text-white/70 shrink-0">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
             </div>
-          </div>
 
-          {/* Nav items */}
-          <nav className="flex flex-col gap-0.5 flex-1">
-            {filteredItems ? (
-              filteredItems.length > 0 ? (
+            {/* Items */}
+            <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto scrollbar-none">
+              {filteredItems.length > 0 ? (
                 filteredItems.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink key={to} to={to} end={end} className={navLinkCls}>
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    onClick={() => { setActiveGroupId(null); setSearch('') }}
+                    className={navLinkCls}
+                  >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span className="truncate">{label}</span>
                   </NavLink>
                 ))
               ) : (
                 <p className="text-center text-xs text-white/25 py-4">{t('nav.noResults')}</p>
-              )
-            ) : (
-              groups.map((group) => {
-                const visibleItems = group.items.filter((item) => can(item.module))
-                if (visibleItems.length === 0) return null
-                const isOpen = !collapsed.has(group.id)
-                const meta = GROUP_META[group.id]
-                const GroupIcon = meta?.icon ?? LayoutDashboard
-                return (
-                  <div key={group.id} className="mb-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(group.id)}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-widest text-white/25 hover:text-white/45 transition select-none"
-                    >
-                      <GroupIcon className={cn('h-3 w-3 shrink-0', meta?.color)} />
-                      <span className="flex-1 text-left">{group.label}</span>
-                      <span className={cn('transition-transform duration-200 text-white/20', !isOpen && '-rotate-90')}>▾</span>
-                    </button>
-                    {isOpen && (
-                      <div className="flex flex-col gap-0.5 mt-0.5">
-                        {visibleItems.map(({ to, label, icon: Icon, end }) => (
-                          <NavLink key={to} to={to} end={end} className={navLinkCls}>
-                            <Icon className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{label}</span>
-                          </NavLink>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            )}
-          </nav>
-
-          {/* Language */}
-          <div className="pt-2 border-t border-white/6">
-            <button
-              type="button"
-              onClick={toggleLang}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition text-white/35 hover:bg-white/5 hover:text-white/70"
-            >
-              <Languages className="h-4 w-4 shrink-0" />
-              <span>{i18n.language === 'en' ? 'Ελληνικά' : i18n.language === 'el' ? 'Български' : 'English'}</span>
-            </button>
+              )}
+            </nav>
           </div>
-        </div>
-      )}
-    </aside>
+        )}
+      </div>
+    </div>
   )
 }
