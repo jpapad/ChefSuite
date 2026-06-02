@@ -25,63 +25,6 @@ interface AppDef {
   badge:       BadgeKind
 }
 
-// ── App definitions ───────────────────────────────────────────────────────────
-
-const APPS: AppDef[] = [
-  {
-    id:          'buffet',
-    to:          '/menus',
-    icon:        Tag,
-    iconColor:   'text-brand-orange',
-    iconBg:      'bg-brand-orange/10',
-    hoverShadow: '0 24px 64px rgba(196,149,106,0.20)',
-    accentGlow:  'rgba(196,149,106,0.18)',
-    title:       'Buffet & Labels',
-    subtitle:    'ChefSuite',
-    description: 'Αυτοματοποιημένη δημιουργία ετικετών μπουφέ σε 7 γλώσσες με AI Parser και minimal QR εκτύπωση.',
-    badge:       'active',
-  },
-  {
-    id:          'kds',
-    to:          '/kds',
-    icon:        Monitor,
-    iconColor:   'text-sky-500',
-    iconBg:      'bg-sky-500/10',
-    hoverShadow: '0 24px 64px rgba(14,165,233,0.14)',
-    accentGlow:  'rgba(14,165,233,0.14)',
-    title:       'Κουζίνα · KDS',
-    subtitle:    'ChefSuite',
-    description: 'Live οθόνη διαχείρισης παραγγελιών και προετοιμασίας για το προσωπικό της κουζίνας.',
-    badge:       'beta',
-  },
-  {
-    id:          'warehouse',
-    to:          '/warehouse',
-    icon:        Building2,
-    iconColor:   'text-emerald-500',
-    iconBg:      'bg-emerald-500/10',
-    hoverShadow: '0 24px 64px rgba(16,185,129,0.14)',
-    accentGlow:  'rgba(16,185,129,0.14)',
-    title:       'Αποθήκη & Smart Inventory',
-    subtitle:    'ChefSuite',
-    description: 'Καταγραφή αποθεμάτων, AI Scanning τιμολογίων και Food Costing σε πραγματικό χρόνο.',
-    badge:       'beta',
-  },
-  {
-    id:          'haccp',
-    to:          '/haccp-logbook',
-    icon:        ShieldCheck,
-    iconColor:   'text-rose-400',
-    iconBg:      'bg-rose-500/10',
-    hoverShadow: '0 24px 64px rgba(244,63,94,0.10)',
-    accentGlow:  'rgba(244,63,94,0.10)',
-    title:       'HACCP & Logs',
-    subtitle:    'ChefSuite',
-    description: 'Ψηφιακή καταγραφή ασφάλειας τροφίμων, θερμοκρασιών και υποχρεωτικών ελέγχων.',
-    badge:       'coming-soon',
-  },
-]
-
 // ── Badge config ──────────────────────────────────────────────────────────────
 
 const BADGE_CLS: Record<BadgeKind, string> = {
