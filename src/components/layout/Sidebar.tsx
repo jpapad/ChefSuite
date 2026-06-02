@@ -57,18 +57,30 @@ export function Sidebar() {
   const { t } = useTranslation()
   const { can } = usePermissions()
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const searchRef = useRef<HTMLInputElement>(null)
+  const [flyoutTop, setFlyoutTop]         = useState(16)
+  const [search, setSearch]               = useState('')
+  const sidebarRef = useRef<HTMLElement>(null)
+  const flyoutRef  = useRef<HTMLDivElement>(null)
+  const searchRef  = useRef<HTMLInputElement>(null)
 
-  // Close panel on Escape
+  // Close flyout on outside click
+  useEffect(() => {
+    if (!activeGroupId) return
+    function handle(e: MouseEvent) {
+      if (
+        flyoutRef.current?.contains(e.target as Node) ||
+        sidebarRef.current?.contains(e.target as Node)
+      ) return
+      setActiveGroupId(null)
+      setSearch('')
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [activeGroupId])
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') { setActiveGroupId(null); setSearch('') }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setActiveGroupId('kitchen') // open kitchen group with search focused
-        setTimeout(() => searchRef.current?.focus(), 150)
-      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -141,9 +153,13 @@ export function Sidebar() {
     },
   ]
 
-  function toggleGroup(groupId: string) {
-    setActiveGroupId((prev) => (prev === groupId ? null : groupId))
+  function openGroup(groupId: string, btn: HTMLButtonElement) {
+    if (activeGroupId === groupId) { setActiveGroupId(null); setSearch(''); return }
+    const rect = btn.getBoundingClientRect()
+    setFlyoutTop(Math.max(16, rect.top))
+    setActiveGroupId(groupId)
     setSearch('')
+    setTimeout(() => searchRef.current?.focus(), 50)
   }
 
   function toggleLang() {
@@ -164,21 +180,19 @@ export function Sidebar() {
         : 'text-white/50 hover:bg-white/5 hover:text-white/90',
     )
 
-  // Active group data
-  const activeGroup = activeGroupId ? groups.find((g) => g.id === activeGroupId) : null
+  const activeGroup     = activeGroupId ? groups.find((g) => g.id === activeGroupId) : null
   const activeGroupMeta = activeGroupId ? GROUP_META[activeGroupId] : null
   const ActiveGroupIcon = activeGroupMeta?.icon ?? LayoutDashboard
-  const activeItems = activeGroup ? activeGroup.items.filter((item) => can(item.module)) : []
-  const query = search.trim().toLowerCase()
-  const filteredItems = query ? activeItems.filter((item) => item.label.toLowerCase().includes(query)) : activeItems
+  const activeItems     = activeGroup ? activeGroup.items.filter((i) => can(i.module)) : []
+  const query           = search.trim().toLowerCase()
+  const filteredItems   = query ? activeItems.filter((i) => i.label.toLowerCase().includes(query)) : activeItems
 
   return (
-    // Outer wrapper — flex row, grows naturally with the panel
-    <div className="hidden md:flex flex-row gap-3 shrink-0">
-
+    <>
       {/* ── Icon strip ── */}
       <aside
-        className="flex flex-col items-center w-16 shrink-0 rounded-[2.5rem] py-5 gap-1"
+        ref={sidebarRef}
+        className="hidden md:flex flex-col items-center w-16 shrink-0 rounded-[2.5rem] py-5 gap-1"
         style={{
           background: 'rgba(10, 18, 28, 0.75)',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -201,10 +215,7 @@ export function Sidebar() {
         <div className="flex flex-col items-center gap-0.5 w-full px-2">
           {PRIMARY_NAV.filter((item) => can(item.module)).map(({ to, icon: Icon, end, labelKey }) => (
             <NavLink
-              key={to}
-              to={to}
-              end={end}
-              title={t(labelKey)}
+              key={to} to={to} end={end} title={t(labelKey)}
               onClick={() => setActiveGroupId(null)}
               className={({ isActive }) => cn(
                 'flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200',
@@ -222,21 +233,14 @@ export function Sidebar() {
         {/* Group icons */}
         <div className="flex flex-col items-center gap-0.5 w-full px-2 flex-1">
           {groups.map((group) => {
-            const visibleItems = group.items.filter((item) => can(item.module))
-            if (visibleItems.length === 0) return null
+            if (group.items.filter((i) => can(i.module)).length === 0) return null
             const meta = GROUP_META[group.id]
             const GroupIcon = meta?.icon ?? LayoutDashboard
-            const isActive = activeGroupId === group.id
             return (
               <button
-                key={group.id}
-                type="button"
-                title={group.label}
-                onClick={() => toggleGroup(group.id)}
-                className={cn(
-                  iconBtnCls,
-                  isActive && 'bg-white/10 text-white ring-1 ring-white/15',
-                )}
+                key={group.id} type="button" title={group.label}
+                onClick={(e) => openGroup(group.id, e.currentTarget)}
+                className={cn(iconBtnCls, activeGroupId === group.id && 'bg-white/10 text-white ring-1 ring-white/15')}
               >
                 <GroupIcon className={cn('h-4 w-4', meta?.color)} />
               </button>
@@ -247,9 +251,7 @@ export function Sidebar() {
         <div className="h-px w-8 bg-white/8 shrink-0" />
 
         {/* Profile + Lang */}
-        <NavLink
-          to="/profile"
-          title={profile?.full_name ?? 'Profile'}
+        <NavLink to="/profile" title={profile?.full_name ?? 'Profile'}
           onClick={() => setActiveGroupId(null)}
           className={({ isActive }) => cn('flex items-center justify-center h-10 w-10 rounded-2xl transition-all', isActive ? 'bg-white/10' : 'hover:bg-white/8')}
         >
@@ -263,24 +265,24 @@ export function Sidebar() {
         </button>
       </aside>
 
-      {/* ── Nav panel — appears inline, pushes content ── */}
-      <div
-        className={cn(
-          'overflow-hidden transition-all duration-300 ease-in-out shrink-0',
-          activeGroupId ? 'w-52 opacity-100' : 'w-0 opacity-0',
-        )}
-      >
-        {activeGroup && (
-          <div
-            className="w-52 h-full rounded-3xl flex flex-col py-3 px-2"
-            style={{
-              background: 'rgba(10, 18, 28, 0.80)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              backdropFilter: 'blur(28px)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.50)',
-            }}
-          >
-            {/* Panel header */}
+      {/* ── Flyout panel (fixed, beside the sidebar, above other content) ── */}
+      {activeGroup && (
+        <div
+          ref={flyoutRef}
+          className="fixed w-52 rounded-3xl overflow-y-auto scrollbar-none"
+          style={{
+            left: '84px',
+            top: `${flyoutTop}px`,
+            maxHeight: `calc(100vh - ${flyoutTop}px - 16px)`,
+            background: 'rgba(8, 16, 26, 0.97)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(28px)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.70)',
+            zIndex: 9999,
+          }}
+        >
+          <div className="p-3 flex flex-col gap-0.5">
+            {/* Header */}
             <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-white/8">
               <div className="flex items-center gap-2">
                 <ActiveGroupIcon className={cn('h-4 w-4 shrink-0', activeGroupMeta?.color)} />
@@ -311,27 +313,23 @@ export function Sidebar() {
             </div>
 
             {/* Items */}
-            <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto scrollbar-none">
-              {filteredItems.length > 0 ? (
-                filteredItems.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    onClick={() => { setActiveGroupId(null); setSearch('') }}
-                    className={navLinkCls}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </NavLink>
-                ))
-              ) : (
-                <p className="text-center text-xs text-white/25 py-4">{t('nav.noResults')}</p>
-              )}
-            </nav>
+            {filteredItems.length > 0 ? (
+              filteredItems.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to} to={to} end={end}
+                  onClick={() => { setActiveGroupId(null); setSearch('') }}
+                  className={navLinkCls}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </NavLink>
+              ))
+            ) : (
+              <p className="text-center text-xs text-white/25 py-3">{t('nav.noResults')}</p>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   )
 }
