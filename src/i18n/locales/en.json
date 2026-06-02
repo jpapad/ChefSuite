@@ -82,7 +82,13 @@
     "back": "Back",
     "next": "Next",
     "done": "Done ✓",
-    "send": "Post"
+    "send": "Post",
+    "or": "or",
+    "search": "Search",
+    "select": "Select",
+    "deselect": "Deselect",
+    "deselectAll": "Deselect all",
+    "selectAll": "Select all ({{count}})"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -182,6 +188,14 @@
       "cost": "Cost: €{{cost}}/portion",
       "historyLabel": "Version history"
     },
+    "grouped": "Grouped",
+    "groupBy": "Group",
+    "allergenFree": "Allergen free",
+    "allergenScan": "Allergen scan",
+    "selectMode": "Select",
+    "bulkDelete": "Delete ({{count}})",
+    "bulkDeleting": "Deleting…",
+    "selected": "selected",
     "categories": {
       "appetizer": "Appetizer",
       "soup": "Soup",
@@ -1728,5 +1742,146 @@
     "since": "for",
     "priority": "Needs Attention",
     "liveIndicator": "LIVE"
+  },
+  "launchpad": {
+    "selectApp": "Select an app to get started",
+    "open": "Open",
+    "comingSoon": "Coming soon",
+    "greetingMorning": "Good morning",
+    "greetingAfternoon": "Good afternoon",
+    "greetingEvening": "Good evening",
+    "apps": {
+      "buffet": {
+        "title": "Buffet & Labels",
+        "description": "Automated buffet label creation in 7 languages with AI Parser and minimal QR printing."
+      },
+      "kds": {
+        "title": "Kitchen · KDS",
+        "description": "Live order management and preparation screen for kitchen staff."
+      },
+      "warehouse": {
+        "title": "Warehouse & Smart Inventory",
+        "description": "Stock tracking, AI invoice scanning and food costing in real time."
+      },
+      "haccp": {
+        "title": "HACCP & Logs",
+        "description": "Digital food safety logging, temperatures and mandatory checks."
+      }
+    }
+  },
+  "warehousePage": {
+    "title": "Warehouse",
+    "subtitle": "Stock & order management",
+    "nav": {
+      "products": "Products",
+      "productsSub": "Warehouse catalogue",
+      "orders": "Orders",
+      "ordersSub": "Send & receive",
+      "stocktaking": "Stocktaking",
+      "stocktakingSub": "Monthly count",
+      "suppliers": "Suppliers",
+      "suppliersSub": "Details & days",
+      "categories": "Categories",
+      "categoriesSub": "Product organisation",
+      "locations": "Locations",
+      "locationsSub": "Fridges & stores",
+      "pricelists": "Price lists",
+      "pricelistsSub": "PDF per supplier",
+      "schedule": "Schedule",
+      "scheduleSub": "Delivery calendar",
+      "importExcel": "Import Excel",
+      "importExcelSub": "Bulk import"
+    }
+  },
+  "haccpLogbook": {
+    "title": "Digital HACCP Logbook",
+    "settings": "Settings",
+    "tabDevices": "🌡 Devices",
+    "tabTasks": "🧹 Tasks",
+    "newDevice": "New Device",
+    "deviceName": "Name",
+    "deviceNamePlaceholder": "e.g. Fridge 1",
+    "deviceType": "Type",
+    "typeFreeze": "Freezer",
+    "typeFridge": "Fridge",
+    "addDevice": "Add",
+    "noDevices": "No devices yet.",
+    "newTask": "New Task",
+    "taskDesc": "Description",
+    "taskDescPlaceholder": "e.g. Clean work surfaces",
+    "taskZone": "Zone / Area",
+    "taskZonePlaceholder": "e.g. Kitchen",
+    "taskFrequency": "Frequency",
+    "freqDaily": "📅 Daily",
+    "freqWeekly": "📆 Weekly",
+    "addTask": "Add",
+    "noTasks": "No tasks yet.",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "tempLogs": "Temp. logs",
+    "outOfRange": "out of range",
+    "cleanliness": "Cleanliness",
+    "temperatures": "Temperatures",
+    "outOfRangeWarning": "⚠️ Out-of-range temperatures detected — corrective action required",
+    "errorInvalidTemps": "Temperatures are not valid.",
+    "errorTaskName": "Please enter a task name.",
+    "drawerTitle": "HACCP Logbook Settings"
+  },
+  "tempLog": {
+    "acceptable": "Acceptable:",
+    "corrective": "⚠️ Corrective action:",
+    "editBtn": "Edit",
+    "morning": "Morning",
+    "evening": "Evening",
+    "freezer": "Freezer",
+    "fridge": "Fridge",
+    "shift": "shift",
+    "temperature": "Temperature (°C)",
+    "tempPlaceholder": "e.g. 3.5",
+    "outOfRange": "OUT OF RANGE",
+    "outOfRangeLabel": "Out of range — record corrective action",
+    "correctivePlaceholder": "e.g. Adjusted thermostat, Moved products to another fridge, Called technician…",
+    "save": "Record ✓",
+    "saving": "Saving…",
+    "noDevices": "No devices registered.",
+    "noDevicesHint": "Add fridges/freezers from Settings.",
+    "requiredField": "Required: describe the corrective action."
+  },
+  "categories": {
+    "appetizer": "Appetizers",
+    "soup": "Soups",
+    "salad": "Salads",
+    "main": "Main Courses",
+    "side": "Sides",
+    "sauce": "Sauces",
+    "bread": "Breads",
+    "dessert": "Desserts",
+    "beverage": "Beverages",
+    "other": "Other",
+    "none": "Uncategorized",
+    "allRecipes": "All Recipes",
+    "browserTitle": "Categories"
+  },
+  "wareProducts": {
+    "title": "Warehouse Products",
+    "new": "New",
+    "searchPlaceholder": "Search…",
+    "filterCategory": "Category",
+    "filterSupplier": "Supplier",
+    "filterLocation": "Location",
+    "lowStock": "Low stock",
+    "sortName": "Name",
+    "sortStock": "Stock",
+    "sortPrice": "Purchase price",
+    "results": "results",
+    "loading": "Loading…",
+    "empty": "No products",
+    "lowBadge": "LOW",
+    "editTitle": "Edit Product",
+    "newTitle": "New Product",
+    "nameLbl": "Name *",
+    "namePlaceholder": "e.g. Extra Virgin Olive Oil",
+    "deleteConfirm": "Delete product?",
+    "lowStockCount": "low stock"
   }
 }

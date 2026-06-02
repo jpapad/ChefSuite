@@ -82,7 +82,13 @@
     "back": "Назад",
     "next": "Следващ",
     "done": "Готово ✓",
-    "send": "Изпрати"
+    "send": "Изпрати",
+    "or": "или",
+    "search": "Търсене",
+    "select": "Избор",
+    "deselect": "Премахване на избор",
+    "deselectAll": "Премахване на всички",
+    "selectAll": "Избор на всички ({{count}})"
   },
   "dashboard": {
     "title": "Табло",
@@ -182,6 +188,14 @@
       "cost": "Цена: €{{cost}}/порция",
       "historyLabel": "История на версиите"
     },
+    "grouped": "Групирани",
+    "groupBy": "Групиране",
+    "allergenFree": "Без алергени",
+    "allergenScan": "Сканиране на алергени",
+    "selectMode": "Избор",
+    "bulkDelete": "Изтриване ({{count}})",
+    "bulkDeleting": "Изтриване…",
+    "selected": "избрани",
     "categories": {
       "appetizer": "Предястие",
       "soup": "Супа",
@@ -1726,5 +1740,146 @@
     "since": "от",
     "priority": "Нужда от внимание",
     "liveIndicator": "НА ЖИВО"
+  },
+  "launchpad": {
+    "selectApp": "Изберете приложение за начало",
+    "open": "Отвори",
+    "comingSoon": "Очаквайте скоро",
+    "greetingMorning": "Добро утро",
+    "greetingAfternoon": "Добър ден",
+    "greetingEvening": "Добър вечер",
+    "apps": {
+      "buffet": {
+        "title": "Buffet & Labels",
+        "description": "Автоматично създаване на етикети за буфет на 7 езика с AI Parser и минимален QR печат."
+      },
+      "kds": {
+        "title": "Кухня · KDS",
+        "description": "Живо управление на поръчки и подготовка за кухненския персонал."
+      },
+      "warehouse": {
+        "title": "Склад & Smart Inventory",
+        "description": "Проследяване на наличности, AI сканиране на фактури и изчисляване на разходи в реално време."
+      },
+      "haccp": {
+        "title": "HACCP & Logs",
+        "description": "Дигитален дневник за безопасност на храните, температури и задължителни проверки."
+      }
+    }
+  },
+  "warehousePage": {
+    "title": "Склад",
+    "subtitle": "Управление на запаси и поръчки",
+    "nav": {
+      "products": "Продукти",
+      "productsSub": "Каталог на склада",
+      "orders": "Поръчки",
+      "ordersSub": "Изпращане и получаване",
+      "stocktaking": "Инвентаризация",
+      "stocktakingSub": "Месечно броене",
+      "suppliers": "Доставчици",
+      "suppliersSub": "Данни и дни",
+      "categories": "Категории",
+      "categoriesSub": "Организация на продуктите",
+      "locations": "Местоположения",
+      "locationsSub": "Хладилници и складове",
+      "pricelists": "Ценови листи",
+      "pricelistsSub": "PDF по доставчик",
+      "schedule": "График",
+      "scheduleSub": "Календар за доставки",
+      "importExcel": "Импорт Excel",
+      "importExcelSub": "Масов импорт"
+    }
+  },
+  "haccpLogbook": {
+    "title": "Дигитален HACCP дневник",
+    "settings": "Настройки",
+    "tabDevices": "🌡 Устройства",
+    "tabTasks": "🧹 Задачи",
+    "newDevice": "Ново устройство",
+    "deviceName": "Име",
+    "deviceNamePlaceholder": "напр. Хладилник 1",
+    "deviceType": "Тип",
+    "typeFreeze": "Фризер",
+    "typeFridge": "Хладилник",
+    "addDevice": "Добавяне",
+    "noDevices": "Все още няма устройства.",
+    "newTask": "Нова задача",
+    "taskDesc": "Описание",
+    "taskDescPlaceholder": "напр. Почистване на работните повърхности",
+    "taskZone": "Зона / Площ",
+    "taskZonePlaceholder": "напр. Кухня",
+    "taskFrequency": "Честота",
+    "freqDaily": "📅 Ежедневно",
+    "freqWeekly": "📆 Седмично",
+    "addTask": "Добавяне",
+    "noTasks": "Все още няма задачи.",
+    "daily": "Ежедневно",
+    "weekly": "Седмично",
+    "tempLogs": "Темп. записи",
+    "outOfRange": "извън нормата",
+    "cleanliness": "Чистота",
+    "temperatures": "Температури",
+    "outOfRangeWarning": "⚠️ Открити температури извън нормата — необходими са коригиращи действия",
+    "errorInvalidTemps": "Температурите не са валидни.",
+    "errorTaskName": "Моля въведете име на задачата.",
+    "drawerTitle": "Настройки на HACCP дневник"
+  },
+  "tempLog": {
+    "acceptable": "Допустимо:",
+    "corrective": "⚠️ Коригиращо действие:",
+    "editBtn": "Ред.",
+    "morning": "Сутринта",
+    "evening": "Вечерта",
+    "freezer": "Фризер",
+    "fridge": "Хладилник",
+    "shift": "смяна",
+    "temperature": "Температура (°C)",
+    "tempPlaceholder": "напр. 3.5",
+    "outOfRange": "ИЗВЪН НОРМА",
+    "outOfRangeLabel": "Извън норма — запишете коригиращото действие",
+    "correctivePlaceholder": "напр. Регулиране на термостата, Преместване на продукти в друг хладилник…",
+    "save": "✓ Запис",
+    "saving": "Запазване…",
+    "noDevices": "Няма регистрирани устройства.",
+    "noDevicesHint": "Добавете хладилници/фризери от Настройки.",
+    "requiredField": "Задължително поле: опишете коригиращото действие."
+  },
+  "categories": {
+    "appetizer": "Предястия",
+    "soup": "Супи",
+    "salad": "Салати",
+    "main": "Основни ястия",
+    "side": "Гарнитури",
+    "sauce": "Сосове",
+    "bread": "Хлябове",
+    "dessert": "Десерти",
+    "beverage": "Напитки",
+    "other": "Други",
+    "none": "Без категория",
+    "allRecipes": "Всички рецепти",
+    "browserTitle": "Категории"
+  },
+  "wareProducts": {
+    "title": "Продукти в склада",
+    "new": "Нов",
+    "searchPlaceholder": "Търсене…",
+    "filterCategory": "Категория",
+    "filterSupplier": "Доставчик",
+    "filterLocation": "Местоположение",
+    "lowStock": "Ниска наличност",
+    "sortName": "Име",
+    "sortStock": "Наличност",
+    "sortPrice": "Покупна цена",
+    "results": "резултата",
+    "loading": "Зареждане…",
+    "empty": "Няма продукти",
+    "lowBadge": "НИСКО",
+    "editTitle": "Редактиране на продукт",
+    "newTitle": "Нов продукт",
+    "nameLbl": "Име *",
+    "namePlaceholder": "напр. Зехтин екстра върджин",
+    "deleteConfirm": "Изтриване на продукт?",
+    "lowStockCount": "ниска наличност"
   }
 }

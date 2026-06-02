@@ -3,6 +3,7 @@ import {
   Package, Plus, Pencil, Trash2, Search, AlertTriangle,
   ChevronDown, ChevronUp, ArrowUpDown,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/cn'
 import type {
@@ -24,6 +25,7 @@ interface Filter { category_id?: string; supplier_id?: string; storage_unit_id?:
 interface Props { initialFilter?: Filter }
 
 export function WareProducts({ initialFilter }: Props) {
+  const { t } = useTranslation()
   const [products, setProducts]     = useState<WhProduct[]>([])
   const [categories, setCategories] = useState<WhCategory[]>([])
   const [suppliers, setSuppliers]   = useState<WhSupplier[]>([])
@@ -110,7 +112,7 @@ export function WareProducts({ initialFilter }: Props) {
   }
 
   async function del(id: string) {
-    if (!confirm('Διαγραφή προϊόντος;')) return
+    if (!confirm(t('wareProducts.deleteConfirm'))) return
     await supabase.from('wh_products').delete().eq('id', id)
     void fetchAll()
   }
@@ -156,11 +158,11 @@ export function WareProducts({ initialFilter }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white">Προϊόντα Αποθήκης</h2>
-          <p className="text-xs text-white/40">{products.length} προϊόντα{lowStockCount > 0 && <span className="text-amber-400 ml-2">· {lowStockCount} χαμηλό απόθεμα</span>}</p>
+          <h2 className="text-lg font-bold text-white">{t('wareProducts.title')}</h2>
+          <p className="text-xs text-white/40">{products.length} {t('wareProducts.title').toLowerCase()}{lowStockCount > 0 && <span className="text-amber-400 ml-2">· {lowStockCount} {t('wareProducts.lowStockCount')}</span>}</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-white hover:bg-brand-orange/90 transition">
-          <Plus className="h-4 w-4" /> Νέο
+          <Plus className="h-4 w-4" /> {t('wareProducts.new')}
         </button>
       </div>
 
@@ -168,22 +170,22 @@ export function WareProducts({ initialFilter }: Props) {
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Αναζήτηση…"
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('wareProducts.searchPlaceholder')}
             className="w-full rounded-xl border border-glass-border bg-white/5 pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-brand-orange/50" />
         </div>
         <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
           className="rounded-xl border border-glass-border bg-[#1a1a2e] px-3 py-2 text-sm text-white focus:outline-none min-w-[130px]">
-          <option value="">Κατηγορία</option>
+          <option value="">{t('wareProducts.filterCategory')}</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select value={filterSup} onChange={(e) => setFilterSup(e.target.value)}
           className="rounded-xl border border-glass-border bg-[#1a1a2e] px-3 py-2 text-sm text-white focus:outline-none min-w-[130px]">
-          <option value="">Προμηθευτής</option>
+          <option value="">{t('wareProducts.filterSupplier')}</option>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select value={filterStu} onChange={(e) => setFilterStu(e.target.value)}
           className="rounded-xl border border-glass-border bg-[#1a1a2e] px-3 py-2 text-sm text-white focus:outline-none min-w-[120px]">
-          <option value="">Θέση</option>
+          <option value="">{t('wareProducts.filterLocation')}</option>
           {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
         <button
@@ -191,25 +193,25 @@ export function WareProducts({ initialFilter }: Props) {
           className={cn('rounded-xl px-3 py-2 text-sm font-medium border transition flex items-center gap-1.5',
             showLowStock ? 'border-amber-500/60 bg-amber-500/10 text-amber-400' : 'border-glass-border text-white/40 hover:text-white')}
         >
-          <AlertTriangle className="h-3.5 w-3.5" /> Χαμηλό απόθεμα
+          <AlertTriangle className="h-3.5 w-3.5" /> {t('wareProducts.lowStock')}
         </button>
       </div>
 
       {/* Sort bar */}
       <div className="flex gap-4 px-1">
-        <SortBtn k="name" label="Όνομα" />
-        <SortBtn k="current_stock" label="Απόθεμα" />
-        <SortBtn k="purchase_price" label="Τιμή αγοράς" />
-        <span className="ml-auto text-xs text-white/30">{filtered.length} αποτελέσματα</span>
+        <SortBtn k="name" label={t('wareProducts.sortName')} />
+        <SortBtn k="current_stock" label={t('wareProducts.sortStock')} />
+        <SortBtn k="purchase_price" label={t('wareProducts.sortPrice')} />
+        <span className="ml-auto text-xs text-white/30">{filtered.length} {t('wareProducts.results')}</span>
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="py-12 text-center text-white/30 text-sm">Φόρτωση…</div>
+        <div className="py-12 text-center text-white/30 text-sm">{t('wareProducts.loading')}</div>
       ) : (
         <div className="rounded-xl border border-glass-border divide-y divide-glass-border overflow-hidden">
           {filtered.length === 0 ? (
-            <div className="py-12 text-center text-white/30 text-sm">Κανένα προϊόν</div>
+            <div className="py-12 text-center text-white/30 text-sm">{t('wareProducts.empty')}</div>
           ) : filtered.map((p) => {
             const isLow = p.current_stock <= p.min_quantity
             const cat = p.wh_categories
@@ -224,7 +226,7 @@ export function WareProducts({ initialFilter }: Props) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-white truncate">{p.name}</p>
                     {p.product_code && <span className="text-[10px] font-mono text-white/30 bg-white/5 px-1.5 rounded">{p.product_code}</span>}
-                    {isLow && <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">ΧΑΜΗΛΟ</span>}
+                    {isLow && <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">{t('wareProducts.lowBadge')}</span>}
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0 mt-0.5">
                     {cat && <span className="text-xs text-white/35">{cat.name}</span>}
@@ -258,13 +260,13 @@ export function WareProducts({ initialFilter }: Props) {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-2xl border border-glass-border bg-[#1a1a2e] p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-white">{editing ? 'Επεξεργασία Προϊόντος' : 'Νέο Προϊόν'}</h3>
+            <h3 className="font-bold text-white">{editing ? t('wareProducts.editTitle') : t('wareProducts.newTitle')}</h3>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="mb-1 block text-xs text-white/60">Όνομα *</label>
+                <label className="mb-1 block text-xs text-white/60">{t('wareProducts.nameLbl')}</label>
                 <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="π.χ. Ελαιόλαδο Εξαιρετικό Παρθένο" className={inputCls} />
+                  placeholder={t('wareProducts.namePlaceholder')} className={inputCls} />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-white/60">Κωδικός</label>
@@ -325,12 +327,12 @@ export function WareProducts({ initialFilter }: Props) {
 
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowModal(false)} className="flex-1 rounded-xl border border-glass-border py-2.5 text-sm text-white/60 hover:text-white transition">
-                Άκυρο
+                {t('common.cancel')}
               </button>
               <button onClick={() => void save()} disabled={saving || !form.name.trim()}
                 className={cn('flex-1 rounded-xl py-2.5 text-sm font-semibold transition',
                   saving || !form.name.trim() ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-brand-orange text-white hover:bg-brand-orange/90')}>
-                {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
+                {saving ? t('common.saving') : t('common.save')}
               </button>
             </div>
           </div>

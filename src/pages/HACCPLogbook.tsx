@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Settings2, Plus, RefrigeratorIcon, Snowflake, Trash2, Thermometer, BrushIcon, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
@@ -33,6 +34,7 @@ interface SettingsDrawerProps {
 }
 
 function SettingsDrawer({ open, onClose, logbook, cleaning }: SettingsDrawerProps) {
+  const { t } = useTranslation()
   const [section, setSection] = useState<'appliances' | 'tasks'>('appliances')
 
   // Appliance form
@@ -53,28 +55,28 @@ function SettingsDrawer({ open, onClose, logbook, cleaning }: SettingsDrawerProp
   async function addAppliance(e: React.FormEvent) {
     e.preventDefault()
     const min = parseFloat(aMin), max = parseFloat(aMax)
-    if (isNaN(min) || isNaN(max) || min >= max) { setAError('Οι θερμοκρασίες δεν είναι έγκυρες.'); return }
+    if (isNaN(min) || isNaN(max) || min >= max) { setAError(t('haccpLogbook.errorInvalidTemps')); return }
     setASaving(true); setAError(null)
     try {
       await logbook.createAppliance({ name: aName.trim(), type: aType, min_temp: min, max_temp: max })
       setAName(''); setAMin('-2'); setAMax('5')
-    } catch (err) { setAError(err instanceof Error ? err.message : 'Σφάλμα') }
+    } catch (err) { setAError(err instanceof Error ? err.message : t('common.saveFailed')) }
     finally { setASaving(false) }
   }
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault()
-    if (!tName.trim()) { setTError('Εισάγετε όνομα εργασίας.'); return }
+    if (!tName.trim()) { setTError(t('haccpLogbook.errorTaskName')); return }
     setTSaving(true); setTError(null)
     try {
       await cleaning.createTask({ task_name: tName.trim(), frequency: tFreq, area: tArea.trim() })
       setTName(''); setTArea('')
-    } catch (err) { setTError(err instanceof Error ? err.message : 'Σφάλμα') }
+    } catch (err) { setTError(err instanceof Error ? err.message : t('common.saveFailed')) }
     finally { setTSaving(false) }
   }
 
   return (
-    <Drawer open={open} onClose={onClose} title="Ρυθμίσεις HACCP Logbook">
+    <Drawer open={open} onClose={onClose} title={t('haccpLogbook.drawerTitle')}>
       {/* Section tabs */}
       <div className="flex gap-2 mb-5">
         {(['appliances', 'tasks'] as const).map((s) => (
@@ -85,7 +87,7 @@ function SettingsDrawer({ open, onClose, logbook, cleaning }: SettingsDrawerProp
                 ? 'border-brand-orange/50 bg-brand-orange/10 text-brand-orange'
                 : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
             )}>
-            {s === 'appliances' ? '🌡 Συσκευές' : '🧹 Εργασίες'}
+            {s === 'appliances' ? t('haccpLogbook.tabDevices') : t('haccpLogbook.tabTasks')}
           </button>
         ))}
       </div>
@@ -94,23 +96,23 @@ function SettingsDrawer({ open, onClose, logbook, cleaning }: SettingsDrawerProp
         <div className="space-y-4">
           {/* Add form */}
           <form onSubmit={addAppliance} className="rounded-xl border border-glass-border bg-white/5 p-4 space-y-3">
-            <p className="text-sm font-semibold text-white/70">Νέα Συσκευή</p>
-            <Input name="name" label="Όνομα" placeholder="π.χ. Ψυγείο 1" required
+            <p className="text-sm font-semibold text-white/70">{t('haccpLogbook.newDevice')}</p>
+            <Input name="name" label={t('haccpLogbook.deviceName')} placeholder={t('haccpLogbook.deviceNamePlaceholder')} required
               value={aName} onChange={(e) => setAName(e.target.value)} />
             <div>
-              <span className="mb-1.5 block text-sm font-medium text-white/70">Τύπος</span>
+              <span className="mb-1.5 block text-sm font-medium text-white/70">{t('haccpLogbook.deviceType')}</span>
               <div className="flex gap-2">
-                {(['fridge', 'freezer'] as ApplianceType[]).map((t) => (
-                  <button key={t} type="button" onClick={() => setAType(t)}
+                {(['fridge', 'freezer'] as ApplianceType[]).map((atype) => (
+                  <button key={atype} type="button" onClick={() => setAType(atype)}
                     className={cn(
                       'flex-1 flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition',
-                      aType === t
+                      aType === atype
                         ? 'border-teal-500/50 bg-teal-500/10 text-teal-400'
                         : 'border-glass-border bg-white/5 text-white/60',
                     )}>
-                    {t === 'freezer'
-                      ? <><Snowflake className="h-4 w-4" /> Καταψύκτης</>
-                      : <><RefrigeratorIcon className="h-4 w-4" /> Ψυγείο</>}
+                    {atype === 'freezer'
+                      ? <><Snowflake className="h-4 w-4" /> {t('haccpLogbook.typeFreeze')}</>
+                      : <><RefrigeratorIcon className="h-4 w-4" /> {t('haccpLogbook.typeFridge')}</>}
                   </button>
                 ))}
               </div>
@@ -123,13 +125,13 @@ function SettingsDrawer({ open, onClose, logbook, cleaning }: SettingsDrawerProp
             </div>
             {aError && <p className="text-xs text-red-400">{aError}</p>}
             <Button type="submit" disabled={aSaving || !aName.trim()} leftIcon={<Plus className="h-4 w-4" />}>
-              {aSaving ? 'Αποθήκευση…' : 'Προσθήκη'}
+              {aSaving ? t('common.saving') : t('haccpLogbook.addDevice')}
             </Button>
           </form>
 
           {/* List */}
           {logbook.appliances.length === 0 ? (
-            <p className="text-sm text-white/40 text-center py-4">Δεν υπάρχουν συσκευές ακόμα.</p>
+            <p className="text-sm text-white/40 text-center py-4">{t('haccpLogbook.noDevices')}</p>
           ) : (
             <ul className="space-y-2">
               {logbook.appliances.map((a) => (
@@ -152,45 +154,45 @@ function SettingsDrawer({ open, onClose, logbook, cleaning }: SettingsDrawerProp
         <div className="space-y-4">
           {/* Add form */}
           <form onSubmit={addTask} className="rounded-xl border border-glass-border bg-white/5 p-4 space-y-3">
-            <p className="text-sm font-semibold text-white/70">Νέα Εργασία</p>
-            <Input name="task_name" label="Περιγραφή" placeholder="π.χ. Καθαρισμός επιφανειών εργασίας" required
+            <p className="text-sm font-semibold text-white/70">{t('haccpLogbook.newTask')}</p>
+            <Input name="task_name" label={t('haccpLogbook.taskDesc')} placeholder={t('haccpLogbook.taskDescPlaceholder')} required
               value={tName} onChange={(e) => setTName(e.target.value)} />
-            <Input name="area" label="Χώρος / Ζώνη" placeholder="π.χ. Μαγειρείο" required
+            <Input name="area" label={t('haccpLogbook.taskZone')} placeholder={t('haccpLogbook.taskZonePlaceholder')} required
               value={tArea} onChange={(e) => setTArea(e.target.value)} />
             <div>
-              <span className="mb-1.5 block text-sm font-medium text-white/70">Συχνότητα</span>
+              <span className="mb-1.5 block text-sm font-medium text-white/70">{t('haccpLogbook.taskFrequency')}</span>
               <div className="flex gap-2">
-                {(['daily', 'weekly'] as CleaningFrequency[]).map((f) => (
-                  <button key={f} type="button" onClick={() => setTFreq(f)}
+                {(['daily', 'weekly'] as CleaningFrequency[]).map((freq) => (
+                  <button key={freq} type="button" onClick={() => setTFreq(freq)}
                     className={cn(
                       'flex-1 rounded-xl border py-2.5 text-sm font-medium transition',
-                      tFreq === f
+                      tFreq === freq
                         ? 'border-teal-500/50 bg-teal-500/10 text-teal-400'
                         : 'border-glass-border bg-white/5 text-white/60',
                     )}>
-                    {f === 'daily' ? '📅 Καθημερινή' : '📆 Εβδομαδιαία'}
+                    {freq === 'daily' ? t('haccpLogbook.freqDaily') : t('haccpLogbook.freqWeekly')}
                   </button>
                 ))}
               </div>
             </div>
             {tError && <p className="text-xs text-red-400">{tError}</p>}
             <Button type="submit" disabled={tSaving || !tName.trim()} leftIcon={<Plus className="h-4 w-4" />}>
-              {tSaving ? 'Αποθήκευση…' : 'Προσθήκη'}
+              {tSaving ? t('common.saving') : t('haccpLogbook.addTask')}
             </Button>
           </form>
 
           {/* List */}
           {cleaning.tasks.length === 0 ? (
-            <p className="text-sm text-white/40 text-center py-4">Δεν υπάρχουν εργασίες ακόμα.</p>
+            <p className="text-sm text-white/40 text-center py-4">{t('haccpLogbook.noTasks')}</p>
           ) : (
             <ul className="space-y-2">
-              {cleaning.tasks.map((t) => (
-                <li key={t.id} className="flex items-center gap-3 rounded-xl border border-glass-border bg-white/5 px-4 py-3">
+              {cleaning.tasks.map((task) => (
+                <li key={task.id} className="flex items-center gap-3 rounded-xl border border-glass-border bg-white/5 px-4 py-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{t.task_name}</p>
-                    <p className="text-xs text-white/40">{t.area} · {t.frequency === 'daily' ? 'Καθημερινή' : 'Εβδομαδιαία'}</p>
+                    <p className="text-sm font-medium">{task.task_name}</p>
+                    <p className="text-xs text-white/40">{task.area} · {task.frequency === 'daily' ? t('haccpLogbook.daily') : t('haccpLogbook.weekly')}</p>
                   </div>
-                  <button type="button" onClick={() => void cleaning.deleteTask(t.id)}
+                  <button type="button" onClick={() => void cleaning.deleteTask(task.id)}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -208,12 +210,8 @@ function SettingsDrawer({ open, onClose, logbook, cleaning }: SettingsDrawerProp
 
 type Tab = 'temperature' | 'cleaning'
 
-const SHIFT_OPTIONS: { value: HACCPShift; label: string; sub: string }[] = [
-  { value: 'morning', label: '☀️ Πρωινή', sub: 'Βάρδια' },
-  { value: 'night',   label: '🌙 Βραδινή', sub: 'Βάρδια' },
-]
-
 export default function HACCPLogbook() {
+  const { t } = useTranslation()
   const [date, setDate]         = useState(todayIso())
   const [tab, setTab]           = useState<Tab>('temperature')
   const [shift, setShift]       = useState<HACCPShift>('morning')
@@ -230,8 +228,13 @@ export default function HACCPLogbook() {
     return a && (l.temperature < a.min_temp || l.temperature > a.max_temp)
   }).length
 
-  const cleanDone  = cleaning.tasks.filter((t) => !!cleaning.getDoneLog(t.id)).length
+  const cleanDone  = cleaning.tasks.filter((task) => !!cleaning.getDoneLog(task.id)).length
   const cleanTotal = cleaning.tasks.length
+
+  const SHIFT_OPTIONS: { value: HACCPShift; label: string; sub: string }[] = [
+    { value: 'morning', label: `☀️ ${t('tempLog.morning')}`, sub: t('tempLog.shift') },
+    { value: 'night',   label: `🌙 ${t('tempLog.evening')}`, sub: t('tempLog.shift') },
+  ]
 
   return (
     <div className="space-y-6">
@@ -257,7 +260,7 @@ export default function HACCPLogbook() {
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
           </div>
           <Button variant="secondary" leftIcon={<Settings2 className="h-4 w-4" />} onClick={() => setSettingsOpen(true)}>
-            Ρυθμίσεις
+            {t('haccpLogbook.settings')}
           </Button>
         </div>
       </header>
@@ -266,16 +269,16 @@ export default function HACCPLogbook() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <GlassCard className={cn('space-y-0.5', tempFail > 0 && 'border border-red-500/30')}>
           <p className="text-xs text-white/50 flex items-center gap-1">
-            <Thermometer className="h-3.5 w-3.5" />Θερμ. καταγραφές
+            <Thermometer className="h-3.5 w-3.5" />{t('haccpLogbook.tempLogs')}
           </p>
           <p className={cn('text-2xl font-bold', tempFail > 0 ? 'text-red-400' : 'text-white')}>
             {tempLogged}/{tempTotal}
           </p>
-          {tempFail > 0 && <p className="text-xs text-red-400">{tempFail} εκτός ορίου</p>}
+          {tempFail > 0 && <p className="text-xs text-red-400">{tempFail} {t('haccpLogbook.outOfRange')}</p>}
         </GlassCard>
         <GlassCard className={cn('space-y-0.5', cleanDone === cleanTotal && cleanTotal > 0 && 'border border-emerald-500/30')}>
           <p className="text-xs text-white/50 flex items-center gap-1">
-            <BrushIcon className="h-3.5 w-3.5" />Καθαριότητα
+            <BrushIcon className="h-3.5 w-3.5" />{t('haccpLogbook.cleanliness')}
           </p>
           <p className={cn('text-2xl font-bold', cleanDone === cleanTotal && cleanTotal > 0 ? 'text-emerald-400' : 'text-white')}>
             {cleanDone}/{cleanTotal}
@@ -283,7 +286,7 @@ export default function HACCPLogbook() {
         </GlassCard>
         {tempFail > 0 && (
           <GlassCard className="space-y-0.5 border border-amber-500/30 col-span-2">
-            <p className="text-xs text-amber-400">⚠️ Υπάρχουν εκτός ορίου θερμοκρασίες — απαιτούνται διορθωτικές ενέργειες</p>
+            <p className="text-xs text-amber-400">{t('haccpLogbook.outOfRangeWarning')}</p>
           </GlassCard>
         )}
       </div>
@@ -298,7 +301,7 @@ export default function HACCPLogbook() {
               : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
           )}>
           <Thermometer className="h-4 w-4" />
-          Θερμοκρασίες
+          {t('haccpLogbook.temperatures')}
           {tempLogged > 0 && (
             <span className={cn(
               'rounded-full px-1.5 py-0.5 text-xs font-bold',
@@ -316,7 +319,7 @@ export default function HACCPLogbook() {
               : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
           )}>
           <BrushIcon className="h-4 w-4" />
-          Καθαριότητα
+          {t('haccpLogbook.cleanliness')}
           {cleanTotal > 0 && (
             <span className={cn(
               'rounded-full px-1.5 py-0.5 text-xs font-bold',

@@ -82,7 +82,13 @@
     "back": "Πίσω",
     "next": "Επόμενο",
     "done": "Τέλος ✓",
-    "send": "Δημοσίευση"
+    "send": "Δημοσίευση",
+    "or": "ή",
+    "search": "Αναζήτηση",
+    "select": "Επιλογή",
+    "deselect": "Αποεπιλογή",
+    "deselectAll": "Αποεπιλογή όλων",
+    "selectAll": "Επιλογή όλων ({{count}})"
   },
   "dashboard": {
     "title": "Πίνακας",
@@ -182,6 +188,14 @@
       "cost": "Κόστος: €{{cost}}/μερίδα",
       "historyLabel": "Ιστορικό εκδόσεων"
     },
+    "grouped": "Ομαδοποιημένη",
+    "groupBy": "Ομαδοποίηση",
+    "allergenFree": "Χωρίς αλλεργιογόνα",
+    "allergenScan": "Σκανάρισμα αλλεργιογόνων",
+    "selectMode": "Επιλογή",
+    "bulkDelete": "Διαγραφή ({{count}})",
+    "bulkDeleting": "Διαγραφή…",
+    "selected": "επιλεγμέν",
     "categories": {
       "appetizer": "Ορεκτικό",
       "soup": "Σούπα",
@@ -1726,5 +1740,146 @@
     "since": "εδώ και",
     "priority": "Χρειάζεται Προσοχή",
     "liveIndicator": "ΖΩΝΤΑΝΑ"
+  },
+  "launchpad": {
+    "selectApp": "Επίλεξε εφαρμογή για να ξεκινήσεις",
+    "open": "Άνοιγμα",
+    "comingSoon": "Σύντομα διαθέσιμο",
+    "greetingMorning": "Καλημέρα",
+    "greetingAfternoon": "Καλησπέρα",
+    "greetingEvening": "Καλό βράδυ",
+    "apps": {
+      "buffet": {
+        "title": "Buffet & Labels",
+        "description": "Αυτοματοποιημένη δημιουργία ετικετών μπουφέ σε 7 γλώσσες με AI Parser και minimal QR εκτύπωση."
+      },
+      "kds": {
+        "title": "Κουζίνα · KDS",
+        "description": "Live οθόνη διαχείρισης παραγγελιών και προετοιμασίας για το προσωπικό της κουζίνας."
+      },
+      "warehouse": {
+        "title": "Αποθήκη & Smart Inventory",
+        "description": "Καταγραφή αποθεμάτων, AI Scanning τιμολογίων και Food Costing σε πραγματικό χρόνο."
+      },
+      "haccp": {
+        "title": "HACCP & Logs",
+        "description": "Ψηφιακή καταγραφή ασφάλειας τροφίμων, θερμοκρασιών και υποχρεωτικών ελέγχων."
+      }
+    }
+  },
+  "warehousePage": {
+    "title": "Αποθήκη",
+    "subtitle": "Διαχείριση αποθέματος & παραγγελιών",
+    "nav": {
+      "products": "Προϊόντα",
+      "productsSub": "Κατάλογος αποθήκης",
+      "orders": "Παραγγελίες",
+      "ordersSub": "Αποστολή & παραλαβή",
+      "stocktaking": "Απογραφές",
+      "stocktakingSub": "Μηνιαία καταμέτρηση",
+      "suppliers": "Προμηθευτές",
+      "suppliersSub": "Στοιχεία & ημέρες",
+      "categories": "Κατηγορίες",
+      "categoriesSub": "Οργάνωση προϊόντων",
+      "locations": "Θέσεις",
+      "locationsSub": "Ψυγεία & αποθήκες",
+      "pricelists": "Τιμοκατάλογοι",
+      "pricelistsSub": "PDF ανά προμηθευτή",
+      "schedule": "Πρόγραμμα",
+      "scheduleSub": "Ημερολόγιο παραδόσεων",
+      "importExcel": "Εισαγωγή Excel",
+      "importExcelSub": "Μαζική εισαγωγή"
+    }
+  },
+  "haccpLogbook": {
+    "title": "Ψηφιακό HACCP Logbook",
+    "settings": "Ρυθμίσεις",
+    "tabDevices": "🌡 Συσκευές",
+    "tabTasks": "🧹 Εργασίες",
+    "newDevice": "Νέα Συσκευή",
+    "deviceName": "Όνομα",
+    "deviceNamePlaceholder": "π.χ. Ψυγείο 1",
+    "deviceType": "Τύπος",
+    "typeFreeze": "Καταψύκτης",
+    "typeFridge": "Ψυγείο",
+    "addDevice": "Προσθήκη",
+    "noDevices": "Δεν υπάρχουν συσκευές ακόμα.",
+    "newTask": "Νέα Εργασία",
+    "taskDesc": "Περιγραφή",
+    "taskDescPlaceholder": "π.χ. Καθαρισμός επιφανειών εργασίας",
+    "taskZone": "Χώρος / Ζώνη",
+    "taskZonePlaceholder": "π.χ. Μαγειρείο",
+    "taskFrequency": "Συχνότητα",
+    "freqDaily": "📅 Καθημερινή",
+    "freqWeekly": "📆 Εβδομαδιαία",
+    "addTask": "Προσθήκη",
+    "noTasks": "Δεν υπάρχουν εργασίες ακόμα.",
+    "daily": "Καθημερινή",
+    "weekly": "Εβδομαδιαία",
+    "tempLogs": "Θερμ. καταγραφές",
+    "outOfRange": "εκτός ορίου",
+    "cleanliness": "Καθαριότητα",
+    "temperatures": "Θερμοκρασίες",
+    "outOfRangeWarning": "⚠️ Υπάρχουν εκτός ορίου θερμοκρασίες — απαιτούνται διορθωτικές ενέργειες",
+    "errorInvalidTemps": "Οι θερμοκρασίες δεν είναι έγκυρες.",
+    "errorTaskName": "Εισάγετε όνομα εργασίας.",
+    "drawerTitle": "Ρυθμίσεις HACCP Logbook"
+  },
+  "tempLog": {
+    "acceptable": "Αποδεκτό:",
+    "corrective": "⚠️ Διορθωτική ενέργεια:",
+    "editBtn": "Επεξ.",
+    "morning": "Πρωινή",
+    "evening": "Βραδινή",
+    "freezer": "Καταψύκτης",
+    "fridge": "Ψυγείο",
+    "shift": "βάρδια",
+    "temperature": "Θερμοκρασία (°C)",
+    "tempPlaceholder": "π.χ. 3.5",
+    "outOfRange": "ΕΚΤΟΣ",
+    "outOfRangeLabel": "Εκτός ορίου — Καταγράψτε τη διορθωτική ενέργεια",
+    "correctivePlaceholder": "π.χ. Ρύθμιση θερμοστάτη, Μεταφορά προϊόντων σε άλλο ψυγείο, Κλήση τεχνικού…",
+    "save": "✓ Καταγραφή",
+    "saving": "Αποθήκευση…",
+    "noDevices": "Δεν υπάρχουν καταχωρημένες συσκευές.",
+    "noDevicesHint": "Προσθέστε ψυγεία/καταψύκτες από τις Ρυθμίσεις.",
+    "requiredField": "Υποχρεωτικό πεδίο: περιγράψτε τη διορθωτική ενέργεια."
+  },
+  "categories": {
+    "appetizer": "Ορεκτικά",
+    "soup": "Σούπες",
+    "salad": "Σαλάτες",
+    "main": "Κύρια Πιάτα",
+    "side": "Συνοδευτικά",
+    "sauce": "Σάλτσες",
+    "bread": "Ψωμιά",
+    "dessert": "Γλυκά",
+    "beverage": "Ποτά",
+    "other": "Άλλα",
+    "none": "Χωρίς κατηγορία",
+    "allRecipes": "Όλες οι Συνταγές",
+    "browserTitle": "Κατηγορίες"
+  },
+  "wareProducts": {
+    "title": "Προϊόντα Αποθήκης",
+    "new": "Νέο",
+    "searchPlaceholder": "Αναζήτηση…",
+    "filterCategory": "Κατηγορία",
+    "filterSupplier": "Προμηθευτής",
+    "filterLocation": "Θέση",
+    "lowStock": "Χαμηλό απόθεμα",
+    "sortName": "Όνομα",
+    "sortStock": "Απόθεμα",
+    "sortPrice": "Τιμή αγοράς",
+    "results": "αποτελέσματα",
+    "loading": "Φόρτωση…",
+    "empty": "Κανένα προϊόν",
+    "lowBadge": "ΧΑΜΗΛΟ",
+    "editTitle": "Επεξεργασία Προϊόντος",
+    "newTitle": "Νέο Προϊόν",
+    "nameLbl": "Όνομα *",
+    "namePlaceholder": "π.χ. Ελαιόλαδο Εξαιρετικό Παρθένο",
+    "deleteConfirm": "Διαγραφή προϊόντος;",
+    "lowStockCount": "χαμηλό απόθεμα"
   }
 }

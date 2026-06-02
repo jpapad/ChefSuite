@@ -1,5 +1,6 @@
 import { useState, type FormEvent, useEffect } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 
 interface Ember {
@@ -13,6 +14,7 @@ interface Ember {
 }
 
 export default function Login() {
+  const { t } = useTranslation()
   const { session, loading, signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -220,14 +222,14 @@ export default function Login() {
           }}
         >
           <div className="mb-7">
-            <div className="text-xl font-bold text-neutral-800 leading-tight">Σύνδεση</div>
-            <div className="text-sm text-neutral-500 mt-0.5">Καλώς ήρθες στην κουζίνα σου</div>
+            <div className="text-xl font-bold text-neutral-800 leading-tight">{t('login.signIn')}</div>
+            <div className="text-sm text-neutral-500 mt-0.5">{t('login.subtitle')}</div>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-2">Email</label>
+              <label className="block text-xs font-semibold text-neutral-600 mb-2">{t('login.email')}</label>
               <input
                 type="email"
                 placeholder="chef@kitchen.com"
@@ -242,7 +244,7 @@ export default function Login() {
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-2">Password</label>
+              <label className="block text-xs font-semibold text-neutral-600 mb-2">{t('login.password')}</label>
               <input
                 type="password"
                 placeholder="••••••••••"
@@ -269,7 +271,7 @@ export default function Login() {
               className="copper-btn w-full rounded-xl text-white-fixed text-sm font-bold py-3.5 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: '#C5A059' }}
             >
-              <span>{submitting ? 'Entering…' : 'Enter Kitchen'}</span>
+              <span>{submitting ? t('login.signingIn') : t('login.signIn')}</span>
               {!submitting && (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M13 6l6 6-6 6" />
@@ -280,7 +282,7 @@ export default function Login() {
             {/* Divider */}
             <div className="flex items-center gap-3 pt-1">
               <span className="h-px flex-1 bg-neutral-200" />
-              <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">ή</span>
+              <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">{t('common.or')}</span>
               <span className="h-px flex-1 bg-neutral-200" />
             </div>
 
@@ -291,14 +293,14 @@ export default function Login() {
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white/50 hover:bg-white hover:border-neutral-400 transition py-2.5 text-xs font-semibold text-neutral-700"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                Δημιουργία ομάδας
+                {t('onboarding.createTeam')}
               </Link>
               <Link
                 to="/onboarding"
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white/50 hover:bg-white hover:border-neutral-400 transition py-2.5 text-xs font-semibold text-neutral-700"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                Σύνδεση σε ομάδα
+                {t('onboarding.joinTeam')}
               </Link>
             </div>
           </form>

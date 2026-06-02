@@ -122,7 +122,7 @@ export default function Recipes() {
       if (items.length > 0) groups.push({ category: cat, label: t(`recipes.categories.${cat}`), items })
     }
     const uncategorized = filtered.filter((r) => !r.category)
-    if (uncategorized.length > 0) groups.push({ category: null, label: 'Χωρίς κατηγορία', items: uncategorized })
+    if (uncategorized.length > 0) groups.push({ category: null, label: t('categories.none'), items: uncategorized })
     return groups
   }, [filtered, groupedView, t])
 
@@ -364,14 +364,14 @@ export default function Recipes() {
                 onClick={() => setGroupedView((v) => !v)}
                 className={groupedView ? 'border-brand-orange/60 text-brand-orange' : ''}
               >
-                {groupedView ? 'Ομαδοποιημένη' : 'Ομαδοποίηση'}
+                {groupedView ? t('recipes.grouped') : t('recipes.groupBy')}
               </Button>
               <Button
                 variant="secondary"
                 leftIcon={selectionMode ? <X className="h-5 w-5" /> : <CheckSquare className="h-5 w-5" />}
                 onClick={toggleSelectionMode}
               >
-                {selectionMode ? 'Ακύρωση' : 'Επιλογή'}
+                {selectionMode ? t('common.cancel') : t('recipes.selectMode')}
               </Button>
             </>
           )}
@@ -405,7 +405,7 @@ export default function Recipes() {
                     leftIcon={<ShieldAlert className="h-5 w-5" />}
                     onClick={() => setAllergenScanOpen(true)}
                   >
-                    Σκανάρισμα αλλεργιογόνων
+                    {t('recipes.allergenScan')}
                   </Button>
                   <Button
                     variant="secondary"
@@ -478,7 +478,7 @@ export default function Recipes() {
                   }
                 >
                   <span className="text-base leading-none">✓</span>
-                  Χωρίς αλλεργιογόνα
+                  {t('recipes.allergenFree')}
                   {filterAllergenFree && <X className="h-3 w-3" />}
                 </button>
 
@@ -542,7 +542,7 @@ export default function Recipes() {
             className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 py-6 px-3 text-center"
           >
             <span className="text-3xl leading-none">🍽️</span>
-            <p className="font-semibold text-sm text-white leading-tight">Όλες οι Συνταγές</p>
+            <p className="font-semibold text-sm text-white leading-tight">{t('categories.allRecipes')}</p>
             <p className="text-white/40 text-xs">{recipes.length}</p>
           </button>
 
@@ -558,7 +558,7 @@ export default function Recipes() {
                 className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-brand-orange/10 hover:border-brand-orange/30 transition-all active:scale-95 py-6 px-3 text-center"
               >
                 <span className="text-3xl leading-none">{meta.emoji}</span>
-                <p className="font-semibold text-sm text-white leading-tight">{meta.label}</p>
+                <p className="font-semibold text-sm text-white leading-tight">{t(`categories.${cat}`)}</p>
                 <p className="text-white/40 text-xs">{count}</p>
               </button>
             )
@@ -572,7 +572,7 @@ export default function Recipes() {
               className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 py-6 px-3 text-center"
             >
               <span className="text-3xl leading-none">📋</span>
-              <p className="font-semibold text-sm text-white leading-tight">Χωρίς κατηγορία</p>
+              <p className="font-semibold text-sm text-white leading-tight">{t('categories.none')}</p>
               <p className="text-white/40 text-xs">{categoryCounts.get('_none')}</p>
             </button>
           )}
@@ -587,26 +587,26 @@ export default function Recipes() {
               className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition"
             >
               <ArrowLeft className="h-4 w-4" />
-              Κατηγορίες
+              {t('categories.browserTitle')}
             </button>
             {activeCategory && (
               <>
                 <span className="text-white/20">/</span>
                 <span className="text-sm font-medium text-white">
-                  {CATEGORY_META[activeCategory]?.emoji} {CATEGORY_META[activeCategory]?.label}
+                  {CATEGORY_META[activeCategory]?.emoji} {t(`categories.${activeCategory}`)}
                 </span>
               </>
             )}
             {filterUncategorized && (
               <>
                 <span className="text-white/20">/</span>
-                <span className="text-sm font-medium text-white">📋 Χωρίς κατηγορία</span>
+                <span className="text-sm font-medium text-white">{'📋 ' + t('categories.none')}</span>
               </>
             )}
             {showAll && !activeCategory && !filterUncategorized && (
               <>
                 <span className="text-white/20">/</span>
-                <span className="text-sm font-medium text-white">Όλες οι Συνταγές</span>
+                <span className="text-sm font-medium text-white">{t('categories.allRecipes')}</span>
               </>
             )}
             {query.trim() && (
@@ -638,7 +638,7 @@ export default function Recipes() {
                     {group.items.map((r) => (
                       <div key={r.id} className="relative">
                         {selectionMode && (
-                          <button type="button" onClick={() => toggleSelect(r.id)} className="absolute inset-0 z-10 rounded-2xl focus:outline-none" aria-label={selectedIds.has(r.id) ? 'Αποεπιλογή' : 'Επιλογή'}>
+                          <button type="button" onClick={() => toggleSelect(r.id)} className="absolute inset-0 z-10 rounded-2xl focus:outline-none" aria-label={selectedIds.has(r.id) ? t('common.deselect') : t('common.select')}>
                             <span className={['absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition', selectedIds.has(r.id) ? 'border-red-400 bg-red-400 text-white' : 'border-white/40 bg-black/40 text-transparent'].join(' ')}>
                               {selectedIds.has(r.id) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-white/50" />}
                             </span>
@@ -662,7 +662,7 @@ export default function Recipes() {
                       type="button"
                       onClick={() => toggleSelect(r.id)}
                       className="absolute inset-0 z-10 rounded-2xl focus:outline-none"
-                      aria-label={selectedIds.has(r.id) ? 'Αποεπιλογή' : 'Επιλογή'}
+                      aria-label={selectedIds.has(r.id) ? t('common.deselect') : t('common.select')}
                     >
                       <span className={[
                         'absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition',
@@ -697,7 +697,7 @@ export default function Recipes() {
           {selectionMode && (
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border border-white/20 bg-[#1a1d25]/95 backdrop-blur px-3 py-2.5 shadow-2xl">
               <span className="text-sm font-semibold text-white px-2 whitespace-nowrap">
-                {selectedIds.size} επιλεγμέν{selectedIds.size === 1 ? 'η' : 'ες'}
+                {selectedIds.size} {t('recipes.selected')}
               </span>
               <div className="w-px h-5 bg-white/20" />
               <button
@@ -705,7 +705,7 @@ export default function Recipes() {
                 onClick={selectedIds.size === filtered.length ? clearSelection : selectAll}
                 className="rounded-xl border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition whitespace-nowrap"
               >
-                {selectedIds.size === filtered.length ? 'Αποεπιλογή όλων' : `Επιλογή όλων (${filtered.length})`}
+                {selectedIds.size === filtered.length ? t('common.deselectAll') : t('common.selectAll', { count: filtered.length })}
               </button>
               <button
                 type="button"
@@ -714,7 +714,7 @@ export default function Recipes() {
                 className="flex items-center gap-1.5 rounded-xl bg-red-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-40 disabled:pointer-events-none"
               >
                 <Trash2 className="h-4 w-4" />
-                {bulkDeleting ? 'Διαγραφή…' : `Διαγραφή${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
+                {bulkDeleting ? t('recipes.bulkDeleting') : t('recipes.bulkDelete', { count: selectedIds.size })}
               </button>
             </div>
           )}

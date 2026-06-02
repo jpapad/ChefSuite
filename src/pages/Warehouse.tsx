@@ -3,6 +3,7 @@ import {
   Package, Building2, FolderOpen, MapPin, ShoppingCart,
   ClipboardList, CalendarDays, FileSpreadsheet, ArrowLeft, BookOpen,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 import { WareProducts }          from '../components/warehouse/WareProducts'
 import { WareSuppliers }         from '../components/warehouse/WareSuppliers'
@@ -23,21 +24,22 @@ interface NavItem {
   color: string
 }
 
-const NAV: NavItem[] = [
-  { id: 'products',         label: 'Προϊόντα',        sublabel: 'Κατάλογος αποθήκης',      icon: Package,         color: 'text-brand-orange bg-brand-orange/10' },
-  { id: 'orders',           label: 'Παραγγελίες',     sublabel: 'Αποστολή & παραλαβή',     icon: ShoppingCart,    color: 'text-sky-400 bg-sky-500/10' },
-  { id: 'inventory',        label: 'Απογραφές',       sublabel: 'Μηνιαία καταμέτρηση',     icon: ClipboardList,   color: 'text-emerald-400 bg-emerald-500/10' },
-  { id: 'suppliers',        label: 'Προμηθευτές',     sublabel: 'Στοιχεία & ημέρες',       icon: Building2,       color: 'text-violet-400 bg-violet-500/10' },
-  { id: 'categories',       label: 'Κατηγορίες',      sublabel: 'Οργάνωση προϊόντων',      icon: FolderOpen,      color: 'text-amber-400 bg-amber-500/10' },
-  { id: 'storage',          label: 'Θέσεις',          sublabel: 'Ψυγεία & αποθήκες',       icon: MapPin,          color: 'text-rose-400 bg-rose-500/10' },
-  { id: 'catalogs',         label: 'Τιμοκατάλογοι',   sublabel: 'PDF ανά προμηθευτή',      icon: BookOpen,        color: 'text-indigo-400 bg-indigo-500/10' },
-  { id: 'schedule',         label: 'Πρόγραμμα',       sublabel: 'Ημερολόγιο παραδόσεων',   icon: CalendarDays,    color: 'text-teal-400 bg-teal-500/10' },
-  { id: 'import',           label: 'Εισαγωγή Excel',  sublabel: 'Μαζική εισαγωγή',         icon: FileSpreadsheet, color: 'text-lime-400 bg-lime-500/10' },
-]
-
 export default function Warehouse() {
+  const { t } = useTranslation()
   const [page, setPage] = useState<WarehousePage | null>(null)
   const [productFilter, setProductFilter] = useState<Record<string, string>>({})
+
+  const NAV: NavItem[] = [
+    { id: 'products',   label: t('warehousePage.nav.products'),   sublabel: t('warehousePage.nav.productsSub'),   icon: Package,         color: 'text-brand-orange bg-brand-orange/10' },
+    { id: 'orders',     label: t('warehousePage.nav.orders'),     sublabel: t('warehousePage.nav.ordersSub'),     icon: ShoppingCart,    color: 'text-sky-400 bg-sky-500/10' },
+    { id: 'inventory',  label: t('warehousePage.nav.stocktaking'),sublabel: t('warehousePage.nav.stocktakingSub'),icon: ClipboardList,   color: 'text-emerald-400 bg-emerald-500/10' },
+    { id: 'suppliers',  label: t('warehousePage.nav.suppliers'),  sublabel: t('warehousePage.nav.suppliersSub'),  icon: Building2,       color: 'text-violet-400 bg-violet-500/10' },
+    { id: 'categories', label: t('warehousePage.nav.categories'), sublabel: t('warehousePage.nav.categoriesSub'),icon: FolderOpen,      color: 'text-amber-400 bg-amber-500/10' },
+    { id: 'storage',    label: t('warehousePage.nav.locations'),  sublabel: t('warehousePage.nav.locationsSub'),  icon: MapPin,          color: 'text-rose-400 bg-rose-500/10' },
+    { id: 'catalogs',   label: t('warehousePage.nav.pricelists'), sublabel: t('warehousePage.nav.pricelistsSub'), icon: BookOpen,        color: 'text-indigo-400 bg-indigo-500/10' },
+    { id: 'schedule',   label: t('warehousePage.nav.schedule'),   sublabel: t('warehousePage.nav.scheduleSub'),   icon: CalendarDays,    color: 'text-teal-400 bg-teal-500/10' },
+    { id: 'import',     label: t('warehousePage.nav.importExcel'),sublabel: t('warehousePage.nav.importExcelSub'),icon: FileSpreadsheet, color: 'text-lime-400 bg-lime-500/10' },
+  ]
 
   function navigateTo(_target: 'products', filter: Record<string, string>) {
     setProductFilter(filter)
@@ -60,9 +62,9 @@ export default function Warehouse() {
         )}
         <div>
           <h1 className="text-xl font-bold text-white">
-            {activePage ? activePage.label : 'Αποθήκη'}
+            {activePage ? activePage.label : t('warehousePage.title')}
           </h1>
-          {!page && <p className="text-xs text-white/40">Διαχείριση αποθέματος & παραγγελιών</p>}
+          {!page && <p className="text-xs text-white/40">{t('warehousePage.subtitle')}</p>}
         </div>
       </div>
 
