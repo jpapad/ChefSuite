@@ -12,9 +12,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout backups branch
         uses: actions/checkout@v4
         with:
+          ref: backups
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Export tables
@@ -23,7 +24,7 @@ jobs:
           KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           DATE=$(date +%Y-%m-%d)
-          DIR="backups/$DATE"
+          DIR="$DATE"
           mkdir -p "$DIR"
 
           TABLES=(
@@ -36,8 +37,7 @@ jobs:
             wh_products wh_suppliers wh_supplier_catalogs wh_orders wh_order_items
             wh_categories wh_storage_locations
             purchase_orders purchase_order_items
-            reservations
-            shifts time_entries
+            reservations shifts time_entries
             waste_entries waste_logs
             buffet_live_status
             haccp_appliances haccp_temperature_logs haccp_checks
@@ -54,48 +54,43 @@ jobs:
               -H "Authorization: Bearer $KEY" \
               "$URL/rest/v1/$TABLE?select=*&limit=100000")
             if [ "$CODE" = "200" ]; then
-              ROWS=$(wc -c < "$DIR/$TABLE.json")
-              echo "✓ $TABLE ($ROWS bytes)"
+              echo "✓ $TABLE"
               OK=$((OK+1))
             else
-              echo "✗ $TABLE → HTTP $CODE (skipped)"
+              echo "✗ $TABLE (HTTP $CODE)"
               rm -f "$DIR/$TABLE.json"
               FAIL=$((FAIL+1))
             fi
           done
 
           echo "{\"date\":\"$DATE\",\"ok\":$OK,\"skipped\":$FAIL}" > "$DIR/manifest.json"
-          echo ""
-          echo "Done: $OK exported, $FAIL skipped → $DIR"
+          echo "→ $OK exported, $FAIL skipped"
 
       - name: Remove backups older than 30 days
         run: |
-          if [ -d backups ]; then
-            find backups -maxdepth 1 -type d -name "20*" | sort -r | tail -n +31 | xargs rm -rf || true
-          fi
+          find . -maxdepth 1 -type d -name "20*" | sort -r | tail -n +31 | xargs rm -rf || true
 
-      - name: Create zip for download
+      - name: Create zip artifact
         run: |
           DATE=$(date +%Y-%m-%d)
-          zip -r "chefsuite-backup-$DATE.zip" "backups/$DATE/"
-          echo "ZIP_NAME=chefsuite-backup-$DATE.zip" >> $GITHUB_ENV
+          zip -r "chefsuite-backup-$DATE.zip" "$DATE/"
+          echo "ZIP=chefsuite-backup-$DATE.zip" >> $GITHUB_ENV
 
-      - name: Upload artifact (downloadable from Actions tab)
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chefsuite-backup-${{ env.ZIP_NAME }}
-          path: ${{ env.ZIP_NAME }}
+          name: chefsuite-backup-${{ env.ZIP }}
+          path: ${{ env.ZIP }}
           retention-days: 90
 
-      - name: Commit & push
+      - name: Commit & push to backups branch
         run: |
           git config user.name  "ChefSuite Backup"
           git config user.email "backup@chefsuite.app"
-          git pull --rebase origin main
-          git add backups/
+          git add .
           if git diff --staged --quiet; then
-            echo "Nothing new to commit."
+            echo "Nothing to commit."
           else
             git commit -m "backup: $(date +%Y-%m-%d)"
-            git push origin main
+            git push origin backups
           fi
