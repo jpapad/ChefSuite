@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Activity, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -54,10 +54,13 @@ interface MergedItem {
 export default function KitchenBuffetKDS() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const menuParam = searchParams.get('menu')
   const { profile } = useAuth()
   const teamId = profile?.team_id ?? null
   const userId = profile?.id ?? null
 
+  const [menuName, setMenuName] = useState<string>('')
   const [menuItems, setMenuItems] = useState<BuffetItem[]>([])
   const [statusMap, setStatusMap] = useState<Map<string, BuffetLiveStatus>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -78,20 +81,22 @@ export default function KitchenBuffetKDS() {
     if (!teamId) return
     setLoading(true)
 
+    let menuQuery = supabase
+      .from('menus')
+      .select('id, name, menu_sections(id, menu_items(id, name))')
+      .eq('team_id', teamId)
+      .eq('type', 'buffet')
+      .eq('active', true)
+
+    if (menuParam) menuQuery = menuQuery.eq('id', menuParam)
+
     const [{ data: menuData }, { data: statusData }] = await Promise.all([
-      supabase
-        .from('menus')
-        .select('id, name, menu_sections(id, menu_items(id, name))')
-        .eq('team_id', teamId)
-        .eq('type', 'buffet')
-        .eq('active', true),
-      supabase
-        .from('buffet_live_status')
-        .select('*')
-        .eq('team_id', teamId),
+      menuQuery,
+      supabase.from('buffet_live_status').select('*').eq('team_id', teamId),
     ])
 
     const menus = (menuData ?? []) as unknown as MenuRow[]
+    if (menus.length > 0) setMenuName(menus[0]!.name)
     const items: BuffetItem[] = menus.flatMap((m) =>
       m.menu_sections.flatMap((s) =>
         s.menu_items.map((i) => ({ menu_item_id: i.id, item_name: i.name })),
@@ -207,6 +212,11 @@ export default function KitchenBuffetKDS() {
           <span className="font-semibold truncate" style={{ color: '#fff' }}>
             {t('buffetPulse.kdsMode')}
           </span>
+          {menuName && (
+            <span className="hidden sm:inline shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
+              📋 {menuName}
+            </span>
+          )}
           <span
             className="ml-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase"
             style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171' }}

@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Activity, ArrowLeft, Hash, Loader2, RefreshCw } from 'lucide-react'
+import { Activity, ArrowLeft, Hash, Loader2, RefreshCw, History, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
 import type { BuffetItemStatus, BuffetLiveStatus } from '../types/database.types'
+
+interface RefillEntry {
+  id: string
+  itemName: string
+  fromStatus: BuffetItemStatus
+  toStatus: BuffetItemStatus
+  at: string
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -49,17 +61,21 @@ const STATUS_CFG = {
 export default function BuffetMonitorInterface() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const menuParam = searchParams.get('menu')
   const { profile } = useAuth()
   const teamId = profile?.team_id ?? null
   const userId = profile?.id ?? null
 
   const [menus, setMenus] = useState<BuffetMenu[]>([])
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(menuParam)
   const [statusMap, setStatusMap] = useState<Map<string, BuffetLiveStatus>>(new Map())
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating]     = useState<string | null>(null)
   const [codeQuery, setCodeQuery]   = useState('')
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [refillHistory, setRefillHistory] = useState<RefillEntry[]>([])
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -101,9 +117,13 @@ export default function BuffetMonitorInterface() {
     }))
 
     setMenus(parsed)
-    if (parsed.length > 0 && !activeMenuId) setActiveMenuId(parsed[0]!.id)
+    // Prefer URL param, then existing selection, then first menu
+    if (!activeMenuId && parsed.length > 0) {
+      const fromParam = menuParam ? parsed.find((m) => m.id === menuParam) : null
+      setActiveMenuId(fromParam?.id ?? parsed[0]!.id)
+    }
     setLoading(false)
-  }, [teamId, activeMenuId])
+  }, [teamId, activeMenuId, menuParam])
 
   // ── Load live status ─────────────────────────────────────────────────────────
 
@@ -188,12 +208,14 @@ export default function BuffetMonitorInterface() {
     setUpdating(item.menu_item_id)
     try {
       const current = statusMap.get(item.menu_item_id)
+      const prevStatus = current?.status ?? 'full'
+      const newStatus  = patch.status ?? prevStatus
       await supabase.from('buffet_live_status').upsert(
         {
           team_id: teamId,
           menu_item_id: item.menu_item_id,
           item_name: item.item_name,
-          status: current?.status ?? 'full',
+          status: prevStatus,
           vessel_request: current?.vessel_request ?? false,
           ...patch,
           status_changed_at: new Date().toISOString(),
@@ -201,6 +223,17 @@ export default function BuffetMonitorInterface() {
         },
         { onConflict: 'team_id,menu_item_id' },
       )
+      // Track history locally (only status changes, not vessel toggles)
+      if (patch.status && patch.status !== prevStatus) {
+        const entry: RefillEntry = {
+          id: crypto.randomUUID(),
+          itemName: item.item_name,
+          fromStatus: prevStatus,
+          toStatus: newStatus,
+          at: new Date().toISOString(),
+        }
+        setRefillHistory((prev) => [entry, ...prev].slice(0, 50))
+      }
     } finally {
       setUpdating(null)
     }
@@ -264,12 +297,53 @@ export default function BuffetMonitorInterface() {
           />
         </div>
         <button
+          onClick={() => setShowHistory((v) => !v)}
+          className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+            showHistory ? 'bg-brand-orange/80 text-white' : 'bg-white/10 hover:bg-white/20',
+          )}
+          title="Ιστορικό ανεφοδιασμών"
+        >
+          <History className="h-4 w-4" />
+        </button>
+        <button
           onClick={() => { void loadMenus(); void loadStatus() }}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
         </button>
       </header>
+
+      {/* ── Refill History Panel ── */}
+      {showHistory && (
+        <div className="bg-gray-900/95 border-b border-white/10 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-white/40">Ιστορικό Ανεφοδιασμών</p>
+            <button onClick={() => setShowHistory(false)} className="text-white/30 hover:text-white transition">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {refillHistory.length === 0 ? (
+            <p className="text-xs text-white/30 py-2">Δεν υπάρχουν καταγραφές ακόμα.</p>
+          ) : (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-none">
+              {refillHistory.map((entry) => {
+                const fromColor = entry.fromStatus === 'empty' ? 'text-red-400' : entry.fromStatus === 'low' ? 'text-amber-400' : 'text-emerald-400'
+                const toColor   = entry.toStatus === 'empty'   ? 'text-red-400' : entry.toStatus === 'low'   ? 'text-amber-400' : 'text-emerald-400'
+                return (
+                  <div key={entry.id} className="flex items-center gap-2 text-xs">
+                    <span className="text-white/30 font-mono shrink-0">{formatTime(entry.at)}</span>
+                    <span className="text-white/70 truncate flex-1">{entry.itemName}</span>
+                    <span className={cn('shrink-0 font-bold uppercase', fromColor)}>{entry.fromStatus}</span>
+                    <span className="text-white/20">→</span>
+                    <span className={cn('shrink-0 font-bold uppercase', toColor)}>{entry.toStatus}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Menu tabs */}
       {menus.length > 1 && (
