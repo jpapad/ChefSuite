@@ -2,8 +2,8 @@ name: Daily Supabase Backup
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # κάθε βράδυ 02:00 UTC (04:00 Ελλάδα)
-  workflow_dispatch:        # manual trigger από GitHub Actions tab
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   backup:
@@ -12,64 +12,75 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Export Supabase tables
+      - name: Export tables
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           DATE=$(date +%Y-%m-%d)
           DIR="backups/$DATE"
           mkdir -p "$DIR"
 
           TABLES=(
-            "recipes"
-            "recipe_ingredients"
-            "menus"
-            "menu_sections"
-            "menu_items"
-            "profiles"
-            "teams"
-            "prep_tasks"
-            "suppliers"
-            "reservations"
-            "shifts"
-            "buffet_live_status"
-            "buffet_label_profiles"
+            recipes recipe_ingredients recipe_versions recipe_comments
+            menus menu_sections menu_items menu_scans
+            profiles teams team_memberships team_invites
+            prep_tasks prep_task_steps prep_templates prep_template_items
+            inventory inventory_locations inventory_movements
+            suppliers ingredient_suppliers
+            wh_products wh_suppliers wh_supplier_catalogs wh_orders wh_order_items
+            wh_categories wh_storage_locations
+            purchase_orders purchase_order_items
+            reservations
+            shifts time_entries
+            waste_entries waste_logs
+            buffet_live_status
+            haccp_appliances haccp_temperature_logs haccp_checks
+            haccp_cleaning_tasks haccp_cleaning_logs
+            journal_entries handover_notes
+            online_orders online_order_items
+            pos_transactions pos_settings
           )
 
+          OK=0; FAIL=0
           for TABLE in "${TABLES[@]}"; do
-            echo "→ Exporting $TABLE..."
-            HTTP=$(curl -s -o "$DIR/$TABLE.json" -w "%{http_code}" \
-              -H "apikey: $SUPABASE_KEY" \
-              -H "Authorization: Bearer $SUPABASE_KEY" \
-              -H "Prefer: count=exact" \
-              "$SUPABASE_URL/rest/v1/$TABLE?select=*&limit=100000")
-            echo "  $TABLE → HTTP $HTTP"
+            CODE=$(curl -s -o "$DIR/$TABLE.json" -w "%{http_code}" \
+              -H "apikey: $KEY" \
+              -H "Authorization: Bearer $KEY" \
+              "$URL/rest/v1/$TABLE?select=*&limit=100000")
+            if [ "$CODE" = "200" ]; then
+              ROWS=$(wc -c < "$DIR/$TABLE.json")
+              echo "✓ $TABLE ($ROWS bytes)"
+              OK=$((OK+1))
+            else
+              echo "✗ $TABLE → HTTP $CODE (skipped)"
+              rm -f "$DIR/$TABLE.json"
+              FAIL=$((FAIL+1))
+            fi
           done
 
-          # Write manifest
-          echo "{\"date\":\"$DATE\",\"tables\":$(printf '%s\n' "${TABLES[@]}" | jq -R . | jq -s .)}" \
-            > "$DIR/manifest.json"
-          echo "✓ Backup complete: $DIR"
+          echo "{\"date\":\"$DATE\",\"ok\":$OK,\"skipped\":$FAIL}" > "$DIR/manifest.json"
+          echo ""
+          echo "Done: $OK exported, $FAIL skipped → $DIR"
 
       - name: Remove backups older than 30 days
         run: |
           if [ -d backups ]; then
-            find backups -maxdepth 1 -type d -name "20*" | sort -r | tail -n +31 | xargs rm -rf
+            find backups -maxdepth 1 -type d -name "20*" | sort -r | tail -n +31 | xargs rm -rf || true
           fi
 
-      - name: Commit backup
+      - name: Commit & push
         run: |
           git config user.name  "ChefSuite Backup"
           git config user.email "backup@chefsuite.app"
           git add backups/
           if git diff --staged --quiet; then
-            echo "Nothing to commit."
+            echo "Nothing new to commit."
           else
             git commit -m "backup: $(date +%Y-%m-%d)"
             git push
