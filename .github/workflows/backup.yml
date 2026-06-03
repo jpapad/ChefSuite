@@ -74,6 +74,19 @@ jobs:
             find backups -maxdepth 1 -type d -name "20*" | sort -r | tail -n +31 | xargs rm -rf || true
           fi
 
+      - name: Create zip for download
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          zip -r "chefsuite-backup-$DATE.zip" "backups/$DATE/"
+          echo "ZIP_NAME=chefsuite-backup-$DATE.zip" >> $GITHUB_ENV
+
+      - name: Upload artifact (downloadable from Actions tab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: chefsuite-backup-${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
+          retention-days: 90
+
       - name: Commit & push
         run: |
           git config user.name  "ChefSuite Backup"
