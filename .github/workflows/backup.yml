@@ -91,10 +91,11 @@ jobs:
         run: |
           git config user.name  "ChefSuite Backup"
           git config user.email "backup@chefsuite.app"
+          git pull --rebase origin main
           git add backups/
           if git diff --staged --quiet; then
             echo "Nothing new to commit."
           else
             git commit -m "backup: $(date +%Y-%m-%d)"
-            git push
+            git push origin main
           fi
