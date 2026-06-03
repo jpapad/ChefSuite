@@ -1,0 +1,76 @@
+name: Daily Supabase Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # κάθε βράδυ 02:00 UTC (04:00 Ελλάδα)
+  workflow_dispatch:        # manual trigger από GitHub Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Export Supabase tables
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          DIR="backups/$DATE"
+          mkdir -p "$DIR"
+
+          TABLES=(
+            "recipes"
+            "recipe_ingredients"
+            "menus"
+            "menu_sections"
+            "menu_items"
+            "profiles"
+            "teams"
+            "prep_tasks"
+            "suppliers"
+            "reservations"
+            "shifts"
+            "buffet_live_status"
+            "buffet_label_profiles"
+          )
+
+          for TABLE in "${TABLES[@]}"; do
+            echo "→ Exporting $TABLE..."
+            HTTP=$(curl -s -o "$DIR/$TABLE.json" -w "%{http_code}" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              -H "Prefer: count=exact" \
+              "$SUPABASE_URL/rest/v1/$TABLE?select=*&limit=100000")
+            echo "  $TABLE → HTTP $HTTP"
+          done
+
+          # Write manifest
+          echo "{\"date\":\"$DATE\",\"tables\":$(printf '%s\n' "${TABLES[@]}" | jq -R . | jq -s .)}" \
+            > "$DIR/manifest.json"
+          echo "✓ Backup complete: $DIR"
+
+      - name: Remove backups older than 30 days
+        run: |
+          if [ -d backups ]; then
+            find backups -maxdepth 1 -type d -name "20*" | sort -r | tail -n +31 | xargs rm -rf
+          fi
+
+      - name: Commit backup
+        run: |
+          git config user.name  "ChefSuite Backup"
+          git config user.email "backup@chefsuite.app"
+          git add backups/
+          if git diff --staged --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "backup: $(date +%Y-%m-%d)"
+            git push
+          fi
