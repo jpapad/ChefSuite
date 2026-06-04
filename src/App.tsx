@@ -29,6 +29,7 @@ const Welcome            = lazy(() => import('./pages/Welcome'))
 const Menus              = lazy(() => import('./pages/Menus'))
 const MenuDetail         = lazy(() => import('./pages/MenuDetail'))
 const MenuPublic         = lazy(() => import('./pages/MenuPublic'))
+const MenuToday          = lazy(() => import('./pages/MenuToday'))
 const Suppliers          = lazy(() => import('./pages/Suppliers'))
 const WasteLog           = lazy(() => import('./pages/WasteLog'))
 const Shifts             = lazy(() => import('./pages/Shifts'))
@@ -163,6 +164,7 @@ export default function App() {
               />
 
               <Route path="/menu/:id" element={<MenuPublic />} />
+              <Route path="/menu/today/:teamId" element={<MenuToday />} />
               <Route path="/reserve/:id" element={<ReservationPublic />} />
               <Route path="/dish" element={<DishInfo />} />
               <Route path="*" element={<NotFound />} />

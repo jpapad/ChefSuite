@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
 import { AIMenuGeneratorDrawer } from '../components/menus/AIMenuGeneratorDrawer'
 import { useMenus } from '../hooks/useMenus'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { cn } from '../lib/cn'
 import type { Menu, MenuType, PrintTemplate } from '../types/database.types'
 
@@ -57,6 +61,8 @@ function isExpired(validTo: string | null) {
 
 export default function Menus() {
   const { t } = useTranslation()
+  const { profile } = useAuth()
+  const teamId = profile?.team_id ?? null
   const { menus, loading, create, update, remove, duplicate } = useMenus()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [aiGeneratorOpen, setAiGeneratorOpen] = useState(false)
@@ -64,6 +70,38 @@ export default function Menus() {
   const [form, setForm] = useState<MenuFormValues>(EMPTY)
   const [saving, setSaving] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+  const [dailyMenuId, setDailyMenuId] = useState<string | null>(null)
+  const [todayQr, setTodayQr] = useState<{ url: string; dataUrl: string } | null>(null)
+  const [todayQrOpen, setTodayQrOpen] = useState(false)
+
+  // Load current daily menu from team
+  useEffect(() => {
+    if (!teamId) return
+    supabase.from('teams').select('daily_menu_id').eq('id', teamId).single()
+      .then(({ data }) => setDailyMenuId(data?.daily_menu_id ?? null))
+  }, [teamId])
+
+  async function setDailyMenu(menuId: string | null) {
+    if (!teamId) return
+    await supabase.from('teams').update({ daily_menu_id: menuId }).eq('id', teamId)
+    setDailyMenuId(menuId)
+  }
+
+  async function openTodayQr() {
+    if (!teamId) return
+    const url = `${window.location.origin}/menu/today/${teamId}`
+    const dataUrl = await QRCodeLib.toDataURL(url, { width: 512, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+    setTodayQr({ url, dataUrl })
+    setTodayQrOpen(true)
+  }
+
+  function downloadTodayQr() {
+    if (!todayQr) return
+    const a = document.createElement('a')
+    a.href = todayQr.dataUrl
+    a.download = 'menu-today-qr.png'
+    a.click()
+  }
 
   function openCreate() {
     setEditing(null)
@@ -148,7 +186,12 @@ export default function Menus() {
           <h1 className="text-3xl font-semibold">{t('menus.title')}</h1>
           <p className="text-white/60 mt-1">{t('menus.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {dailyMenuId && (
+            <Button variant="secondary" leftIcon={<QrCode className="h-4 w-4" />} onClick={openTodayQr}>
+              QR Μενού Ημέρας
+            </Button>
+          )}
           <Button variant="secondary" leftIcon={<Sparkles className="h-4 w-4" />} onClick={() => setAiGeneratorOpen(true)}>
             {t('menus.aiGenerator.button')}
           </Button>
@@ -242,6 +285,11 @@ export default function Menus() {
 
                 {/* Badges row */}
                 <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {dailyMenuId === menu.id && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold bg-amber-400/20 text-amber-300">
+                      <Sun className="h-3 w-3" /> Μενού Ημέρας
+                    </span>
+                  )}
                   <span className={cn(
                     'inline-flex items-center px-2 py-0.5 rounded-full font-medium',
                     menu.active ? 'bg-emerald-400/15 text-emerald-400' : 'bg-white/10 text-white/40',
@@ -279,6 +327,19 @@ export default function Menus() {
                     <Pencil className="h-3.5 w-3.5" />
                     {t('menus.editMenu')}
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => setDailyMenu(dailyMenuId === menu.id ? null : menu.id)}
+                    title={dailyMenuId === menu.id ? 'Αφαίρεση ως μενού ημέρας' : 'Ορισμός ως μενού ημέρας'}
+                    className={cn(
+                      'flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition',
+                      dailyMenuId === menu.id
+                        ? 'bg-amber-400/15 border-amber-400/40 text-amber-300 hover:bg-amber-400/25'
+                        : 'bg-white/5 border-glass-border text-white/70 hover:text-amber-300 hover:border-amber-400/40 hover:bg-amber-400/10',
+                    )}
+                  >
+                    <Sun className="h-3.5 w-3.5" />
+                  </button>
                   <a
                     href={`/menu/${menu.id}`}
                     target="_blank"
@@ -475,6 +536,38 @@ export default function Menus() {
         onClose={() => setAiGeneratorOpen(false)}
         onCreated={() => {}}
       />
+
+      {/* ── Today's Menu QR Drawer ── */}
+      <Drawer open={todayQrOpen} onClose={() => setTodayQrOpen(false)} title="QR Μενού Ημέρας">
+        <div className="space-y-5">
+          <p className="text-sm text-white/60">
+            Εκτύπωσε αυτό το QR μια φορά και τοποθέτησέ το στα τραπέζια. Κάθε μέρα αλλάζεις ποιο μενού είναι "μενού ημέρας" και το QR δείχνει αυτόματα το νέο.
+          </p>
+
+          {todayQr ? (
+            <div className="flex justify-center">
+              <img src={todayQr.dataUrl} alt="QR Μενού Ημέρας" className="w-56 h-56 rounded-2xl bg-white-fixed p-3" />
+            </div>
+          ) : (
+            <div className="flex justify-center items-center h-56">
+              <p className="text-white/50 text-sm">{t('common.loading')}</p>
+            </div>
+          )}
+
+          {todayQr && (
+            <p className="text-xs text-white/40 text-center break-all">{todayQr.url}</p>
+          )}
+
+          <div className="flex gap-2">
+            <Button onClick={downloadTodayQr} disabled={!todayQr} className="flex-1">
+              Κατέβασμα QR
+            </Button>
+            <Button variant="secondary" onClick={() => setTodayQrOpen(false)}>
+              {t('common.close')}
+            </Button>
+          </div>
+        </div>
+      </Drawer>
     </div>
   )
 }
