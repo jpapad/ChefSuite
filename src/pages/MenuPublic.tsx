@@ -204,7 +204,7 @@ function CartDrawer({
         customer_notes: customerNotes.trim() || null,
         items: cart.map((c) => ({
           menu_item_id: c.item.id,
-          name: localName(c.item, isEl),
+          name: localName(c.item, lang),
           price: c.item.price,
           quantity: c.qty,
           notes: null,
