@@ -307,9 +307,9 @@ function CartDrawer({
   )
 }
 
-// ── Main page ────────────────────────────────────────────────────────────────
-export default function MenuPublic() {
-  const { id } = useParams<{ id: string }>()
+// ── Main page (exported for reuse in MenuToday) ──────────────────────────────
+export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
+  const id = menuId
   const { t } = useTranslation()
   const [menu, setMenu] = useState<MenuWithSections | null | undefined>(undefined)
   const [activeFilterTag, setActiveFilterTag] = useState<MenuItemTag | null>(null)
@@ -473,4 +473,9 @@ export default function MenuPublic() {
       `}</style>
     </div>
   )
+}
+
+export default function MenuPublic() {
+  const { id } = useParams<{ id: string }>()
+  return <MenuPublicContent menuId={id} />
 }
