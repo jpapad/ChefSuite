@@ -97,7 +97,7 @@ export default function BuffetMapPublic() {
     const [mapRes, statusRes] = await Promise.all([
       supabase
         .from('buffet_maps')
-        .select('id, stations')
+        .select('id, stations, background_image')
         .eq('team_id', teamId)
         .order('created_at', { ascending: false })
         .limit(1),
