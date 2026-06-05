@@ -81,6 +81,7 @@ export default function BuffetMapPublic() {
   const [notFound, setNotFound]   = useState(false)
   const [popup, setPopup]         = useState<PopupInfo | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [secondsSince, setSecondsSince] = useState(0)
 
   const svgRef      = useRef<SVGSVGElement>(null)
   const channelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -152,9 +153,19 @@ export default function BuffetMapPublic() {
       setLastUpdated(new Date())
     }
 
-    const interval = setInterval(() => void pollStatuses(), 10_000)
+    void pollStatuses() // run immediately on mount too
+    const interval = setInterval(() => void pollStatuses(), 5_000)
     return () => clearInterval(interval)
   }, [teamId])
+
+  // ── Seconds-since-update counter ───────────────────────────────────────────
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setSecondsSince(lastUpdated ? Math.floor((Date.now() - lastUpdated.getTime()) / 1000) : 0)
+    }, 1000)
+    return () => clearInterval(t)
+  }, [lastUpdated])
 
   // ── Popup helpers ──────────────────────────────────────────────────────────
 
@@ -231,12 +242,12 @@ export default function BuffetMapPublic() {
             </p>
           </div>
         </div>
-        {lastUpdated && (
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-            <span className="text-xs text-white/40">Live</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+          <span className="text-xs text-white/40">
+            {lastUpdated ? `${secondsSince}δ` : 'Live'}
+          </span>
+        </div>
       </div>
 
       {/* Map canvas */}
