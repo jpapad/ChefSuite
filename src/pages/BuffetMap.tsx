@@ -387,7 +387,7 @@ export default function BuffetMap() {
     const xml = new XMLSerializer().serializeToString(svg)
     const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
     const url  = URL.createObjectURL(blob)
-    const img  = new Image()
+    const img  = document.createElement('img')
     img.onload = () => {
       const canvas = document.createElement('canvas')
       canvas.width = SVG_W; canvas.height = SVG_H
