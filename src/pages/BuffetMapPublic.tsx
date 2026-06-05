@@ -83,8 +83,7 @@ export default function BuffetMapPublic() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [secondsSince, setSecondsSince] = useState(0)
 
-  const svgRef      = useRef<SVGSVGElement>(null)
-  const channelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   // ── Load map data ──────────────────────────────────────────────────────────
 
