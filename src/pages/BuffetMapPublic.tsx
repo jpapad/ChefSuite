@@ -14,12 +14,15 @@ const TODAY = new Date().toISOString().split('T')[0]!
 interface Station {
   id: string
   name: string
+  icon: string
   x: number
   y: number
   width: number
   height: number
   color: string
   slotCount: number
+  rotation: number
+  shape: 'rect' | 'circle'
 }
 
 interface SlotValue { menuItemId: string; dishName: string }
@@ -75,6 +78,7 @@ export default function BuffetMapPublic() {
   const { teamId } = useParams<{ teamId: string }>()
 
   const [stations, setStations]   = useState<Station[]>([])
+  const [bgImage, setBgImage]     = useState('')
   const [slots, setSlots]         = useState<SlotsMap>({})
   const [statusMap, setStatusMap] = useState<StatusMap>({})
   const [loading, setLoading]     = useState(true)
@@ -110,7 +114,10 @@ export default function BuffetMapPublic() {
     }
 
     const mapRow = mapRes.data[0]!
-    setStations((mapRow.stations as Station[]) ?? [])
+    setStations(((mapRow.stations as any[]) ?? []).map((s) => ({
+      icon: '', rotation: 0, shape: 'rect', ...s,
+    })))
+    setBgImage((mapRow as any).background_image ?? '')
 
     const assignRes = await supabase
       .from('buffet_map_assignments')
@@ -269,142 +276,115 @@ export default function BuffetMapPublic() {
               {stations.map((s) => (
                 <filter key={`glow-${s.id}`} id={`glow-pub-${s.id}`} x="-30%" y="-30%" width="160%" height="160%">
                   <feGaussianBlur stdDeviation="6" result="blur"/>
-                  <feMerge>
-                    <feMergeNode in="blur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
+              ))}
+              {stations.map((s) => (
+                <clipPath key={`clip-pub-${s.id}`} id={`clip-pub-${s.id}`}>
+                  {s.shape === 'circle'
+                    ? <ellipse cx={s.x + s.width/2} cy={s.y + s.height/2} rx={s.width/2 - 2} ry={s.height/2 - 2}/>
+                    : <rect x={s.x + 1} y={s.y + 1} width={s.width - 2} height={s.height - 2} rx="7"/>}
+                </clipPath>
               ))}
             </defs>
             <rect width={SVG_W} height={SVG_H} fill="url(#dots)"/>
 
+            {/* Background image */}
+            {bgImage && (
+              <image href={bgImage} x="0" y="0" width={SVG_W} height={SVG_H}
+                preserveAspectRatio="xMidYMid slice" opacity="0.2"
+                style={{ pointerEvents: 'none' }}/>
+            )}
+
             {/* Stations */}
             {stations.map((s) => {
               const slotW = s.width / s.slotCount
+              const cx = s.x + s.width / 2
+              const cy = s.y + s.height / 2
 
-              // Compute station's worst status for glow
               const stationStatuses = Array.from({ length: s.slotCount }, (_, i) => {
-                const key = slotKey(s.id, i)
-                const assignment = slots[key]
-                if (!assignment) return null
-                return statusMap[assignment.menuItemId] ?? null
+                const assignment = slots[slotKey(s.id, i)]
+                return assignment ? (statusMap[assignment.menuItemId] ?? null) : null
               }).filter(Boolean) as string[]
 
-              const hasEmpty = stationStatuses.includes('empty')
-              const hasLow   = stationStatuses.includes('low')
+              const hasEmpty  = stationStatuses.includes('empty')
+              const hasLow    = stationStatuses.includes('low')
               const glowColor = hasEmpty ? '#ef4444' : hasLow ? '#f59e0b' : s.color
 
               return (
-                <g key={s.id} filter={`url(#glow-pub-${s.id})`}>
-                  {/* Outer glow */}
-                  <rect
-                    x={s.x - 2} y={s.y - 2}
-                    width={s.width + 4} height={s.height + 4}
-                    rx="10"
-                    fill="none"
-                    stroke={glowColor}
-                    strokeWidth="1"
-                    strokeOpacity="0.2"
-                  />
+                <g key={s.id} transform={`rotate(${s.rotation ?? 0},${cx},${cy})`} filter={`url(#glow-pub-${s.id})`}>
+                  {/* Outer glow ring */}
+                  {s.shape === 'circle' ? (
+                    <ellipse cx={cx} cy={cy} rx={s.width/2 + 3} ry={s.height/2 + 3}
+                      fill="none" stroke={glowColor} strokeWidth="1" strokeOpacity="0.2"/>
+                  ) : (
+                    <rect x={s.x - 2} y={s.y - 2} width={s.width + 4} height={s.height + 4}
+                      rx="10" fill="none" stroke={glowColor} strokeWidth="1" strokeOpacity="0.2"/>
+                  )}
 
                   {/* Station body */}
-                  <rect
-                    x={s.x} y={s.y}
-                    width={s.width} height={s.height}
-                    rx="8"
-                    fill={`${s.color}14`}
-                    stroke={s.color}
-                    strokeWidth="1.5"
-                  />
+                  {s.shape === 'circle' ? (
+                    <ellipse cx={cx} cy={cy} rx={s.width/2} ry={s.height/2}
+                      fill={`${s.color}14`} stroke={s.color} strokeWidth="1.5"/>
+                  ) : (
+                    <rect x={s.x} y={s.y} width={s.width} height={s.height}
+                      rx="8" fill={`${s.color}14`} stroke={s.color} strokeWidth="1.5"/>
+                  )}
 
                   {/* Station label */}
-                  <text
-                    x={s.x + s.width / 2}
-                    y={s.y - 8}
-                    textAnchor="middle"
-                    fill={s.color}
-                    fontSize="10.5"
-                    fontWeight="700"
-                    letterSpacing="1.2"
-                    fontFamily="'Plus Jakarta Sans', sans-serif"
-                  >
-                    {s.name.toUpperCase()}
+                  <text x={cx} y={s.y - 8} textAnchor="middle"
+                    fill={s.color} fontSize="10.5" fontWeight="700" letterSpacing="1.2"
+                    fontFamily="'Apple Color Emoji','Segoe UI Emoji','Plus Jakarta Sans',sans-serif">
+                    {s.icon ? `${s.icon} ${s.name.toUpperCase()}` : s.name.toUpperCase()}
                   </text>
 
-                  {/* Slots */}
-                  {Array.from({ length: s.slotCount }).map((_, i) => {
-                    const key = slotKey(s.id, i)
-                    const assignment = slots[key]
-                    const st = assignment ? (statusMap[assignment.menuItemId] ?? null) : null
-                    const statusColor = st ? STATUS_COLOR[st]! : 'rgba(255,255,255,0.15)'
-                    const sx = s.x + i * slotW
+                  {/* Slots (clipped) */}
+                  <g clipPath={`url(#clip-pub-${s.id})`}>
+                    {Array.from({ length: s.slotCount }).map((_, i) => {
+                      const key        = slotKey(s.id, i)
+                      const assignment = slots[key]
+                      const st         = assignment ? (statusMap[assignment.menuItemId] ?? null) : null
+                      const statusColor = st ? STATUS_COLOR[st]! : 'rgba(255,255,255,0.15)'
+                      const sx         = s.x + i * slotW
 
-                    return (
-                      <g key={i}>
-                        {/* Divider */}
-                        {i > 0 && (
-                          <line
-                            x1={sx} y1={s.y + 8}
-                            x2={sx} y2={s.y + s.height - 8}
-                            stroke={s.color} strokeWidth="0.5" strokeOpacity="0.25"
-                          />
-                        )}
+                      return (
+                        <g key={i}>
+                          {i > 0 && (
+                            <line x1={sx} y1={s.y + 8} x2={sx} y2={s.y + s.height - 8}
+                              stroke={s.color} strokeWidth="0.5" strokeOpacity="0.25"/>
+                          )}
 
-                        {/* Clickable slot area */}
-                        {assignment && (
-                          <rect
-                            x={sx + 1} y={s.y + 1}
-                            width={slotW - 2} height={s.height - 2}
-                            rx="6"
-                            fill="transparent"
-                            stroke="transparent"
-                            style={{ cursor: 'pointer' }}
-                            onClick={(e) => { e.stopPropagation(); openPopup(s, i, e) }}
-                          />
-                        )}
+                          {assignment && (
+                            <rect x={sx + 1} y={s.y + 1} width={slotW - 2} height={s.height - 2}
+                              rx="6" fill="transparent" stroke="transparent"
+                              style={{ cursor: 'pointer' }}
+                              onClick={(e) => { e.stopPropagation(); openPopup(s, i, e) }}/>
+                          )}
 
-                        {/* Slot background (subtle highlight) */}
-                        {assignment && (
-                          <rect
-                            x={sx + 3} y={s.y + 3}
-                            width={slotW - 6} height={s.height - 6}
-                            rx="5"
-                            fill={`${statusColor}10`}
-                            style={{ pointerEvents: 'none' }}
-                          />
-                        )}
+                          {assignment && (
+                            <rect x={sx + 3} y={s.y + 3} width={slotW - 6} height={s.height - 6}
+                              rx="5" fill={`${statusColor}10`} style={{ pointerEvents: 'none' }}/>
+                          )}
 
-                        {/* Dish name */}
-                        <text
-                          x={sx + slotW / 2}
-                          y={s.y + s.height / 2 + (assignment ? 6 : 4)}
-                          textAnchor="middle"
-                          fill="white"
-                          fontSize="9"
-                          opacity={assignment ? 0.9 : 0.2}
-                          fontFamily="'Plus Jakarta Sans', sans-serif"
-                          fontWeight={assignment ? '600' : '400'}
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {assignment
-                            ? (assignment.dishName.length > 14
-                                ? assignment.dishName.slice(0, 13) + '…'
-                                : assignment.dishName)
-                            : '—'}
-                        </text>
+                          <text x={sx + slotW / 2} y={s.y + s.height / 2 + (assignment ? 6 : 4)}
+                            textAnchor="middle" fill="white" fontSize="9"
+                            opacity={assignment ? 0.9 : 0.2}
+                            fontFamily="'Plus Jakarta Sans',sans-serif"
+                            fontWeight={assignment ? '600' : '400'}
+                            style={{ pointerEvents: 'none' }}>
+                            {assignment
+                              ? (assignment.dishName.length > 14 ? assignment.dishName.slice(0, 13) + '…' : assignment.dishName)
+                              : '—'}
+                          </text>
 
-                        {/* Status indicator */}
-                        {assignment && (
-                          <PulseDot
-                            cx={sx + slotW - 9}
-                            cy={s.y + 9}
-                            color={statusColor}
-                            pulse={st === 'low'}
-                          />
-                        )}
-                      </g>
-                    )
-                  })}
+                          {assignment && (
+                            <PulseDot cx={sx + slotW - 9} cy={s.y + 9}
+                              color={statusColor} pulse={st === 'low'}/>
+                          )}
+                        </g>
+                      )
+                    })}
+                  </g>
                 </g>
               )
             })}
