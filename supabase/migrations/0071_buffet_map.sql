@@ -87,5 +87,4 @@ begin
 end
 $$;
 
--- Enable realtime on the new tables
-alter publication supabase_realtime add table public.buffet_live_status;
+-- Note: buffet_live_status is already in supabase_realtime publication
