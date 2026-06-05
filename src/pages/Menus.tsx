@@ -112,25 +112,44 @@ export default function Menus() {
     try {
       const { data } = await supabase
         .from('menus')
-        .select('menu_sections(menu_items(id, name, description, name_el, description_el))')
+        .select('id, name, menu_sections(id, name, menu_items(id, name, description, name_el, description_el))')
         .eq('id', dailyMenuId)
         .single()
       if (!data) return
-      const items = ((data as any).menu_sections ?? [])
-        .flatMap((s: any) => s.menu_items ?? []) as Array<{
-          id: string; name: string; description?: string | null
-          name_el?: string | null; description_el?: string | null
-        }>
-      if (items.length === 0) return
-      const results = await translateMenuItems(items.map(it => ({ ...it, description: it.description ?? null })))
-      await Promise.all(results.map((r, i) => {
-        const item = items[i]
-        if (!item) return Promise.resolve()
-        return supabase.from('menu_items').update({
-          name_el: r.name_el, description_el: r.description_el,
-          name_bg: r.name_bg, description_bg: r.description_bg,
-        }).eq('id', item.id)
-      }))
+      const sections = ((data as any).menu_sections ?? []) as Array<{ id: string; name: string; menu_items?: any[] }>
+      const items = sections.flatMap((s) => s.menu_items ?? []) as Array<{
+        id: string; name: string; description?: string | null
+        name_el?: string | null; description_el?: string | null
+      }>
+
+      // Translate menu name + section names + all items in one batch
+      const nameBatch = [
+        { name: (data as any).name as string, description: null },
+        ...sections.map((s) => ({ name: s.name, description: null })),
+        ...items.map((it) => ({ name: it.name, description: it.description ?? null })),
+      ]
+      const allResults = await translateMenuItems(nameBatch)
+
+      const menuNameResult = allResults[0]
+      const sectionResults = allResults.slice(1, 1 + sections.length)
+      const itemResults = allResults.slice(1 + sections.length)
+
+      await Promise.all([
+        supabase.from('menus').update({ name_el: menuNameResult?.name_el, name_bg: menuNameResult?.name_bg }).eq('id', dailyMenuId),
+        ...sectionResults.map((r, i) => {
+          const section = sections[i]
+          if (!section) return Promise.resolve()
+          return supabase.from('menu_sections').update({ name_el: r.name_el, name_bg: r.name_bg }).eq('id', section.id)
+        }),
+        ...itemResults.map((r, i) => {
+          const item = items[i]
+          if (!item) return Promise.resolve()
+          return supabase.from('menu_items').update({
+            name_el: r.name_el, description_el: r.description_el,
+            name_bg: r.name_bg, description_bg: r.description_bg,
+          }).eq('id', item.id)
+        }),
+      ])
       setTranslateDone(true)
     } finally {
       setTranslating(false)

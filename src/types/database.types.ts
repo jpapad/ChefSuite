@@ -448,6 +448,8 @@ export interface Menu {
   id: UUID
   team_id: UUID
   name: string
+  name_el: string | null
+  name_bg: string | null
   type: MenuType
   description: string | null
   price_per_person: number | null
@@ -468,7 +470,7 @@ export type MenuInsert = Pick<Menu,
 > & { team_id: UUID }
 
 export type MenuUpdate = Partial<Pick<Menu,
-  'name' | 'type' | 'description' | 'price_per_person' | 'active' | 'show_prices' |
+  'name' | 'name_el' | 'name_bg' | 'type' | 'description' | 'price_per_person' | 'active' | 'show_prices' |
   'valid_from' | 'valid_to' | 'print_template' | 'logo_url' | 'custom_footer'
 >>
 
@@ -476,12 +478,14 @@ export interface MenuSection {
   id: UUID
   menu_id: UUID
   name: string
+  name_el: string | null
+  name_bg: string | null
   sort_order: number
   created_at: ISODateString
 }
 
 export type MenuSectionInsert = Pick<MenuSection, 'name' | 'sort_order'> & { menu_id: UUID }
-export type MenuSectionUpdate = Partial<Pick<MenuSection, 'name' | 'sort_order'>>
+export type MenuSectionUpdate = Partial<Pick<MenuSection, 'name' | 'name_el' | 'name_bg' | 'sort_order'>>
 
 export interface Shift {
   id: UUID

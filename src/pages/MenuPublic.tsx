@@ -22,13 +22,13 @@ function detectBrowserLang(): Lang {
 }
 
 function localName(item: { name: string; name_el?: string | null; name_bg?: string | null }, lang: Lang) {
-  if (lang === 'el' && item.name_el) return item.name_el
+  if (lang === 'en' && item.name_el) return item.name_el  // name_el stores English translation
   if (lang === 'bg' && item.name_bg) return item.name_bg
-  return item.name
+  return item.name  // 'el' falls through to Greek original
 }
 
 function localDesc(item: { description?: string | null; description_el?: string | null; description_bg?: string | null }, lang: Lang) {
-  if (lang === 'el' && item.description_el) return item.description_el
+  if (lang === 'en' && item.description_el) return item.description_el
   if (lang === 'bg' && item.description_bg) return item.description_bg
   return item.description ?? null
 }
@@ -42,7 +42,7 @@ function ClassicTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
     <div className="font-serif max-w-2xl mx-auto px-6 py-10 print:px-0 print:py-0 space-y-10 text-gray-900">
       <div className="text-center space-y-2 border-b-2 border-gray-900 pb-6">
         {menu.logo_url && <img src={menu.logo_url} alt="logo" className="h-16 mx-auto mb-2 object-contain" />}
-        <h1 className="text-4xl font-bold tracking-wide">{menu.name}</h1>
+        <h1 className="text-4xl font-bold tracking-wide">{localName(menu, lang)}</h1>
         <p className="text-gray-500 italic text-lg">{menu.description}</p>
         {menu.price_per_person != null && <p className="text-gray-700 font-semibold">€{menu.price_per_person.toFixed(2)} p.p.</p>}
       </div>
@@ -51,7 +51,7 @@ function ClassicTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
         if (filterTag && items.length === 0) return null
         return (
           <div key={section.id} className="space-y-4">
-            <h2 className="text-center text-sm font-bold uppercase tracking-[0.3em] text-gray-600">── {section.name} ──</h2>
+            <h2 className="text-center text-sm font-bold uppercase tracking-[0.3em] text-gray-600">── {localName(section, lang)} ──</h2>
             <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
               {items.map((item) => {
                 const desc = localDesc(item, lang)
@@ -83,7 +83,7 @@ function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fil
     <div className="font-sans max-w-2xl mx-auto px-6 py-10 print:px-0 print:py-0 space-y-8 text-white bg-neutral-950 print:text-gray-900 print:bg-white">
       <div className="space-y-1">
         {menu.logo_url && <img src={menu.logo_url} alt="logo" className="h-12 mb-3 object-contain" />}
-        <h1 className="text-5xl font-black tracking-tight text-white print:text-gray-900">{menu.name}</h1>
+        <h1 className="text-5xl font-black tracking-tight text-white print:text-gray-900">{localName(menu, lang)}</h1>
         {menu.description && <p className="text-white/60 print:text-gray-500">{menu.description}</p>}
         {menu.price_per_person != null && <p className="text-brand-orange font-bold print:text-orange-600">€{menu.price_per_person.toFixed(2)} p.p.</p>}
       </div>
@@ -93,7 +93,7 @@ function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fil
         return (
           <div key={section.id} className="space-y-3">
             <div className="bg-white/10 print:bg-gray-900 px-4 py-2 rounded-xl print:rounded-none">
-              <h2 className="text-xs font-black uppercase tracking-[0.25em] text-white/70 print:text-white">{section.name}</h2>
+              <h2 className="text-xs font-black uppercase tracking-[0.25em] text-white/70 print:text-white">{localName(section, lang)}</h2>
             </div>
             <div className="space-y-2 px-1">
               {items.map((item) => (
@@ -128,7 +128,7 @@ function ElegantTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
         <div className="space-y-3">
           {menu.logo_url && <img src={menu.logo_url} alt="logo" className="h-16 mx-auto object-contain" />}
           <div style={{ color: '#8b6f47', fontSize: '0.7rem', letterSpacing: '0.4em' }}>{'✦ ✦ ✦'}</div>
-          <h1 className="text-3xl font-bold" style={{ color: '#3d2b1f', letterSpacing: '0.05em' }}>{menu.name}</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#3d2b1f', letterSpacing: '0.05em' }}>{localName(menu, lang)}</h1>
           {menu.description && <p className="italic text-sm" style={{ color: '#8b6f47' }}>{menu.description}</p>}
           {menu.price_per_person != null && <p className="font-semibold text-sm" style={{ color: '#3d2b1f' }}>€{menu.price_per_person.toFixed(2)} per person</p>}
           <div style={{ color: '#8b6f47', fontSize: '0.7rem', letterSpacing: '0.4em' }}>{'✦ ✦ ✦'}</div>
@@ -139,7 +139,7 @@ function ElegantTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
           return (
             <div key={section.id} className="space-y-4">
               {sIdx > 0 && <div style={{ borderTop: '1px solid #c9a96e', margin: '0 2rem' }} />}
-              <h2 className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#8b6f47' }}>{section.name}</h2>
+              <h2 className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#8b6f47' }}>{localName(section, lang)}</h2>
               <div className="space-y-3">
                 {items.map((item) => {
                   const desc = localDesc(item, lang)
@@ -222,7 +222,7 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-orange">
             <Flame className="h-4 w-4 text-white" />
           </div>
-          <span className="font-semibold text-white text-sm truncate max-w-[120px]">{menu.name}</span>
+          <span className="font-semibold text-white text-sm truncate max-w-[120px]">{localName(menu, lang)}</span>
         </div>
 
         <div className="flex items-center gap-1.5">
