@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Flame, Printer, X, LayoutTemplate } from 'lucide-react'
 import { fetchPublicMenu } from '../hooks/useMenus'
 import { recordScan } from '../hooks/useMenuScans'
-import type { MenuWithSections, MenuItemTag, PrintTemplate, MenuItem } from '../types/database.types'
+import type { MenuWithSections, MenuItemTag, PrintTemplate } from '../types/database.types'
 
 
 const TAG_EMOJI: Record<MenuItemTag, string> = {
