@@ -135,43 +135,25 @@ export default function BuffetMapPublic() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
 
-  // ── Realtime subscription ──────────────────────────────────────────────────
+  // ── Polling every 10s (reliable for anon) ─────────────────────────────────
 
   useEffect(() => {
     if (!teamId) return
 
-    const ch = supabase
-      .channel(`buffet-map-public-${teamId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'buffet_live_status', filter: `team_id=eq.${teamId}` },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as any
-          if (!row?.menu_item_id) return
-          setStatusMap((prev) => {
-            const next = { ...prev }
-            if (payload.eventType === 'DELETE') delete next[row.menu_item_id]
-            else next[row.menu_item_id] = row.status
-            return next
-          })
-          setLastUpdated(new Date())
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'buffet_map_assignments', filter: `team_id=eq.${teamId}` },
-        () => void loadData(),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'buffet_maps', filter: `team_id=eq.${teamId}` },
-        () => void loadData(),
-      )
-      .subscribe()
+    async function pollStatuses() {
+      const { data } = await supabase
+        .from('buffet_live_status')
+        .select('menu_item_id, status')
+        .eq('team_id', teamId!)
+      if (!data) return
+      const sm: StatusMap = {}
+      for (const row of data) sm[row.menu_item_id] = row.status as 'full' | 'low' | 'empty'
+      setStatusMap(sm)
+      setLastUpdated(new Date())
+    }
 
-    channelRef.current = ch
-    return () => { void supabase.removeChannel(ch) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const interval = setInterval(() => void pollStatuses(), 10_000)
+    return () => clearInterval(interval)
   }, [teamId])
 
   // ── Popup helpers ──────────────────────────────────────────────────────────
