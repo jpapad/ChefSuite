@@ -13,20 +13,34 @@ const TAG_EMOJI: Record<MenuItemTag, string> = {
 }
 
 // ── Language helpers ─────────────────────────────────────────────────────────
-function useBrowserLang() { return navigator.language.startsWith('el') }
-function localName(item: { name: string; name_el?: string | null }, isEl: boolean) {
-  return (isEl && item.name_el) ? item.name_el : item.name
+type Lang = 'en' | 'el' | 'bg'
+
+function detectBrowserLang(): Lang {
+  const l = navigator.language.toLowerCase()
+  if (l.startsWith('el')) return 'el'
+  if (l.startsWith('bg')) return 'bg'
+  return 'en'
 }
-function localDesc(item: { description?: string | null; description_el?: string | null }, isEl: boolean) {
-  return (isEl && item.description_el) ? item.description_el : (item.description ?? null)
+
+function localName(item: { name: string; name_el?: string | null; name_bg?: string | null }, lang: Lang) {
+  if (lang === 'el' && item.name_el) return item.name_el
+  if (lang === 'bg' && item.name_bg) return item.name_bg
+  return item.name
 }
+
+function localDesc(item: { description?: string | null; description_el?: string | null; description_bg?: string | null }, lang: Lang) {
+  if (lang === 'el' && item.description_el) return item.description_el
+  if (lang === 'bg' && item.description_bg) return item.description_bg
+  return item.description ?? null
+}
+
+const LANG_FLAGS: Record<Lang, string> = { en: '🇬🇧', el: '🇬🇷', bg: '🇧🇬' }
 
 // ── Cart types ───────────────────────────────────────────────────────────────
 interface CartItem { item: MenuItem; qty: number }
 
 // ── Template: Classic ────────────────────────────────────────────────────────
-function ClassicTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTag: MenuItemTag | null }) {
-  const isEl = useBrowserLang()
+function ClassicTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; filterTag: MenuItemTag | null; lang: Lang }) {
   return (
     <div className="font-serif max-w-2xl mx-auto px-6 py-10 print:px-0 print:py-0 space-y-10 text-gray-900">
       <div className="text-center space-y-2 border-b-2 border-gray-900 pb-6">
@@ -43,11 +57,11 @@ function ClassicTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTa
             <h2 className="text-center text-sm font-bold uppercase tracking-[0.3em] text-gray-600">── {section.name} ──</h2>
             <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
               {items.map((item) => {
-                const desc = localDesc(item, isEl)
+                const desc = localDesc(item, lang)
                 return (
                   <div key={item.id} className="flex items-baseline justify-between gap-2 border-b border-gray-200 pb-2">
                     <div className="min-w-0">
-                      <span className="font-semibold">{localName(item, isEl)}</span>
+                      <span className="font-semibold">{localName(item, lang)}</span>
                       {(item.tags ?? []).map((tag) => <span key={tag} className="ml-1 text-xs">{TAG_EMOJI[tag]}</span>)}
                       {desc && <p className="text-xs text-gray-500 mt-0.5 italic">{desc}</p>}
                     </div>
@@ -67,8 +81,7 @@ function ClassicTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTa
 }
 
 // ── Template: Modern ─────────────────────────────────────────────────────────
-function ModernTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTag: MenuItemTag | null }) {
-  const isEl = useBrowserLang()
+function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; filterTag: MenuItemTag | null; lang: Lang }) {
   return (
     <div className="font-sans max-w-2xl mx-auto px-6 py-10 print:px-0 print:py-0 space-y-8 text-white bg-neutral-950 print:text-gray-900 print:bg-white">
       <div className="space-y-1">
@@ -89,7 +102,7 @@ function ModernTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTag
               {items.map((item) => (
                 <div key={item.id} className="flex items-start gap-2">
                   <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                    <span className="font-semibold">{localName(item, isEl)}</span>
+                    <span className="font-semibold">{localName(item, lang)}</span>
                     {(item.tags ?? []).map((tag) => <span key={tag} className="text-xs">{TAG_EMOJI[tag]}</span>)}
                   </div>
                   <div className="flex items-baseline gap-1 shrink-0 min-w-[4rem]">
@@ -110,8 +123,7 @@ function ModernTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTag
 }
 
 // ── Template: Elegant ────────────────────────────────────────────────────────
-function ElegantTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTag: MenuItemTag | null }) {
-  const isEl = useBrowserLang()
+function ElegantTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; filterTag: MenuItemTag | null; lang: Lang }) {
   return (
     <div className="font-serif max-w-xl mx-auto px-8 py-10 print:px-8 print:py-10 text-center"
       style={{ background: '#faf7f2', color: '#3d2b1f', minHeight: '100vh' }}>
@@ -133,11 +145,11 @@ function ElegantTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTa
               <h2 className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#8b6f47' }}>{section.name}</h2>
               <div className="space-y-3">
                 {items.map((item) => {
-                  const desc = localDesc(item, isEl)
+                  const desc = localDesc(item, lang)
                   return (
                     <div key={item.id} className="space-y-0.5">
                       <div className="flex items-baseline justify-center gap-2">
-                        <span className="font-semibold">{localName(item, isEl)}</span>
+                        <span className="font-semibold">{localName(item, lang)}</span>
                         {(item.tags ?? []).map((tag) => <span key={tag} className="text-xs">{TAG_EMOJI[tag]}</span>)}
                         {menu.show_prices && item.price != null && (
                           <span className="font-semibold tabular-nums" style={{ color: '#8b6f47' }}>— €{item.price.toFixed(2)}</span>
@@ -160,7 +172,7 @@ function ElegantTemplate({ menu, filterTag }: { menu: MenuWithSections; filterTa
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
 function CartDrawer({
-  menu, cart, open, onClose, onQtyChange, onClear,
+  menu, cart, open, onClose, onQtyChange, onClear, lang,
 }: {
   menu: MenuWithSections
   cart: CartItem[]
@@ -168,8 +180,8 @@ function CartDrawer({
   onClose: () => void
   onQtyChange: (itemId: string, delta: number) => void
   onClear: () => void
+  lang: Lang
 }) {
-  const isEl = useBrowserLang()
   const [tableRef, setTableRef] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [customerNotes, setCustomerNotes] = useState('')
@@ -242,7 +254,7 @@ function CartDrawer({
                 return (
                   <div key={item.id} className="flex items-center gap-3 py-2 border-b border-white/5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{localName(item, isEl)}</p>
+                      <p className="text-sm font-medium text-white truncate">{localName(item, lang)}</p>
                       {item.price != null && <p className="text-xs text-white/50">€{item.price.toFixed(2)}</p>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -315,6 +327,7 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
   const [activeFilterTag, setActiveFilterTag] = useState<MenuItemTag | null>(null)
   const [template, setTemplate] = useState<PrintTemplate>('classic')
   const [showTemplateBar, setShowTemplateBar] = useState(false)
+  const [lang, setLang] = useState<Lang>(detectBrowserLang)
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([])
@@ -398,6 +411,17 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
             )
           })}
 
+          {/* Language switcher */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-white/15 overflow-hidden">
+            {(['el', 'en', 'bg'] as Lang[]).map((l) => (
+              <button key={l} type="button" onClick={() => setLang(l)}
+                title={l === 'el' ? 'Ελληνικά' : l === 'en' ? 'English' : 'Български'}
+                className={`px-2 py-1 text-sm transition ${lang === l ? 'bg-brand-orange text-white' : 'text-white/50 hover:text-white hover:bg-white/10'}`}>
+                {LANG_FLAGS[l]}
+              </button>
+            ))}
+          </div>
+
           <button type="button" onClick={() => setShowTemplateBar((v) => !v)}
             className="flex items-center gap-1.5 rounded-lg border border-white/20 text-white/60 hover:text-white px-2.5 py-1.5 text-xs font-medium transition">
             <LayoutTemplate className="h-3.5 w-3.5" />
@@ -425,9 +449,9 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
       )}
 
       <div className="pb-28">
-        {template === 'classic' && <ClassicTemplate menu={menu} filterTag={activeFilterTag} />}
-        {template === 'modern' && <ModernTemplate menu={menu} filterTag={activeFilterTag} />}
-        {template === 'elegant' && <ElegantTemplate menu={menu} filterTag={activeFilterTag} />}
+        {template === 'classic' && <ClassicTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
+        {template === 'modern' && <ModernTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
+        {template === 'elegant' && <ElegantTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
       </div>
 
       {/* Bottom action bar */}
@@ -463,6 +487,7 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
         onClose={() => setCartOpen(false)}
         onQtyChange={onQtyChange}
         onClear={() => setCart([])}
+        lang={lang}
       />
 
       <style>{`
