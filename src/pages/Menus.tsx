@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode } from 'lucide-react'
+import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2 } from 'lucide-react'
+import { translateMenuItems } from '../lib/gemini'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import QRCodeLib from 'qrcode'
@@ -72,6 +73,8 @@ export default function Menus() {
   const [dailyMenuId, setDailyMenuId] = useState<string | null>(null)
   const [todayQr, setTodayQr] = useState<{ url: string; dataUrl: string } | null>(null)
   const [todayQrOpen, setTodayQrOpen] = useState(false)
+  const [translating, setTranslating] = useState(false)
+  const [translateDone, setTranslateDone] = useState(false)
 
   // Load current daily menu from team
   useEffect(() => {
@@ -100,6 +103,38 @@ export default function Menus() {
     a.href = todayQr.dataUrl
     a.download = 'menu-today-qr.png'
     a.click()
+  }
+
+  async function translateDailyMenu() {
+    if (!dailyMenuId) return
+    setTranslating(true)
+    setTranslateDone(false)
+    try {
+      const { data } = await supabase
+        .from('menus')
+        .select('menu_sections(menu_items(id, name, description, name_el, description_el))')
+        .eq('id', dailyMenuId)
+        .single()
+      if (!data) return
+      const items = ((data as any).menu_sections ?? [])
+        .flatMap((s: any) => s.menu_items ?? []) as Array<{
+          id: string; name: string; description?: string | null
+          name_el?: string | null; description_el?: string | null
+        }>
+      if (items.length === 0) return
+      const results = await translateMenuItems(items.map(it => ({ ...it, description: it.description ?? null })))
+      await Promise.all(results.map((r, i) => {
+        const item = items[i]
+        if (!item) return Promise.resolve()
+        return supabase.from('menu_items').update({
+          name_el: r.name_el, description_el: r.description_el,
+          name_bg: r.name_bg, description_bg: r.description_bg,
+        }).eq('id', item.id)
+      }))
+      setTranslateDone(true)
+    } finally {
+      setTranslating(false)
+    }
   }
 
   function openCreate() {
@@ -537,7 +572,7 @@ export default function Menus() {
       />
 
       {/* ── Today's Menu QR Drawer ── */}
-      <Drawer open={todayQrOpen} onClose={() => setTodayQrOpen(false)} title="QR Μενού Ημέρας">
+      <Drawer open={todayQrOpen} onClose={() => { setTodayQrOpen(false); setTranslateDone(false) }} title="QR Μενού Ημέρας">
         <div className="space-y-5">
           <p className="text-sm text-white/60">
             Εκτύπωσε αυτό το QR μια φορά και τοποθέτησέ το στα τραπέζια. Κάθε μέρα αλλάζεις ποιο μενού είναι "μενού ημέρας" και το QR δείχνει αυτόματα το νέο.
@@ -557,11 +592,26 @@ export default function Menus() {
             <p className="text-xs text-white/40 text-center break-all">{todayQr.url}</p>
           )}
 
+          {/* AI Translation */}
+          {dailyMenuId && (
+            <button
+              onClick={() => void translateDailyMenu()}
+              disabled={translating}
+              className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition border border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 disabled:opacity-50"
+            >
+              {translateDone
+                ? <><CheckCircle2 className="h-4 w-4 text-green-400" /><span className="text-green-400">Μεταφράστηκαν! Ξαναμετάφραση;</span></>
+                : translating
+                  ? <><Globe className="h-4 w-4 animate-spin" />Μετάφραση σε εξέλιξη…</>
+                  : <><Globe className="h-4 w-4" />AI Μετάφραση πιάτων 🇬🇷 🇬🇧 🇧🇬</>}
+            </button>
+          )}
+
           <div className="flex gap-2">
             <Button onClick={downloadTodayQr} disabled={!todayQr} className="flex-1">
               Κατέβασμα QR
             </Button>
-            <Button variant="secondary" onClick={() => setTodayQrOpen(false)}>
+            <Button variant="secondary" onClick={() => { setTodayQrOpen(false); setTranslateDone(false) }}>
               {t('common.close')}
             </Button>
           </div>

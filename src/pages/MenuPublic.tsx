@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Flame, Printer, X, LayoutTemplate, ShoppingCart, Plus, Minus, CalendarCheck } from 'lucide-react'
+import { Flame, Printer, X, LayoutTemplate } from 'lucide-react'
 import { fetchPublicMenu } from '../hooks/useMenus'
 import { recordScan } from '../hooks/useMenuScans'
-import { placeOrder } from '../hooks/useOnlineOrders'
 import type { MenuWithSections, MenuItemTag, PrintTemplate, MenuItem } from '../types/database.types'
 
 
@@ -36,8 +35,6 @@ function localDesc(item: { description?: string | null; description_el?: string 
 
 const LANG_FLAGS: Record<Lang, string> = { en: '🇬🇧', el: '🇬🇷', bg: '🇧🇬' }
 
-// ── Cart types ───────────────────────────────────────────────────────────────
-interface CartItem { item: MenuItem; qty: number }
 
 // ── Template: Classic ────────────────────────────────────────────────────────
 function ClassicTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; filterTag: MenuItemTag | null; lang: Lang }) {
@@ -170,155 +167,6 @@ function ElegantTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
   )
 }
 
-// ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({
-  menu, cart, open, onClose, onQtyChange, onClear, lang,
-}: {
-  menu: MenuWithSections
-  cart: CartItem[]
-  open: boolean
-  onClose: () => void
-  onQtyChange: (itemId: string, delta: number) => void
-  onClear: () => void
-  lang: Lang
-}) {
-  const [tableRef, setTableRef] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [customerNotes, setCustomerNotes] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
-
-  const total = cart.reduce((s, c) => s + (c.item.price ?? 0) * c.qty, 0)
-
-  async function handleOrder() {
-    if (cart.length === 0) return
-    setSubmitting(true)
-    setError(null)
-    try {
-      await placeOrder({
-        team_id: menu.team_id,
-        menu_id: menu.id,
-        table_ref: tableRef.trim() || null,
-        customer_name: customerName.trim() || null,
-        customer_notes: customerNotes.trim() || null,
-        items: cart.map((c) => ({
-          menu_item_id: c.item.id,
-          name: localName(c.item, lang),
-          price: c.item.price,
-          quantity: c.qty,
-          notes: null,
-        })),
-      })
-      setDone(true)
-      onClear()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Order failed')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (!open) return null
-
-  return (
-    <div className="print:hidden fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-sm bg-neutral-900 border-l border-white/10 flex flex-col h-full overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h2 className="font-semibold text-white text-lg">Your Order</h2>
-          <button type="button" onClick={onClose} className="text-white/50 hover:text-white">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {done ? (
-          <div className="flex flex-col items-center justify-center flex-1 gap-4 px-6 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
-              <ShoppingCart className="h-8 w-8" />
-            </div>
-            <h3 className="text-xl font-semibold text-white">Order placed!</h3>
-            <p className="text-white/60 text-sm">Your order has been sent to the kitchen.</p>
-            <button type="button" onClick={() => { setDone(false); onClose() }}
-              className="mt-2 rounded-xl bg-brand-orange text-white-fixed px-6 py-2.5 font-semibold hover:bg-brand-orange/90 transition">
-              Close
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* All menu items */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-1">
-              {menu.sections.flatMap((s) => s.items.filter((i) => i.available)).map((item) => {
-                const cartItem = cart.find((c) => c.item.id === item.id)
-                const qty = cartItem?.qty ?? 0
-                return (
-                  <div key={item.id} className="flex items-center gap-3 py-2 border-b border-white/5">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{localName(item, lang)}</p>
-                      {item.price != null && <p className="text-xs text-white/50">€{item.price.toFixed(2)}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {qty > 0 && (
-                        <button type="button" onClick={() => onQtyChange(item.id, -1)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 transition">
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      {qty > 0 && <span className="text-white font-semibold w-5 text-center text-sm">{qty}</span>}
-                      <button type="button" onClick={() => onQtyChange(item.id, 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange/80 text-white hover:bg-brand-orange transition">
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {cart.length > 0 && (
-              <div className="p-4 border-t border-white/10 space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-white/60">{cart.reduce((s, c) => s + c.qty, 0)} items</span>
-                  {total > 0 && <span className="font-bold text-white">€{total.toFixed(2)}</span>}
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Table number (optional)"
-                  value={tableRef}
-                  onChange={(e) => setTableRef(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:ring-2 focus:ring-brand-orange"
-                />
-                <input
-                  type="text"
-                  placeholder="Your name (optional)"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:ring-2 focus:ring-brand-orange"
-                />
-                <textarea
-                  rows={2}
-                  placeholder="Special requests…"
-                  value={customerNotes}
-                  onChange={(e) => setCustomerNotes(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:ring-2 focus:ring-brand-orange resize-none"
-                />
-
-                {error && <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
-
-                <button type="button" onClick={() => void handleOrder()} disabled={submitting}
-                  className="w-full rounded-xl bg-brand-orange text-white-fixed font-semibold py-3 hover:bg-brand-orange/90 transition disabled:opacity-60">
-                  {submitting ? 'Placing order…' : 'Place Order'}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ── Main page (exported for reuse in MenuToday) ──────────────────────────────
 export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
   const id = menuId
@@ -328,11 +176,6 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
   const [template, setTemplate] = useState<PrintTemplate>('classic')
   const [showTemplateBar, setShowTemplateBar] = useState(false)
   const [lang, setLang] = useState<Lang>(detectBrowserLang)
-
-  // Cart state
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [cartOpen, setCartOpen] = useState(false)
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0)
 
   useEffect(() => {
     if (!id) { setMenu(null); return }
@@ -348,19 +191,6 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
     return menu.sections.some((s) => s.items.some((i) => (i.tags ?? []).length > 0))
   }, [menu])
 
-  function onQtyChange(itemId: string, delta: number) {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.item.id === itemId)
-      if (!existing) {
-        const item = menu?.sections.flatMap((s) => s.items).find((i) => i.id === itemId)
-        if (!item) return prev
-        return [...prev, { item, qty: 1 }]
-      }
-      const newQty = existing.qty + delta
-      if (newQty <= 0) return prev.filter((c) => c.item.id !== itemId)
-      return prev.map((c) => c.item.id === itemId ? { ...c, qty: newQty } : c)
-    })
-  }
 
   if (menu === undefined) {
     return (
@@ -448,47 +278,11 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
         </div>
       )}
 
-      <div className="pb-28">
+      <div className="pb-6">
         {template === 'classic' && <ClassicTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
         {template === 'modern' && <ModernTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
         {template === 'elegant' && <ElegantTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
       </div>
-
-      {/* Bottom action bar */}
-      <div className="print:hidden fixed bottom-0 inset-x-0 z-30 bg-neutral-900/95 backdrop-blur-md border-t border-white/10 px-4 py-3 flex items-center gap-3">
-        <Link to={`/reserve/${id}`}
-          className="flex items-center gap-2 rounded-xl border border-white/20 text-white/70 hover:text-white px-4 py-2.5 text-sm font-medium transition hover:bg-white/5">
-          <CalendarCheck className="h-4 w-4" />
-          <span className="hidden sm:inline">Book a Table</span>
-        </Link>
-
-        <button
-          type="button"
-          onClick={() => setCartOpen(true)}
-          className="relative flex items-center gap-2 rounded-xl bg-brand-orange text-white-fixed px-5 py-2.5 text-sm font-semibold hover:bg-brand-orange/90 transition ml-auto"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          Order Now
-          {cartCount > 0 && (
-            <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand-orange text-xs font-black">
-              {cartCount}
-            </span>
-          )}
-        </button>
-
-        <p className="text-xs text-white/20 ml-3 hidden sm:block">{t('menus.public.poweredBy')}</p>
-      </div>
-
-      {/* Cart drawer */}
-      <CartDrawer
-        menu={menu}
-        cart={cart}
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        onQtyChange={onQtyChange}
-        onClear={() => setCart([])}
-        lang={lang}
-      />
 
       <style>{`
         @media print {
