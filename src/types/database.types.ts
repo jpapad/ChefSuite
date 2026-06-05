@@ -448,8 +448,8 @@ export interface Menu {
   id: UUID
   team_id: UUID
   name: string
-  name_el: string | null
-  name_bg: string | null
+  name_el?: string | null
+  name_bg?: string | null
   type: MenuType
   description: string | null
   price_per_person: number | null
@@ -478,8 +478,8 @@ export interface MenuSection {
   id: UUID
   menu_id: UUID
   name: string
-  name_el: string | null
-  name_bg: string | null
+  name_el?: string | null
+  name_bg?: string | null
   sort_order: number
   created_at: ISODateString
 }
