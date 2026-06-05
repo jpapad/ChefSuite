@@ -38,6 +38,8 @@
     "ingredients": "Ingredients Encyclopedia",
     "help": "Help Center",
     "buffetPulse": "Buffet Live Pulse",
+    "buffetMap": "Buffet Map",
+    "regionalRecipes": "Local Recipes",
     "groups": {
       "kitchen": "Kitchen",
       "procurement": "Procurement",

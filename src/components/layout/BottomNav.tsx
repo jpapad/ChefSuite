@@ -7,6 +7,7 @@ import {
   BookMarked, Layers, FlaskConical, HelpCircle, UtensilsCrossed,
   Trash2, BarChart3, Award, Star,
   CalendarCheck, CreditCard, Tag, Calculator, Building2,
+  MapPin, Activity, Map, Thermometer, BookLock,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,11 +25,16 @@ const MORE_GROUPS = [
   {
     labelKey: 'nav.groups.kitchen',
     items: [
-      { to: '/recipes',   labelKey: 'nav.recipes',   icon: ChefHat,        module: 'recipes'   },
-      { to: '/menus',     labelKey: 'nav.menus',     icon: UtensilsCrossed, module: 'menus'    },
-      { to: '/prep',      labelKey: 'nav.prep',      icon: ClipboardList,   module: 'prep'     },
-      { to: '/labels',    labelKey: 'nav.labels',    icon: Tag,             module: 'labels'   },
-      { to: '/waste',     labelKey: 'nav.wasteLog',  icon: Trash2,          module: 'waste'    },
+      { to: '/recipes',          labelKey: 'nav.recipes',         icon: ChefHat,        module: 'recipes'          },
+      { to: '/regional-recipes', labelKey: 'nav.regionalRecipes', icon: MapPin,         module: 'regional-recipes' },
+      { to: '/menus',            labelKey: 'nav.menus',           icon: UtensilsCrossed,module: 'menus'            },
+      { to: '/prep',             labelKey: 'nav.prep',            icon: ClipboardList,  module: 'prep'             },
+      { to: '/buffet-pulse',     labelKey: 'nav.buffetPulse',     icon: Activity,       module: 'buffet-pulse'     },
+      { to: '/buffet-map',       labelKey: 'nav.buffetMap',       icon: Map,            module: 'buffet-pulse'     },
+      { to: '/haccp',            labelKey: 'nav.haccp',           icon: Thermometer,    module: 'haccp'            },
+      { to: '/haccp-logbook',    labelKey: 'nav.haccpLogbook',    icon: BookLock,       module: 'haccp-logbook'    },
+      { to: '/labels',           labelKey: 'nav.labels',          icon: Tag,            module: 'labels'           },
+      { to: '/waste',            labelKey: 'nav.wasteLog',        icon: Trash2,         module: 'waste'            },
     ],
   },
   {

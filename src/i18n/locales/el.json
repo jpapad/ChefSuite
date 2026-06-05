@@ -49,6 +49,8 @@
     "ingredients": "Εγκυκλοπαίδεια Υλικών",
     "help": "Κέντρο Βοήθειας",
     "buffetPulse": "Buffet Live Pulse",
+    "buffetMap": "Χάρτης Μπουφέ",
+    "regionalRecipes": "Τοπικές Συνταγές",
     "groups": {
       "kitchen": "Κουζίνα",
       "procurement": "Προμήθειες",
