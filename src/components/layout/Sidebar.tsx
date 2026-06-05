@@ -6,7 +6,7 @@ import {
   TimerIcon, CalendarCheck, Star, BarChart3, Award,
   BookOpen, Heart, Bot, Search, X, Scale, BookMarked,
   Layers, HelpCircle, FlaskConical, CreditCard, Building2,
-  Tag, Calculator, MapPin, Activity, BookLock, Thermometer,
+  Tag, Calculator, MapPin, Activity, BookLock, Thermometer, Map,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -98,6 +98,7 @@ export function Sidebar() {
         { to: '/prep',             label: t('nav.prep'),        icon: ClipboardList,               module: 'prep'         },
         { to: '/kds',              label: t('nav.kds'),         icon: Monitor,                     module: 'kds'          },
         { to: '/buffet-pulse',     label: t('nav.buffetPulse'), icon: Activity,                    module: 'buffet-pulse' },
+        { to: '/buffet-map',       label: 'Χάρτης Μπουφέ',     icon: Map,                          module: 'buffet-pulse' },
         { to: '/haccp',            label: t('nav.haccp'),       icon: Thermometer,                 module: 'haccp'        },
         { to: '/haccp-logbook',    label: t('nav.haccpLogbook'),icon: BookLock,                    module: 'haccp-logbook'},
         { to: '/labels',           label: t('nav.labels'),      icon: Tag,                         module: 'labels'       },

@@ -60,6 +60,8 @@ const BuffetMonitorInterface  = lazy(() => import('./pages/BuffetMonitorInterfac
 const KitchenBuffetKDS        = lazy(() => import('./pages/KitchenBuffetKDS'))
 const HACCPLogbook            = lazy(() => import('./pages/HACCPLogbook'))
 const Warehouse               = lazy(() => import('./pages/Warehouse'))
+const BuffetMap               = lazy(() => import('./pages/BuffetMap'))
+const BuffetMapPublic         = lazy(() => import('./pages/BuffetMapPublic'))
 
 export default function App() {
   return (
@@ -138,6 +140,7 @@ export default function App() {
                 <Route path="ingredients" element={<PermissionGuard module="ingredients"><IngredientsEncyclopedia /></PermissionGuard>} />
                 <Route path="pos-settings" element={<PermissionGuard module="pos-settings"><PosSettings /></PermissionGuard>} />
                 <Route path="buffet-pulse" element={<PermissionGuard module="buffet-pulse"><BuffetPulse /></PermissionGuard>} />
+                <Route path="buffet-map" element={<PermissionGuard module="buffet-pulse"><BuffetMap /></PermissionGuard>} />
                 <Route path="warehouse" element={<PermissionGuard module="warehouse"><Warehouse /></PermissionGuard>} />
               </Route>
 
@@ -163,6 +166,7 @@ export default function App() {
                 }
               />
 
+              <Route path="/buffet-map/:teamId" element={<BuffetMapPublic />} />
               <Route path="/menu/:id" element={<MenuPublic />} />
               <Route path="/menu/today/:teamId" element={<MenuToday />} />
               <Route path="/reserve/:id" element={<ReservationPublic />} />
