@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -87,82 +87,77 @@ export default function BuffetMapPublic() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [secondsSince, setSecondsSince] = useState(0)
 
-  const svgRef = useRef<SVGSVGElement>(null)
+  const svgRef   = useRef<SVGSVGElement>(null)
+  const mapIdRef = useRef<string | null>(null)
 
-  // ── Load map data ──────────────────────────────────────────────────────────
+  // ── Load + poll (fetches everything) ──────────────────────────────────────
 
-  async function loadData() {
+  const fetchAll = useCallback(async (isInitial = false) => {
     if (!teamId) return
 
-    const [mapRes, statusRes] = await Promise.all([
-      supabase
+    // On first load, get the map id by team
+    if (!mapIdRef.current) {
+      const { data: maps } = await supabase
         .from('buffet_maps')
         .select('id, stations, background_image')
         .eq('team_id', teamId)
         .order('created_at', { ascending: false })
-        .limit(1),
+        .limit(1)
+
+      if (!maps || maps.length === 0) {
+        if (isInitial) { setNotFound(true); setLoading(false) }
+        return
+      }
+      const m = maps[0]!
+      mapIdRef.current = m.id
+      setStations(((m.stations as any[]) ?? []).map((s) => ({ icon: '', rotation: 0, shape: 'rect', ...s })))
+      setBgImage((m as any).background_image ?? '')
+    } else {
+      // Subsequent polls: refresh map layout too
+      const { data: m } = await supabase
+        .from('buffet_maps')
+        .select('stations, background_image')
+        .eq('id', mapIdRef.current)
+        .single()
+      if (m) {
+        setStations(((m.stations as any[]) ?? []).map((s) => ({ icon: '', rotation: 0, shape: 'rect', ...s })))
+        setBgImage((m as any).background_image ?? '')
+      }
+    }
+
+    const [assignRes, statusRes] = await Promise.all([
+      supabase
+        .from('buffet_map_assignments')
+        .select('slots')
+        .eq('map_id', mapIdRef.current!)
+        .eq('date', TODAY)
+        .maybeSingle(),
       supabase
         .from('buffet_live_status')
         .select('menu_item_id, status')
         .eq('team_id', teamId),
     ])
 
-    if (!mapRes.data || mapRes.data.length === 0) {
-      setNotFound(true)
-      setLoading(false)
-      return
-    }
-
-    const mapRow = mapRes.data[0]!
-    setStations(((mapRow.stations as any[]) ?? []).map((s) => ({
-      icon: '', rotation: 0, shape: 'rect', ...s,
-    })))
-    setBgImage((mapRow as any).background_image ?? '')
-
-    const assignRes = await supabase
-      .from('buffet_map_assignments')
-      .select('slots')
-      .eq('map_id', mapRow.id)
-      .eq('date', TODAY)
-      .maybeSingle()
-
     setSlots((assignRes.data?.slots as SlotsMap) ?? {})
 
     const sm: StatusMap = {}
-    for (const row of statusRes.data ?? []) {
-      sm[row.menu_item_id] = row.status as 'full' | 'low' | 'empty'
-    }
+    for (const row of statusRes.data ?? []) sm[row.menu_item_id] = row.status as 'full' | 'low' | 'empty'
     setStatusMap(sm)
     setLastUpdated(new Date())
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    void loadData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isInitial) setLoading(false)
   }, [teamId])
 
-  // ── Polling every 10s (reliable for anon) ─────────────────────────────────
+  useEffect(() => {
+    void fetchAll(true)
+  }, [fetchAll])
+
+  // ── Poll every 5s — refreshes layout, assignments AND statuses ─────────────
 
   useEffect(() => {
     if (!teamId) return
-
-    async function pollStatuses() {
-      const { data } = await supabase
-        .from('buffet_live_status')
-        .select('menu_item_id, status')
-        .eq('team_id', teamId!)
-      if (!data) return
-      const sm: StatusMap = {}
-      for (const row of data) sm[row.menu_item_id] = row.status as 'full' | 'low' | 'empty'
-      setStatusMap(sm)
-      setLastUpdated(new Date())
-    }
-
-    void pollStatuses() // run immediately on mount too
-    const interval = setInterval(() => void pollStatuses(), 5_000)
+    const interval = setInterval(() => void fetchAll(), 5_000)
     return () => clearInterval(interval)
-  }, [teamId])
+  }, [teamId, fetchAll])
 
   // ── Seconds-since-update counter ───────────────────────────────────────────
 
