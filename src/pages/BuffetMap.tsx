@@ -3,6 +3,7 @@ import {
   Map, Plus, Trash2, Save, ChefHat, LayoutGrid, QrCode,
   Undo2, Redo2, Grid3x3, Copy, Download, Image, AlignLeft,
   AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+  Camera, Wand2,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { supabase } from '../lib/supabase'
@@ -114,9 +115,19 @@ export default function BuffetMap() {
   const [qrOpen, setQrOpen]     = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
 
-  const svgRef    = useRef<SVGSVGElement>(null)
-  const dragRef   = useRef<DragState | null>(null)
-  const bgFileRef = useRef<HTMLInputElement>(null)
+  // Camera scan
+  const [scanMode, setScanMode]       = useState<'off' | 'draw'>('off')
+  const [drawStart, setDrawStart]     = useState<{x:number;y:number}|null>(null)
+  const [drawRect, setDrawRect]       = useState<{x:number;y:number;w:number;h:number}|null>(null)
+  const [pendingRect, setPendingRect] = useState<{x:number;y:number;w:number;h:number}|null>(null)
+  const [pendingName, setPendingName] = useState('')
+  const [aiLoading, setAiLoading]     = useState(false)
+
+  const svgRef      = useRef<SVGSVGElement>(null)
+  const dragRef     = useRef<DragState | null>(null)
+  const bgFileRef   = useRef<HTMLInputElement>(null)
+  const scanFileRef = useRef<HTMLInputElement>(null)
+  const scanPurposeRef = useRef<'draw' | 'ai'>('draw')
 
   // Always-fresh ref for saveLayout
   const latestRef = useRef({ stations, bgImage, mapId, teamId })
@@ -413,6 +424,106 @@ export default function BuffetMap() {
     reader.readAsDataURL(file)
   }
 
+  // ── Camera scan / Draw mode ──────────────────────────────────────────────────
+
+  function handleScanFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string
+      if (scanPurposeRef.current === 'draw') {
+        setBgImage(url)
+        commit(latestRef.current.stations, url)
+        setScanMode('draw')
+      } else {
+        void runAiScan(file, url)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function runAiScan(file: File, dataUrl: string) {
+    setAiLoading(true)
+    try {
+      const base64 = dataUrl.split(',')[1] ?? ''
+      const { data, error } = await supabase.functions.invoke('detect-buffet-stations', {
+        body: { imageBase64: base64, mimeType: file.type || 'image/jpeg' },
+      })
+      if (error || !data?.stations?.length) {
+        alert('Η AI ανίχνευση δεν βρήκε σταθμούς. Δοκίμασε ξανά ή σχεδίασε χειροκίνητα.')
+        return
+      }
+      const detected: Station[] = (data.stations as any[]).map((s, i) => ({
+        id: uid(),
+        name: s.name || `Σταθμός ${i + 1}`,
+        icon: '',
+        x: Math.max(0, Math.min(SVG_W - 120, Math.round(s.x))),
+        y: Math.max(20, Math.min(SVG_H - 70, Math.round(s.y))),
+        width:  Math.max(120, Math.min(SVG_W - 40, Math.round(s.width))),
+        height: Math.max(60,  Math.min(200, Math.round(s.height))),
+        color: COLORS[i % COLORS.length]!,
+        slotCount: Math.max(1, Math.min(8, s.slotCount || 4)),
+        rotation: 0,
+        shape: 'rect' as const,
+      }))
+      setBgImage(dataUrl)
+      setStations(detected)
+      commit(detected, dataUrl)
+    } catch (err) {
+      console.error(err)
+      alert('Σφάλμα κατά την AI ανίχνευση.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  function onDrawMouseDown(e: React.MouseEvent<SVGSVGElement>) {
+    if (!svgRef.current || pendingRect) return
+    const pt = getSvgPoint(e, svgRef.current)
+    setDrawStart(pt)
+    setDrawRect({ x: pt.x, y: pt.y, w: 0, h: 0 })
+  }
+
+  function onDrawMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (!drawStart || !svgRef.current) return
+    const pt = getSvgPoint(e, svgRef.current)
+    setDrawRect({
+      x: Math.min(drawStart.x, pt.x),
+      y: Math.min(drawStart.y, pt.y),
+      w: Math.abs(pt.x - drawStart.x),
+      h: Math.abs(pt.y - drawStart.y),
+    })
+  }
+
+  function onDrawMouseUp() {
+    if (drawRect && drawRect.w >= 40 && drawRect.h >= 30) {
+      setPendingRect(drawRect)
+      setPendingName('')
+    }
+    setDrawRect(null)
+    setDrawStart(null)
+  }
+
+  function confirmPendingStation() {
+    if (!pendingRect || !pendingName.trim()) return
+    const s: Station = {
+      id: uid(), name: pendingName.trim(), icon: '',
+      x: snapV(pendingRect.x, snapEnabled),
+      y: snapV(pendingRect.y, snapEnabled),
+      width:  snapV(Math.max(120, pendingRect.w), snapEnabled),
+      height: snapV(Math.max(60,  pendingRect.h), snapEnabled),
+      color: COLORS[stations.length % COLORS.length]!,
+      slotCount: Math.max(1, Math.round(pendingRect.w / 80)),
+      rotation: 0, shape: 'rect',
+    }
+    const next = [...stations, s]
+    setStations(next); commit(next)
+    setSelectedId(s.id)
+    setPendingRect(null); setPendingName('')
+  }
+
   // ── QR ───────────────────────────────────────────────────────────────────────
 
   async function openQr() {
@@ -520,7 +631,29 @@ export default function BuffetMap() {
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition text-xs font-medium">
                   <Download className="h-3.5 w-3.5" />Export PNG
                 </button>
+                <div className="w-px h-5 bg-white/10 mx-1" />
+                {/* Scan buttons */}
+                <button
+                  onClick={() => {
+                    if (scanMode === 'draw') { setScanMode('off') }
+                    else { scanPurposeRef.current = 'draw'; scanFileRef.current?.click() }
+                  }}
+                  className={cn('flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition text-xs font-medium',
+                    scanMode === 'draw'
+                      ? 'bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/40'
+                      : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10')}>
+                  <Camera className="h-3.5 w-3.5" />
+                  {scanMode === 'draw' ? 'Τέλος Σχεδίου' : 'Σκανάρισμα'}
+                </button>
+                <button
+                  onClick={() => { scanPurposeRef.current = 'ai'; scanFileRef.current?.click() }}
+                  disabled={aiLoading}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition text-xs font-medium disabled:opacity-50">
+                  <Wand2 className="h-3.5 w-3.5" />
+                  {aiLoading ? 'Ανίχνευση…' : 'AI Ανίχνευση'}
+                </button>
                 <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
+                <input ref={scanFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanFile} />
               </>
             )}
             {tab === 'assign' && (
@@ -531,14 +664,51 @@ export default function BuffetMap() {
             )}
           </div>
 
+          {/* Draw mode banner */}
+          {scanMode === 'draw' && (
+            <div className="flex items-center justify-between px-3 py-2 bg-cyan-500/10 border-b border-cyan-500/20">
+              <span className="text-xs text-cyan-300 font-medium">
+                ✏️ Σχεδίασε ορθογώνια πάνω στη φωτογραφία — κάθε ορθογώνιο γίνεται σταθμός
+              </span>
+              <button onClick={() => setScanMode('off')}
+                className="text-xs text-cyan-400 hover:text-white transition px-2 py-0.5 rounded-md hover:bg-white/10">
+                Τέλος
+              </button>
+            </div>
+          )}
+
           {/* SVG Canvas */}
           <div className="relative w-full" style={{ paddingBottom: `${(SVG_H / SVG_W) * 100}%` }}>
+            {/* Pending station name popup */}
+            {pendingRect && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center">
+                <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 260 }}>
+                  <p className="text-sm font-semibold text-white">Όνομα σταθμού</p>
+                  <input autoFocus value={pendingName}
+                    onChange={(e) => setPendingName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') confirmPendingStation(); if (e.key === 'Escape') setPendingRect(null) }}
+                    placeholder="π.χ. Σαλάτες, Ψητά…"
+                    className="w-full rounded-lg px-3 py-2 bg-white/10 border border-white/20 text-white text-sm focus:outline-none focus:border-brand-orange/60"/>
+                  <div className="flex gap-2">
+                    <button onClick={confirmPendingStation} disabled={!pendingName.trim()}
+                      className="flex-1 py-1.5 rounded-lg bg-brand-orange text-white text-sm font-medium disabled:opacity-40 transition hover:bg-brand-orange/90">
+                      Προσθήκη
+                    </button>
+                    <button onClick={() => setPendingRect(null)}
+                      className="flex-1 py-1.5 rounded-lg bg-white/10 text-white/70 text-sm transition hover:bg-white/15">
+                      Ακύρωση
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <svg ref={svgRef} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
               className="absolute inset-0 w-full h-full select-none"
-              style={{ background: '#070c12', cursor: tab === 'design' ? 'crosshair' : 'default' }}
-              onMouseMove={tab === 'design' ? onSvgMouseMove : undefined}
-              onMouseUp={tab === 'design' ? onSvgMouseUp : undefined}
-              onMouseLeave={tab === 'design' ? onSvgMouseUp : undefined}
+              style={{ background: '#070c12', cursor: tab === 'design' ? (scanMode === 'draw' ? 'crosshair' : 'default') : 'default' }}
+              onMouseDown={tab === 'design' && scanMode === 'draw' ? onDrawMouseDown : undefined}
+              onMouseMove={tab === 'design' ? (scanMode === 'draw' ? onDrawMouseMove : onSvgMouseMove) : undefined}
+              onMouseUp={tab === 'design' ? (scanMode === 'draw' ? onDrawMouseUp : onSvgMouseUp) : undefined}
+              onMouseLeave={tab === 'design' ? (scanMode === 'draw' ? onDrawMouseUp : onSvgMouseUp) : undefined}
               onClick={(e) => { if ((e.target as SVGElement).tagName === 'svg') setSelectedId(null) }}
             >
               <defs>
@@ -565,7 +735,14 @@ export default function BuffetMap() {
               {/* Background image */}
               {bgImage && (
                 <image href={bgImage} x="0" y="0" width={SVG_W} height={SVG_H}
-                  preserveAspectRatio="xMidYMid slice" opacity="0.25"
+                  preserveAspectRatio="xMidYMid slice" opacity={scanMode === 'draw' ? 0.55 : 0.25}
+                  style={{ pointerEvents: 'none' }}/>
+              )}
+
+              {/* Draw mode: rectangle preview */}
+              {scanMode === 'draw' && drawRect && drawRect.w > 5 && drawRect.h > 5 && (
+                <rect x={drawRect.x} y={drawRect.y} width={drawRect.w} height={drawRect.h}
+                  fill="rgba(6,182,212,0.12)" stroke="#06b6d4" strokeWidth="2" strokeDasharray="6 3" rx="6"
                   style={{ pointerEvents: 'none' }}/>
               )}
 
@@ -584,14 +761,14 @@ export default function BuffetMap() {
                         strokeWidth={isSelected ? 2.5 : 1.5}
                         strokeDasharray={isSelected ? '6 3' : undefined}
                         style={{ cursor: tab === 'design' ? 'move' : 'default' }}
-                        onMouseDown={tab === 'design' ? (e) => onStationMouseDown(e, s) : undefined}/>
+                        onMouseDown={tab === 'design' && scanMode !== 'draw' ? (e) => onStationMouseDown(e, s) : undefined}/>
                     ) : (
                       <rect x={s.x} y={s.y} width={s.width} height={s.height} rx="8"
                         fill={`${s.color}18`} stroke={s.color}
                         strokeWidth={isSelected ? 2.5 : 1.5}
                         strokeDasharray={isSelected ? '6 3' : undefined}
-                        style={{ cursor: tab === 'design' ? 'move' : 'default' }}
-                        onMouseDown={tab === 'design' ? (e) => onStationMouseDown(e, s) : undefined}/>
+                        style={{ cursor: tab === 'design' && scanMode !== 'draw' ? 'move' : 'default' }}
+                        onMouseDown={tab === 'design' && scanMode !== 'draw' ? (e) => onStationMouseDown(e, s) : undefined}/>
                     )}
 
                     {/* Station label */}
