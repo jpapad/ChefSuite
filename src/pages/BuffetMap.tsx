@@ -3,7 +3,7 @@ import {
   Map, Plus, Trash2, Save, ChefHat, LayoutGrid, QrCode,
   Undo2, Redo2, Grid3x3, Copy, Download, Image, AlignLeft,
   AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Camera, Wand2,
+  Camera, Wand2, Activity,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { supabase } from '../lib/supabase'
@@ -63,6 +63,22 @@ interface DragState {
 
 interface SlotKey { stationId: string; slotIndex: number }
 
+type LiveStatus = 'full' | 'low' | 'empty'
+type LiveStatusMap = Record<string, LiveStatus>
+
+interface LivePopup {
+  stationId: string
+  slotIndex: number
+  menuItemId: string
+  dishName: string
+}
+
+const LIVE_STATUS_CFG: Record<LiveStatus, { label: string; dot: string; bg: string; text: string }> = {
+  full:  { label: 'Γεμάτο',    dot: '#22c55e', bg: 'bg-emerald-600 hover:bg-emerald-500', text: 'text-white' },
+  low:   { label: 'Λίγο',      dot: '#f59e0b', bg: 'bg-amber-600   hover:bg-amber-500',   text: 'text-white' },
+  empty: { label: 'Τελείωσε', dot: '#ef4444', bg: 'bg-red-600     hover:bg-red-500',     text: 'text-white' },
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function slotKey(stationId: string, idx: number) { return `${stationId}_${idx}` }
@@ -94,7 +110,7 @@ export default function BuffetMap() {
   const [slots, setSlots]       = useState<SlotsMap>({})
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
-  const [tab, setTab]           = useState<'design' | 'assign'>('design')
+  const [tab, setTab]           = useState<'design' | 'assign' | 'live'>('design')
 
   // Builder
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -114,6 +130,11 @@ export default function BuffetMap() {
   // QR
   const [qrOpen, setQrOpen]     = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+
+  // Live tab
+  const [liveStatus, setLiveStatus]   = useState<LiveStatusMap>({})
+  const [livePopup, setLivePopup]     = useState<LivePopup | null>(null)
+  const [liveUpdating, setLiveUpdating] = useState<string | null>(null)
 
   // Camera scan
   const [scanMode, setScanMode]       = useState<'off' | 'draw'>('off')
@@ -209,6 +230,36 @@ export default function BuffetMap() {
       { map_id: mid, team_id: tid, date: TODAY, slots: updated, updated_at: new Date().toISOString() },
       { onConflict: 'map_id,date' },
     )
+  }
+
+  // ── Live status ─────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!teamId || tab !== 'live') return
+    const fetchLive = async () => {
+      const { data } = await supabase.from('buffet_live_status')
+        .select('menu_item_id, status').eq('team_id', teamId)
+      if (!data) return
+      const sm: LiveStatusMap = {}
+      for (const r of data) sm[r.menu_item_id] = r.status as LiveStatus
+      setLiveStatus(sm)
+    }
+    void fetchLive()
+    const interval = setInterval(fetchLive, 5_000)
+    return () => clearInterval(interval)
+  }, [teamId, tab])
+
+  async function upsertLiveStatus(menuItemId: string, dishName: string, status: LiveStatus) {
+    if (!teamId || !profile?.id) return
+    setLiveUpdating(menuItemId)
+    await supabase.from('buffet_live_status').upsert(
+      { team_id: teamId, menu_item_id: menuItemId, item_name: dishName, status,
+        status_changed_at: new Date().toISOString(), changed_by: profile.id },
+      { onConflict: 'team_id,menu_item_id' },
+    )
+    setLiveStatus((prev) => ({ ...prev, [menuItemId]: status }))
+    setLiveUpdating(null)
+    setLivePopup(null)
   }
 
   // ── History ─────────────────────────────────────────────────────────────────
@@ -576,14 +627,16 @@ export default function BuffetMap() {
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl bg-white/5 w-fit">
-        {(['design', 'assign'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={cn(
+        {(['design', 'assign', 'live'] as const).map((t) => (
+          <button key={t} onClick={() => { setTab(t); setLivePopup(null) }} className={cn(
             'px-4 py-1.5 rounded-lg text-sm font-medium transition',
             tab === t ? 'bg-brand-orange text-white' : 'text-white/60 hover:text-white',
           )}>
             {t === 'design'
               ? <span className="flex items-center gap-1.5"><LayoutGrid className="h-3.5 w-3.5" />Σχεδιασμός</span>
-              : <span className="flex items-center gap-1.5"><ChefHat className="h-3.5 w-3.5" />Διάταξη Φαγητών</span>}
+              : t === 'assign'
+              ? <span className="flex items-center gap-1.5"><ChefHat className="h-3.5 w-3.5" />Διάταξη Φαγητών</span>
+              : <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" />Ζωντανά</span>}
           </button>
         ))}
       </div>
@@ -662,6 +715,19 @@ export default function BuffetMap() {
                 {menuItems.length === 0 && <span className="ml-3 text-amber-400 text-xs">⚠ Ορίσε πρώτα Μενού Ημέρας</span>}
               </span>
             )}
+            {tab === 'live' && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-white/60">Κλικ σε θέση → αλλαγή κατάστασης</span>
+                <div className="flex items-center gap-2 ml-2">
+                  {(Object.entries(LIVE_STATUS_CFG) as [LiveStatus, typeof LIVE_STATUS_CFG[LiveStatus]][]).map(([, cfg]) => (
+                    <span key={cfg.label} className="flex items-center gap-1 text-xs text-white/50">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: cfg.dot }}/>
+                      {cfg.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Draw mode banner */}
@@ -702,6 +768,36 @@ export default function BuffetMap() {
                 </div>
               </div>
             )}
+            {/* Live popup overlay */}
+            {livePopup && tab === 'live' && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center">
+                <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 240 }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-white leading-tight">{livePopup.dishName}</p>
+                    <button onClick={() => setLivePopup(null)} className="text-white/40 hover:text-white text-lg leading-none shrink-0">×</button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(Object.entries(LIVE_STATUS_CFG) as [LiveStatus, typeof LIVE_STATUS_CFG[LiveStatus]][]).map(([s, cfg]) => {
+                      const isCurrent = liveStatus[livePopup.menuItemId] === s
+                      const isUpdating = liveUpdating === livePopup.menuItemId
+                      return (
+                        <button key={s} disabled={isUpdating}
+                          onClick={() => void upsertLiveStatus(livePopup.menuItemId, livePopup.dishName, s)}
+                          className={cn(
+                            'py-2 rounded-lg text-xs font-bold transition text-white text-center',
+                            cfg.bg,
+                            isCurrent ? 'ring-2 ring-white/60 scale-105' : 'opacity-70 hover:opacity-100',
+                            isUpdating && 'opacity-40 cursor-not-allowed',
+                          )}>
+                          {cfg.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <svg ref={svgRef} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
               className="absolute inset-0 w-full h-full select-none"
               style={{ background: '#070c12', cursor: tab === 'design' ? (scanMode === 'draw' ? 'crosshair' : 'default') : 'default' }}
@@ -709,7 +805,7 @@ export default function BuffetMap() {
               onMouseMove={tab === 'design' ? (scanMode === 'draw' ? onDrawMouseMove : onSvgMouseMove) : undefined}
               onMouseUp={tab === 'design' ? (scanMode === 'draw' ? onDrawMouseUp : onSvgMouseUp) : undefined}
               onMouseLeave={tab === 'design' ? (scanMode === 'draw' ? onDrawMouseUp : onSvgMouseUp) : undefined}
-              onClick={(e) => { if ((e.target as SVGElement).tagName === 'svg') setSelectedId(null) }}
+              onClick={(e) => { if ((e.target as SVGElement).tagName === 'svg') { setSelectedId(null); setLivePopup(null) } }}
             >
               <defs>
                 <pattern id="grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
@@ -735,7 +831,8 @@ export default function BuffetMap() {
               {/* Background image */}
               {bgImage && (
                 <image href={bgImage} x="0" y="0" width={SVG_W} height={SVG_H}
-                  preserveAspectRatio="xMidYMid slice" opacity={scanMode === 'draw' ? 0.55 : 0.25}
+                  preserveAspectRatio="xMidYMid slice"
+                  opacity={tab === 'live' ? 0.45 : scanMode === 'draw' ? 0.55 : 0.25}
                   style={{ pointerEvents: 'none' }}/>
               )}
 
@@ -820,6 +917,24 @@ export default function BuffetMap() {
                                   fill="#f87171" fontSize="9" fontWeight="bold">×</text>
                               </g>
                             )}
+
+                            {/* Live tab: clickable slot overlay + status dot */}
+                            {tab === 'live' && assignment && (() => {
+                              const st = liveStatus[assignment.menuItemId]
+                              const dotColor = st ? LIVE_STATUS_CFG[st].dot : '#6b7280'
+                              const isActive = livePopup?.stationId === s.id && livePopup?.slotIndex === i
+                              return (
+                                <>
+                                  <rect x={sx + 1} y={s.y + 1} width={slotW - 2} height={s.height - 2} rx="6"
+                                    fill={isActive ? `${s.color}25` : 'transparent'}
+                                    stroke={isActive ? s.color : 'transparent'} strokeWidth="1.5"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={(e) => { e.stopPropagation(); setLivePopup({ stationId: s.id, slotIndex: i, menuItemId: assignment.menuItemId, dishName: assignment.dishName }) }}/>
+                                  <circle cx={sx + slotW - 9} cy={s.y + 10} r="5" fill={dotColor} opacity="0.9"
+                                    style={{ pointerEvents: 'none' }}/>
+                                </>
+                              )
+                            })()}
                           </g>
                         )
                       })}
@@ -1002,6 +1117,34 @@ export default function BuffetMap() {
           {tab === 'assign' && !activeSlot && (
             <GlassCard className="text-center py-6">
               <p className="text-xs text-white/40">Κλικ σε θέση<br/>για ανάθεση φαγητού</p>
+            </GlassCard>
+          )}
+
+          {/* Live: status summary */}
+          {tab === 'live' && (
+            <GlassCard className="space-y-2">
+              <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                <Activity className="h-3 w-3" />Live Status
+              </h3>
+              {stations.flatMap((s) =>
+                Array.from({ length: s.slotCount }, (_, i) => {
+                  const assignment = slots[slotKey(s.id, i)]
+                  if (!assignment) return null
+                  const st = liveStatus[assignment.menuItemId]
+                  const cfg = st ? LIVE_STATUS_CFG[st] : null
+                  return (
+                    <div key={`${s.id}_${i}`} className="flex items-center gap-2 py-0.5">
+                      <span className="inline-block w-2 h-2 rounded-full shrink-0"
+                        style={{ background: cfg?.dot ?? '#6b7280' }}/>
+                      <span className="text-xs text-white/70 truncate flex-1 min-w-0">{assignment.dishName}</span>
+                      {cfg && <span className="text-[10px] text-white/40 shrink-0">{cfg.label}</span>}
+                    </div>
+                  )
+                })
+              ).filter(Boolean)}
+              {Object.keys(slots).length === 0 && (
+                <p className="text-xs text-white/30 text-center py-2">Δεν υπάρχουν ανατεθειμένα φαγητά</p>
+              )}
             </GlassCard>
           )}
 
