@@ -5,19 +5,35 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        sans:  ['Space Grotesk', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
         serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+        mono:  ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       colors: {
-        // "white" is theme-aware — used for all text-white/X, bg-white/X, border-white/X
+        // theme-aware white (text-white/X, bg-white/X, border-white/X)
         white: 'rgb(var(--app-white) / <alpha-value>)',
-        // Literal white for icons/text on colored backgrounds
         'white-fixed': '#ffffff',
-        'brand-orange': '#C4956A',
-        'copper': '#C5A059',
-        'copper-soft': '#d8b08c',
-        'chef-dark': '#0e0905',
-        'glass-border': 'rgba(255, 255, 255, 0.08)',
+
+        // Brand accent — teal/blue (INVENTRA palette)
+        'brand-orange': '#4f8ef7',   // kept name for backwards compat with all existing classes
+        'accent':       '#4f8ef7',
+        'accent-bg':    'rgba(79, 142, 247, 0.12)',
+
+        // Legacy copper tokens (used in Login page only)
+        'copper':       '#C5A059',
+        'copper-soft':  '#d8b08c',
+
+        // App surfaces (INVENTRA)
+        'bg-card':      '#1e2235',
+        'bg-card-2':    '#252840',
+        'bg-surface':   '#0f1116',
+        'bg-input':     '#13161c',
+        'inv-border':   '#2d3154',
+
+        // Semantic
+        'chef-dark':    '#0b0d10',
+        'glass-border': 'rgba(242, 240, 236, 0.08)',
+
         neutral: {
           50: '#fafaf9', 100: '#f5f5f4', 200: '#e7e5e4',
           300: '#d6d3d1', 400: '#a8a29e', 500: '#78716c',
@@ -25,13 +41,14 @@ export default {
         },
       },
       boxShadow: {
-        glass:         '0 2px 16px rgba(0,0,0,0.06)',
-        'orange-glow':    '0 0 24px rgba(196, 149, 106, 0.35)',
-        'orange-glow-lg': '0 0 48px rgba(196, 149, 106, 0.45)',
-        'purple-glow':    '0 0 24px rgba(196, 149, 106, 0.35)',
+        glass:         '0 8px 32px rgba(0,0,0,0.40)',
+        'orange-glow':    '0 0 24px rgba(79, 142, 247, 0.35)',
+        'orange-glow-lg': '0 0 48px rgba(79, 142, 247, 0.45)',
+        'purple-glow':    '0 0 24px rgba(79, 142, 247, 0.25)',
+        'card':           '0 8px 32px rgba(0,0,0,0.40)',
       },
       backgroundImage: {
-        'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.30), rgba(255,255,255,0.10))',
+        'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
       },
       minHeight: { 'touch-target': '44px' },
       minWidth:  { 'touch-target': '44px' },

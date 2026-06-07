@@ -18,7 +18,7 @@ export function GlassCard({
     <div
       className={cn(
         variant === 'strong' ? 'glass-strong' : 'glass',
-        'rounded-2xl p-6 gradient-border',
+        'rounded-lg p-6',
         hover && 'card-hover glass-shimmer cursor-pointer',
         className,
       )}

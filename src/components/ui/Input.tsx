@@ -16,24 +16,24 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <label htmlFor={inputId} className="block w-full">
       {label && (
-        <span className="mb-1.5 block text-sm font-medium text-white/70 tracking-wide">
+        <span className="mb-1.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.20em] text-white/40">
           {label}
         </span>
       )}
       <div
         className={cn(
-          'flex items-center gap-3 rounded-xl px-4 h-11 transition-all',
-          'bg-white-fixed/55 border border-white/70',
-          'focus-within:ring-2 focus-within:ring-brand-orange/50 focus-within:border-brand-orange/30',
-          error && 'ring-2 ring-red-500/60 border-red-500/30',
+          'flex items-center gap-3 px-3 h-[38px] transition-all',
+          'bg-[#13161c] border border-[rgba(242,240,236,0.08)] rounded-sm',
+          'focus-within:border-brand-orange/60 focus-within:ring-1 focus-within:ring-brand-orange/20',
+          error && 'border-red-500/60 ring-1 ring-red-500/20',
         )}
       >
-        {leftIcon && <span className="text-white/40 shrink-0">{leftIcon}</span>}
+        {leftIcon && <span className="text-white/30 shrink-0">{leftIcon}</span>}
         <input
           ref={ref}
           id={inputId}
           className={cn(
-            'flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/30',
+            'flex-1 bg-transparent outline-none text-[13px] text-[#f2f0ec] placeholder:text-white/25',
             className,
           )}
           {...rest}
@@ -42,8 +42,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       {(hint || error) && (
         <span
           className={cn(
-            'mt-1.5 block text-xs',
-            error ? 'text-red-400' : 'text-white/40',
+            'mt-1.5 block font-mono text-[10px] tracking-wide',
+            error ? 'text-red-400' : 'text-white/30',
           )}
         >
           {error ?? hint}
