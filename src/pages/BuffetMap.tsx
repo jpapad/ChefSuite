@@ -144,11 +144,16 @@ export default function BuffetMap() {
   const [pendingName, setPendingName] = useState('')
   const [aiLoading, setAiLoading]     = useState(false)
 
+  // In-app camera (avoids iOS PWA capture bug)
+  const [cameraOpen, setCameraOpen]   = useState(false)
+  const [cameraReady, setCameraReady] = useState(false)
+  const videoRef   = useRef<HTMLVideoElement>(null)
+  const streamRef  = useRef<MediaStream | null>(null)
+  const scanPurposeRef = useRef<'draw' | 'ai'>('draw')
+
   const svgRef      = useRef<SVGSVGElement>(null)
   const dragRef     = useRef<DragState | null>(null)
   const bgFileRef   = useRef<HTMLInputElement>(null)
-  const scanFileRef = useRef<HTMLInputElement>(null)
-  const scanPurposeRef = useRef<'draw' | 'ai'>('draw')
 
   // Always-fresh ref for saveLayout
   const latestRef = useRef({ stations, bgImage, mapId, teamId })
@@ -477,7 +482,58 @@ export default function BuffetMap() {
 
   // ── Camera scan / Draw mode ──────────────────────────────────────────────────
 
-  function handleScanFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function openCamera(purpose: 'draw' | 'ai') {
+    scanPurposeRef.current = purpose
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      })
+      streamRef.current = stream
+      setCameraReady(false)
+      setCameraOpen(true)
+      // Attach stream after modal mounts (next tick)
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play().catch(() => {})
+        }
+      }, 50)
+    } catch {
+      // getUserMedia not available or denied — fall back to file input
+      bgFileRef.current?.click()
+    }
+  }
+
+  function closeCamera() {
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    setCameraOpen(false)
+    setCameraReady(false)
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current
+    if (!video) return
+    const canvas = document.createElement('canvas')
+    canvas.width  = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d')!.drawImage(video, 0, 0)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+    closeCamera()
+    if (scanPurposeRef.current === 'draw') {
+      setBgImage(dataUrl)
+      commit(latestRef.current.stations, dataUrl)
+      setScanMode('draw')
+    } else {
+      canvas.toBlob((blob) => {
+        if (!blob) return
+        const file = new File([blob], 'scan.jpg', { type: 'image/jpeg' })
+        void runAiScan(file, dataUrl)
+      }, 'image/jpeg', 0.92)
+    }
+  }
+
+  function handleBgFileForScan(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
@@ -685,12 +741,9 @@ export default function BuffetMap() {
                   <Download className="h-3.5 w-3.5" />Export PNG
                 </button>
                 <div className="w-px h-5 bg-white/10 mx-1" />
-                {/* Scan buttons */}
+                {/* Scan buttons — use in-app camera to avoid iOS PWA redirect bug */}
                 <button
-                  onClick={() => {
-                    if (scanMode === 'draw') { setScanMode('off') }
-                    else { scanPurposeRef.current = 'draw'; scanFileRef.current?.click() }
-                  }}
+                  onClick={() => { if (scanMode === 'draw') setScanMode('off'); else void openCamera('draw') }}
                   className={cn('flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition text-xs font-medium',
                     scanMode === 'draw'
                       ? 'bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/40'
@@ -699,14 +752,14 @@ export default function BuffetMap() {
                   {scanMode === 'draw' ? 'Τέλος Σχεδίου' : 'Σκανάρισμα'}
                 </button>
                 <button
-                  onClick={() => { scanPurposeRef.current = 'ai'; scanFileRef.current?.click() }}
+                  onClick={() => void openCamera('ai')}
                   disabled={aiLoading}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition text-xs font-medium disabled:opacity-50">
                   <Wand2 className="h-3.5 w-3.5" />
                   {aiLoading ? 'Ανίχνευση…' : 'AI Ανίχνευση'}
                 </button>
-                <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
-                <input ref={scanFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanFile} />
+                {/* Fallback file input (used only when getUserMedia unavailable) */}
+                <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFileForScan} />
               </>
             )}
             {tab === 'assign' && (
@@ -1227,6 +1280,56 @@ export default function BuffetMap() {
           </div>
         </div>
       </Drawer>
+
+      {/* ── In-app camera overlay ─────────────────────────────────────────────── */}
+      {cameraOpen && (
+        <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+          {/* Video preview */}
+          <div className="relative flex-1 overflow-hidden bg-black">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              onCanPlay={() => setCameraReady(true)}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {!cameraReady && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-white/50 text-sm">Εκκίνηση κάμερας…</p>
+              </div>
+            )}
+            {/* Purpose label */}
+            <div className="absolute top-4 left-0 right-0 flex justify-center pointer-events-none">
+              <span className="px-3 py-1 rounded-full bg-black/60 text-white/70 text-xs font-mono uppercase tracking-wider">
+                {scanPurposeRef.current === 'draw' ? '📷 Σκανάρισμα χώρου' : '🤖 AI Ανίχνευση σταθμών'}
+              </span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="bg-black px-6 py-8 flex items-center justify-between gap-6">
+            <button
+              onClick={closeCamera}
+              className="text-white/60 hover:text-white text-sm font-mono uppercase tracking-wider transition"
+            >
+              Ακύρωση
+            </button>
+
+            {/* Shutter button */}
+            <button
+              onClick={capturePhoto}
+              disabled={!cameraReady}
+              className="relative flex items-center justify-center w-20 h-20 rounded-full border-4 border-white/80 disabled:opacity-30 active:scale-95 transition-transform"
+            >
+              <span className="block w-14 h-14 rounded-full bg-white" />
+            </button>
+
+            {/* Placeholder to balance layout */}
+            <div className="w-16" />
+          </div>
+        </div>
+      )}
 
       {/* QR Drawer */}
       <Drawer open={qrOpen} onClose={() => setQrOpen(false)} title="QR Χάρτη Μπουφέ">
