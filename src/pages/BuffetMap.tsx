@@ -151,9 +151,10 @@ export default function BuffetMap() {
   const streamRef  = useRef<MediaStream | null>(null)
   const scanPurposeRef = useRef<'draw' | 'ai'>('draw')
 
-  const svgRef      = useRef<SVGSVGElement>(null)
-  const dragRef     = useRef<DragState | null>(null)
-  const bgFileRef   = useRef<HTMLInputElement>(null)
+  const svgRef           = useRef<SVGSVGElement>(null)
+  const dragRef          = useRef<DragState | null>(null)
+  const bgFileRef        = useRef<HTMLInputElement>(null)   // Φόντο button
+  const scanFallbackRef  = useRef<HTMLInputElement>(null)   // getUserMedia fallback
 
   // Always-fresh ref for saveLayout
   const latestRef = useRef({ stations, bgImage, mapId, teamId })
@@ -500,7 +501,7 @@ export default function BuffetMap() {
       }, 50)
     } catch {
       // getUserMedia not available or denied — fall back to file input
-      bgFileRef.current?.click()
+      scanFallbackRef.current?.click()
     }
   }
 
@@ -758,8 +759,10 @@ export default function BuffetMap() {
                   <Wand2 className="h-3.5 w-3.5" />
                   {aiLoading ? 'Ανίχνευση…' : 'AI Ανίχνευση'}
                 </button>
+                {/* Background file input (Φόντο button) */}
+                <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
                 {/* Fallback file input (used only when getUserMedia unavailable) */}
-                <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFileForScan} />
+                <input ref={scanFallbackRef} type="file" accept="image/*" className="hidden" onChange={handleBgFileForScan} />
               </>
             )}
             {tab === 'assign' && (
