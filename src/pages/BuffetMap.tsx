@@ -616,45 +616,6 @@ export default function BuffetMap() {
     return sumSq / n - mean * mean
   }
 
-  async function extractBestFrames(
-    videoBlob: Blob,
-    count: number,
-    onProgress?: (fraction: number) => void,
-  ): Promise<string[]> {
-    return new Promise((resolve) => {
-      const video = document.createElement('video')
-      video.muted = true
-      const objectUrl = URL.createObjectURL(videoBlob)
-      video.src = objectUrl
-      video.onloadedmetadata = async () => {
-        const duration = video.duration
-        const sampleCount = Math.min(8, Math.max(count * 2, 4))
-        const timestamps = Array.from({ length: sampleCount }, (_, i) => (i + 0.5) * duration / sampleCount)
-        const frames: { dataUrl: string; score: number }[] = []
-        for (let idx = 0; idx < timestamps.length; idx++) {
-          const t = timestamps[idx]!
-          await new Promise<void>((r) => {
-            video.currentTime = t
-            video.onseeked = () => {
-              const canvas = document.createElement('canvas')
-              const scale = Math.min(1, 768 / Math.max(video.videoWidth, video.videoHeight))
-              canvas.width  = Math.round(video.videoWidth  * scale)
-              canvas.height = Math.round(video.videoHeight * scale)
-              canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
-              frames.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.78), score: sharpnessScore(canvas) })
-              onProgress?.((idx + 1) / timestamps.length)
-              r()
-            }
-          })
-        }
-        URL.revokeObjectURL(objectUrl)
-        frames.sort((a, b) => b.score - a.score)
-        resolve(frames.slice(0, count).map(f => f.dataUrl))
-      }
-      video.load()
-    })
-  }
-
   async function openAdvancedScan() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -1577,6 +1538,16 @@ export default function BuffetMap() {
                 muted
                 className="absolute inset-0 w-full h-full object-cover"
               />
+
+              {/* Aerial thumbnail shown during video step */}
+              {advScanStep === 'video' && aerialDataUrl && (
+                <div className="absolute top-4 left-4 pointer-events-none">
+                  <div className="rounded-lg overflow-hidden border border-teal-400/40 shadow-lg" style={{ width: 72, height: 54 }}>
+                    <img src={aerialDataUrl} alt="aerial" className="w-full h-full object-cover opacity-90" />
+                  </div>
+                  <p className="text-teal-400/70 text-[9px] font-mono text-center mt-0.5">AERIAL</p>
+                </div>
+              )}
 
               {/* Step badge */}
               <div className="absolute top-4 left-0 right-0 flex justify-center pointer-events-none">
