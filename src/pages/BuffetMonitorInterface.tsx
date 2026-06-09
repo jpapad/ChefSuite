@@ -51,9 +51,11 @@ type MenuRow = {
 // ── Status config ──────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
-  full:  { label: 'buffetPulse.full',  bg: 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-400', ring: 'ring-emerald-400', text: 'text-white' },
-  low:   { label: 'buffetPulse.low',   bg: 'bg-amber-600   hover:bg-amber-500   active:bg-amber-400',   ring: 'ring-amber-400',   text: 'text-white' },
-  empty: { label: 'buffetPulse.empty', bg: 'bg-red-600     hover:bg-red-500     active:bg-red-400',     ring: 'ring-red-400',     text: 'text-white' },
+  full:      { label: 'buffetPulse.full',  bg: 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-400', ring: 'ring-emerald-400', text: 'text-white' },
+  low:       { label: 'buffetPulse.low',   bg: 'bg-amber-600   hover:bg-amber-500   active:bg-amber-400',   ring: 'ring-amber-400',   text: 'text-white' },
+  empty:     { label: 'buffetPulse.empty', bg: 'bg-red-600     hover:bg-red-500     active:bg-red-400',     ring: 'ring-red-400',     text: 'text-white' },
+  preparing: { label: 'buffetPulse.low',   bg: 'bg-blue-600   hover:bg-blue-500    active:bg-blue-400',    ring: 'ring-blue-400',    text: 'text-white' },
+  coming:    { label: 'buffetPulse.low',   bg: 'bg-cyan-600   hover:bg-cyan-500    active:bg-cyan-400',    ring: 'ring-cyan-400',    text: 'text-white' },
 } as const satisfies Record<BuffetItemStatus, { label: string; bg: string; ring: string; text: string }>
 
 // ── Component ──────────────────────────────────────────────────────────────────

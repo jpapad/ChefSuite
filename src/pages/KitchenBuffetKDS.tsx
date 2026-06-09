@@ -317,7 +317,7 @@ export default function KitchenBuffetKDS() {
                   {/* Confirm */}
                   <button
                     disabled={isActing}
-                    onClick={() => void setStatus(item, 'preparing', { eta_minutes: workflow.eta, note: workflow.note || null })}
+                    onClick={() => void setStatus(item, 'preparing', { eta_minutes: workflow.eta, note: workflow.note || undefined })}
                     className="w-full rounded-xl py-3.5 text-sm font-black bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                   >
                     {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : '🔥 Ετοιμάζεται'}
@@ -350,7 +350,7 @@ export default function KitchenBuffetKDS() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 disabled={isActing}
-                onClick={() => void setStatus(item, 'coming', { note: item.note, eta_minutes: item.eta_minutes })}
+                onClick={() => void setStatus(item, 'coming', { note: item.note ?? undefined, eta_minutes: item.eta_minutes })}
                 className="rounded-xl py-4 text-sm font-black bg-cyan-600/80 hover:bg-cyan-600 text-white transition-all disabled:opacity-40 flex items-center justify-center gap-1.5">
                 {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Truck className="h-4 w-4" />Έρχεται</>}
               </button>
