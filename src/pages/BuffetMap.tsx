@@ -3,7 +3,7 @@ import {
   Map, Plus, Trash2, Save, ChefHat, LayoutGrid, QrCode,
   Undo2, Redo2, Grid3x3, Copy, Download, Image, AlignLeft,
   AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Camera, Wand2, Activity,
+  Camera, Wand2, Activity, ScanLine,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { supabase } from '../lib/supabase'
@@ -72,6 +72,8 @@ interface LivePopup {
   menuItemId: string
   dishName: string
 }
+
+type AdvScanStep = 'aerial' | 'video' | 'processing' | null
 
 const LIVE_STATUS_CFG: Record<LiveStatus, { label: string; dot: string; bg: string; text: string }> = {
   full:  { label: 'Γεμάτο',    dot: '#22c55e', bg: 'bg-emerald-600 hover:bg-emerald-500', text: 'text-white' },
@@ -147,6 +149,11 @@ export default function BuffetMap() {
   // In-app camera (avoids iOS PWA capture bug)
   const [cameraOpen, setCameraOpen]   = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
+
+  // Advanced scan: aerial photo + video sweep
+  const [advScanStep, setAdvScanStep]     = useState<AdvScanStep>(null)
+  const [advCountdown, setAdvCountdown]   = useState(7)
+  const [aerialDataUrl, setAerialDataUrl] = useState<string | null>(null)
   const videoRef   = useRef<HTMLVideoElement>(null)
   const streamRef  = useRef<MediaStream | null>(null)
   const scanPurposeRef = useRef<'draw' | 'ai'>('draw')
@@ -154,7 +161,12 @@ export default function BuffetMap() {
   const svgRef           = useRef<SVGSVGElement>(null)
   const dragRef          = useRef<DragState | null>(null)
   const bgFileRef        = useRef<HTMLInputElement>(null)   // Φόντο button
-  const scanFallbackRef  = useRef<HTMLInputElement>(null)   // getUserMedia fallback
+  const scanFallbackRef   = useRef<HTMLInputElement>(null)   // getUserMedia fallback
+  const advVideoRef       = useRef<HTMLVideoElement>(null)
+  const advStreamRef      = useRef<MediaStream | null>(null)
+  const mediaRecorderRef  = useRef<MediaRecorder | null>(null)
+  const videoChunksRef    = useRef<Blob[]>([])
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Always-fresh ref for saveLayout
   const latestRef = useRef({ stations, bgImage, mapId, teamId })
@@ -587,6 +599,167 @@ export default function BuffetMap() {
     }
   }
 
+  // ── Advanced scan (aerial + video sweep) ────────────────────────────────────
+
+  function sharpnessScore(canvas: HTMLCanvasElement): number {
+    const ctx = canvas.getContext('2d')!
+    const { width, height } = canvas
+    const data = ctx.getImageData(0, 0, width, height).data
+    let sum = 0, sumSq = 0, n = 0
+    for (let i = 0; i < data.length; i += 16) {
+      const lum = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!
+      sum += lum; sumSq += lum * lum; n++
+    }
+    const mean = sum / n
+    return sumSq / n - mean * mean
+  }
+
+  async function extractBestFrames(videoBlob: Blob, count: number): Promise<string[]> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video')
+      video.muted = true
+      const objectUrl = URL.createObjectURL(videoBlob)
+      video.src = objectUrl
+      video.onloadedmetadata = async () => {
+        const duration = video.duration
+        const sampleCount = Math.min(12, Math.max(count * 3, 6))
+        const timestamps = Array.from({ length: sampleCount }, (_, i) => (i + 0.5) * duration / sampleCount)
+        const frames: { dataUrl: string; score: number }[] = []
+        for (const t of timestamps) {
+          await new Promise<void>((r) => {
+            video.currentTime = t
+            video.onseeked = () => {
+              const canvas = document.createElement('canvas')
+              const scale = Math.min(1, 1280 / video.videoWidth)
+              canvas.width  = Math.round(video.videoWidth  * scale)
+              canvas.height = Math.round(video.videoHeight * scale)
+              canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
+              frames.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85), score: sharpnessScore(canvas) })
+              r()
+            }
+          })
+        }
+        URL.revokeObjectURL(objectUrl)
+        frames.sort((a, b) => b.score - a.score)
+        resolve(frames.slice(0, count).map(f => f.dataUrl))
+      }
+      video.load()
+    })
+  }
+
+  async function openAdvancedScan() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      })
+      advStreamRef.current = stream
+      setAdvScanStep('aerial')
+      setAdvCountdown(7)
+      setTimeout(() => {
+        if (advVideoRef.current) {
+          advVideoRef.current.srcObject = stream
+          advVideoRef.current.play().catch(() => {})
+        }
+      }, 50)
+    } catch {
+      alert('Η κάμερα δεν είναι διαθέσιμη ή δεν δόθηκε άδεια.')
+    }
+  }
+
+  function captureAerialAndProceed() {
+    const video = advVideoRef.current
+    if (!video) return
+    const canvas = document.createElement('canvas')
+    canvas.width  = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d')!.drawImage(video, 0, 0)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+    setAerialDataUrl(dataUrl)
+    setAdvScanStep('video')
+    setAdvCountdown(7)
+    startVideoRecording()
+  }
+
+  function startVideoRecording() {
+    const stream = advStreamRef.current
+    if (!stream) return
+    videoChunksRef.current = []
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+      ? 'video/webm;codecs=vp8'
+      : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : ''
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+    mediaRecorderRef.current = recorder
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data) }
+    recorder.onstop = () => { void processAdvancedScan() }
+    recorder.start(100)
+    let remaining = 7
+    const timer = setInterval(() => {
+      remaining--
+      setAdvCountdown(remaining)
+      if (remaining <= 0) { clearInterval(timer); stopAdvancedRecording() }
+    }, 1000)
+    countdownTimerRef.current = timer
+  }
+
+  function stopAdvancedRecording() {
+    if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null }
+    if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+    advStreamRef.current?.getTracks().forEach((t) => t.stop())
+    advStreamRef.current = null
+    setAdvScanStep('processing')
+  }
+
+  async function processAdvancedScan() {
+    const aerial = aerialDataUrl
+    if (!aerial) { setAdvScanStep(null); return }
+    try {
+      const videoBlob = new Blob(videoChunksRef.current, { type: 'video/webm' })
+      const groundUrls = await extractBestFrames(videoBlob, 3)
+      const images = [
+        { imageBase64: aerial.split(',')[1] ?? '', mimeType: 'image/jpeg', role: 'aerial' as const },
+        ...groundUrls.map(url => ({ imageBase64: url.split(',')[1] ?? '', mimeType: 'image/jpeg', role: 'ground' as const })),
+      ]
+      const { data, error } = await supabase.functions.invoke('detect-buffet-stations', { body: { images } })
+      if (error || !data?.stations?.length) {
+        alert('Η AI ανίχνευση δεν βρήκε σταθμούς. Δοκίμασε ξανά.')
+        return
+      }
+      const detected: Station[] = (data.stations as any[]).map((s, i) => ({
+        id: uid(), name: s.name || `Σταθμός ${i + 1}`, icon: '',
+        x: Math.max(0, Math.min(SVG_W - 120, Math.round(s.x))),
+        y: Math.max(20, Math.min(SVG_H - 70, Math.round(s.y))),
+        width:  Math.max(120, Math.min(SVG_W - 40, Math.round(s.width))),
+        height: Math.max(60,  Math.min(200, Math.round(s.height))),
+        color: COLORS[i % COLORS.length]!, slotCount: Math.max(1, Math.min(8, s.slotCount || 4)),
+        rotation: 0, shape: 'rect' as const,
+      }))
+      setBgImage(aerial)
+      setStations(detected)
+      commit(detected, aerial)
+    } catch (err) {
+      console.error(err)
+      alert('Σφάλμα κατά την AI επεξεργασία.')
+    } finally {
+      setAdvScanStep(null)
+      setAerialDataUrl(null)
+      videoChunksRef.current = []
+    }
+  }
+
+  function cancelAdvancedScan() {
+    if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null }
+    if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+    advStreamRef.current?.getTracks().forEach((t) => t.stop())
+    advStreamRef.current = null
+    mediaRecorderRef.current = null
+    videoChunksRef.current = []
+    setAdvScanStep(null)
+    setAerialDataUrl(null)
+    setAdvCountdown(7)
+  }
+
+  // ── Draw mode ────────────────────────────────────────────────────────────────
+
   function onDrawMouseDown(e: React.MouseEvent<SVGSVGElement>) {
     if (!svgRef.current || pendingRect) return
     const pt = getSvgPoint(e, svgRef.current)
@@ -758,6 +931,14 @@ export default function BuffetMap() {
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition text-xs font-medium disabled:opacity-50">
                   <Wand2 className="h-3.5 w-3.5" />
                   {aiLoading ? 'Ανίχνευση…' : 'AI Ανίχνευση'}
+                </button>
+                <div className="w-px h-5 bg-white/10 mx-1" />
+                <button
+                  onClick={() => void openAdvancedScan()}
+                  disabled={aiLoading || advScanStep !== null}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-teal-500/15 text-teal-400 hover:bg-teal-500/25 transition text-xs font-medium disabled:opacity-50">
+                  <ScanLine className="h-3.5 w-3.5" />
+                  Σάρωση χώρου
                 </button>
                 {/* Background file input (Φόντο button) */}
                 <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
@@ -1331,6 +1512,109 @@ export default function BuffetMap() {
             {/* Placeholder to balance layout */}
             <div className="w-16" />
           </div>
+        </div>
+      )}
+
+      {/* ── Advanced scan overlay (aerial + video sweep) ──────────────────────── */}
+      {advScanStep !== null && (
+        <div className="fixed inset-0 z-[210] bg-black flex flex-col">
+          {/* Camera preview — shown during aerial + video steps */}
+          {(advScanStep === 'aerial' || advScanStep === 'video') && (
+            <div className="relative flex-1 overflow-hidden bg-black">
+              <video
+                ref={advVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+
+              {/* Step badge */}
+              <div className="absolute top-4 left-0 right-0 flex justify-center pointer-events-none">
+                <span className="px-4 py-1.5 rounded-full bg-black/70 text-white/80 text-xs font-mono uppercase tracking-widest flex items-center gap-2">
+                  {advScanStep === 'aerial'
+                    ? <><ScanLine className="h-3.5 w-3.5 text-teal-400" /> Βήμα 1 / 2 — Εναέρια Φωτογραφία</>
+                    : <><span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" /> REC — {advCountdown}s</>}
+                </span>
+              </div>
+
+              {/* Instruction card */}
+              <div className="absolute bottom-36 left-0 right-0 flex justify-center pointer-events-none px-6">
+                <div className="bg-black/70 rounded-2xl px-5 py-3 text-center max-w-sm">
+                  {advScanStep === 'aerial' ? (
+                    <>
+                      <p className="text-white font-semibold text-sm">Κράτα το κινητό ψηλά</p>
+                      <p className="text-white/50 text-xs mt-1">Φωτογράφισε ολόκληρο τον χώρο του μπουφέ από ψηλά (bird's-eye view)</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-white font-semibold text-sm">Γύρνα ΑΡΓΑ την κάμερα</p>
+                      <p className="text-white/50 text-xs mt-1">Κάλυψε όλες τις γωνίες του χώρου — {advCountdown} δευτερόλεπτα απομένουν</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Countdown ring (video step) */}
+              {advScanStep === 'video' && (
+                <div className="absolute bottom-28 left-0 right-0 flex justify-center pointer-events-none">
+                  <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90">
+                    <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4"/>
+                    <circle cx="32" cy="32" r="28" fill="none" stroke="#ef4444" strokeWidth="4"
+                      strokeDasharray={`${2 * Math.PI * 28}`}
+                      strokeDashoffset={`${2 * Math.PI * 28 * (1 - advCountdown / 7)}`}
+                      strokeLinecap="round"/>
+                  </svg>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Processing step */}
+          {advScanStep === 'processing' && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-[#0b0d10]">
+              <div className="relative flex items-center justify-center w-20 h-20">
+                <div className="absolute inset-0 rounded-full border-4 border-teal-500/20 border-t-teal-400 animate-spin" />
+                <ScanLine className="h-8 w-8 text-teal-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-white font-semibold">Επεξεργασία…</p>
+                <p className="text-white/40 text-sm mt-1">Εξαγωγή frames · Ανάλυση AI</p>
+              </div>
+            </div>
+          )}
+
+          {/* Controls bar */}
+          {advScanStep !== 'processing' && (
+            <div className="bg-black px-6 py-8 flex items-center justify-between gap-6">
+              <button
+                onClick={cancelAdvancedScan}
+                className="text-white/60 hover:text-white text-sm font-mono uppercase tracking-wider transition"
+              >
+                Ακύρωση
+              </button>
+
+              {advScanStep === 'aerial' ? (
+                /* Shutter button */
+                <button
+                  onClick={captureAerialAndProceed}
+                  className="relative flex items-center justify-center w-20 h-20 rounded-full border-4 border-teal-400/80 active:scale-95 transition-transform"
+                >
+                  <span className="block w-14 h-14 rounded-full bg-teal-400" />
+                </button>
+              ) : (
+                /* Early-stop button */
+                <button
+                  onClick={stopAdvancedRecording}
+                  className="flex items-center justify-center w-20 h-20 rounded-full border-4 border-red-400/80 active:scale-95 transition-transform"
+                >
+                  <span className="block w-10 h-10 rounded-sm bg-red-400" />
+                </button>
+              )}
+
+              <div className="w-16" />
+            </div>
+          )}
         </div>
       )}
 
