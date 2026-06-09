@@ -163,11 +163,12 @@ export default function BuffetMap() {
   const dragRef          = useRef<DragState | null>(null)
   const bgFileRef        = useRef<HTMLInputElement>(null)   // Φόντο button
   const scanFallbackRef   = useRef<HTMLInputElement>(null)   // getUserMedia fallback
-  const advVideoRef       = useRef<HTMLVideoElement>(null)
-  const advStreamRef      = useRef<MediaStream | null>(null)
-  const mediaRecorderRef  = useRef<MediaRecorder | null>(null)
-  const videoChunksRef    = useRef<Blob[]>([])
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const advVideoRef         = useRef<HTMLVideoElement>(null)
+  const advStreamRef        = useRef<MediaStream | null>(null)
+  const aerialDataRef       = useRef<string | null>(null)         // avoids stale-closure issues
+  const capturedFramesRef   = useRef<{ dataUrl: string; score: number }[]>([])
+  const frameCaptureTimer   = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Always-fresh ref for saveLayout
   const latestRef = useRef({ stations, bgImage, mapId, teamId })
@@ -682,24 +683,31 @@ export default function BuffetMap() {
     canvas.height = Math.round(video.videoHeight * scale)
     canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
     const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
-    setAerialDataUrl(dataUrl)
+    aerialDataRef.current = dataUrl   // ref — always fresh in closures
+    setAerialDataUrl(dataUrl)         // state — for display only
+    capturedFramesRef.current = []
     setAdvScanStep('video')
     setAdvCountdown(5)
     startVideoRecording()
   }
 
   function startVideoRecording() {
-    const stream = advStreamRef.current
-    if (!stream) return
-    videoChunksRef.current = []
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-      ? 'video/webm;codecs=vp8'
-      : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : ''
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-    mediaRecorderRef.current = recorder
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data) }
-    recorder.onstop = () => { void processAdvancedScan() }
-    recorder.start(100)
+    // Capture frames live from the camera stream every 700ms (≈7 frames in 5s).
+    // No MediaRecorder/blob needed — avoids webm seek-index issues on all browsers.
+    frameCaptureTimer.current = setInterval(() => {
+      const video = advVideoRef.current
+      if (!video || video.videoWidth === 0) return
+      const canvas = document.createElement('canvas')
+      const scale = Math.min(1, 768 / Math.max(video.videoWidth, video.videoHeight))
+      canvas.width  = Math.round(video.videoWidth  * scale)
+      canvas.height = Math.round(video.videoHeight * scale)
+      canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
+      capturedFramesRef.current.push({
+        dataUrl: canvas.toDataURL('image/jpeg', 0.78),
+        score: sharpnessScore(canvas),
+      })
+    }, 700)
+
     let remaining = 5
     const timer = setInterval(() => {
       remaining--
@@ -711,33 +719,36 @@ export default function BuffetMap() {
 
   function stopAdvancedRecording() {
     if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null }
-    if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+    if (frameCaptureTimer.current)  { clearInterval(frameCaptureTimer.current);  frameCaptureTimer.current = null }
     advStreamRef.current?.getTracks().forEach((t) => t.stop())
     advStreamRef.current = null
     setAdvScanStep('processing')
+    void processAdvancedScan()
   }
 
   async function processAdvancedScan() {
-    const aerial = aerialDataUrl
+    const aerial = aerialDataRef.current   // use ref — immune to stale closures
     if (!aerial) { setAdvScanStep(null); return }
     let fakeTimer: ReturnType<typeof setInterval> | null = null
     try {
-      // Phase 1: extract frames (0 → 40%)
-      setScanProgress({ label: 'Εξαγωγή frames από βίντεο…', pct: 5 })
-      const videoBlob = new Blob(videoChunksRef.current, { type: 'video/webm' })
-      const groundUrls = await extractBestFrames(videoBlob, 3, (fraction) => {
-        setScanProgress({ label: 'Εξαγωγή frames από βίντεο…', pct: Math.round(5 + fraction * 35) })
-      })
+      // Phase 1: pick best frames from live captures (instant)
+      setScanProgress({ label: 'Επιλογή καλύτερων frames…', pct: 15 })
+      const sorted = [...capturedFramesRef.current].sort((a, b) => b.score - a.score)
+      const groundUrls = sorted.slice(0, 3).map(f => f.dataUrl)
+      if (groundUrls.length === 0) {
+        alert('Δεν καταγράφηκαν frames. Δοκίμασε ξανά.')
+        setAdvScanStep(null); return
+      }
 
-      // Phase 2: uploading (40 → 50%)
-      setScanProgress({ label: 'Αποστολή εικόνων στο AI…', pct: 45 })
+      // Phase 2: prepare + upload
+      setScanProgress({ label: 'Αποστολή εικόνων στο AI…', pct: 40 })
       const images = [
         { imageBase64: aerial.split(',')[1] ?? '', mimeType: 'image/jpeg', role: 'aerial' as const },
         ...groundUrls.map(url => ({ imageBase64: url.split(',')[1] ?? '', mimeType: 'image/jpeg', role: 'ground' as const })),
       ]
 
-      // Phase 3: AI processing — crawl from 50 → 88% while waiting
-      let crawlPct = 50
+      // Phase 3: AI processing — crawl 45 → 88% while waiting for response
+      let crawlPct = 45
       fakeTimer = setInterval(() => {
         crawlPct = Math.min(88, crawlPct + (Math.random() * 1.8 + 0.4))
         setScanProgress({ label: 'Ανάλυση χώρου με AI…', pct: Math.round(crawlPct) })
@@ -777,21 +788,23 @@ export default function BuffetMap() {
       if (fakeTimer) clearInterval(fakeTimer)
       setAdvScanStep(null)
       setAerialDataUrl(null)
-      videoChunksRef.current = []
+      aerialDataRef.current = null
+      capturedFramesRef.current = []
       setScanProgress({ label: '', pct: 0 })
     }
   }
 
   function cancelAdvancedScan() {
     if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null }
-    if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+    if (frameCaptureTimer.current)  { clearInterval(frameCaptureTimer.current);  frameCaptureTimer.current = null }
     advStreamRef.current?.getTracks().forEach((t) => t.stop())
     advStreamRef.current = null
-    mediaRecorderRef.current = null
-    videoChunksRef.current = []
+    capturedFramesRef.current = []
+    aerialDataRef.current = null
     setAdvScanStep(null)
     setAerialDataUrl(null)
     setAdvCountdown(5)
+    setScanProgress({ label: '', pct: 0 })
   }
 
   // ── Draw mode ────────────────────────────────────────────────────────────────
