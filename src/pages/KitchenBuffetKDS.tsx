@@ -23,6 +23,7 @@ interface MergedItem {
   note: string | null
   eta_minutes: number | null
   is_urgent: boolean
+  photo_url: string | null
 }
 
 interface WorkflowState { eta: number | null; note: string }
@@ -182,6 +183,10 @@ export default function KitchenBuffetKDS() {
       } else {
         await supabase.from('buffet_live_status').insert(payload)
       }
+      void supabase.from('buffet_refill_events').insert({
+        team_id: teamId, menu_item_id: item.menu_item_id,
+        item_name: item.item_name, event_type: newStatus, created_by: userId,
+      })
     } finally {
       setActing(null)
       setWorkflowOpen(null)
@@ -214,6 +219,7 @@ export default function KitchenBuffetKDS() {
       note: live?.note ?? null,
       eta_minutes: live?.eta_minutes ?? null,
       is_urgent: live?.is_urgent ?? false,
+      photo_url: live?.photo_url ?? null,
     }
   })
 
@@ -271,6 +277,12 @@ export default function KitchenBuffetKDS() {
           {/* Kitchen note */}
           {item.note && (
             <p className="mt-2 text-xs text-white/60 italic">💬 {item.note}</p>
+          )}
+          {/* Photo from buffet person */}
+          {item.photo_url && (
+            <a href={item.photo_url} target="_blank" rel="noreferrer" className="block mt-2 rounded-lg overflow-hidden border border-white/10">
+              <img src={item.photo_url} alt="σταθμός" className="w-full object-cover" style={{ maxHeight: 110 }} />
+            </a>
           )}
         </div>
 

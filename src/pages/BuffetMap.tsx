@@ -3,7 +3,7 @@ import {
   Map, Plus, Trash2, Save, ChefHat, LayoutGrid, QrCode,
   Undo2, Redo2, Grid3x3, Copy, Download, Image, AlignLeft,
   AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Camera, Wand2, Activity, ScanLine,
+  Camera, Wand2, Activity, ScanLine, BarChart2, ClipboardList, Loader2,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { supabase } from '../lib/supabase'
@@ -12,6 +12,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { cn } from '../lib/cn'
+import type { BuffetShiftLog, BuffetShiftLogItem, BuffetShiftWasteLevel } from '../types/database.types'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -65,8 +66,14 @@ interface SlotKey { stationId: string; slotIndex: number }
 
 type LiveStatus = 'full' | 'low' | 'empty' | 'preparing' | 'coming'
 type LiveStatusMap = Record<string, LiveStatus>
-type LiveMeta     = { note?: string | null; eta_minutes?: number | null; is_urgent?: boolean }
+type LiveMeta     = { note?: string | null; eta_minutes?: number | null; is_urgent?: boolean; photo_url?: string | null }
 type LiveMetaMap  = Record<string, LiveMeta>
+
+interface AnalyticsData {
+  topItems: { name: string; count: number }[]
+  byHour: { hour: number; count: number }[]
+  totalToday: number
+}
 
 interface LivePopup {
   stationId: string
@@ -116,7 +123,7 @@ export default function BuffetMap() {
   const [slots, setSlots]       = useState<SlotsMap>({})
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
-  const [tab, setTab]           = useState<'design' | 'assign' | 'live'>('design')
+  const [tab, setTab]           = useState<'design' | 'assign' | 'live' | 'analytics'>('design')
 
   // Builder
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -142,6 +149,21 @@ export default function BuffetMap() {
   const [liveMeta, setLiveMeta]       = useState<LiveMetaMap>({})
   const [livePopup, setLivePopup]     = useState<LivePopup | null>(null)
   const [liveUpdating, setLiveUpdating] = useState<string | null>(null)
+
+  // Photo-to-kitchen
+  const [livePhotoTarget, setLivePhotoTarget] = useState<{ menuItemId: string; dishName: string } | null>(null)
+  const [livePhotoUploading, setLivePhotoUploading] = useState(false)
+
+  // Analytics
+  const [analyticsData, setAnalyticsData]   = useState<AnalyticsData | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [shiftLogs, setShiftLogs]           = useState<BuffetShiftLog[]>([])
+
+  // Shift handover
+  const [shiftLogOpen, setShiftLogOpen]     = useState(false)
+  const [shiftWaste, setShiftWaste]         = useState<Record<string, BuffetShiftWasteLevel>>({})
+  const [shiftNote, setShiftNote]           = useState('')
+  const [shiftSubmitting, setShiftSubmitting] = useState(false)
 
   // Camera scan
   const [scanMode, setScanMode]       = useState<'off' | 'draw'>('off')
@@ -169,6 +191,7 @@ export default function BuffetMap() {
   const dragRef          = useRef<DragState | null>(null)
   const bgFileRef        = useRef<HTMLInputElement>(null)   // Φόντο button
   const scanFallbackRef   = useRef<HTMLInputElement>(null)   // getUserMedia fallback
+  const livePhotoInputRef = useRef<HTMLInputElement>(null)  // live photo upload
   const advVideoRef         = useRef<HTMLVideoElement>(null)
   const advStreamRef        = useRef<MediaStream | null>(null)
   const aerialDataRef       = useRef<string | null>(null)         // avoids stale-closure issues
@@ -264,13 +287,13 @@ export default function BuffetMap() {
     if (!teamId || tab !== 'live') return
     const fetchLive = async () => {
       const { data } = await supabase.from('buffet_live_status')
-        .select('menu_item_id, status, note, eta_minutes, is_urgent').eq('team_id', teamId)
+        .select('menu_item_id, status, note, eta_minutes, is_urgent, photo_url').eq('team_id', teamId)
       if (!data) return
       const sm: LiveStatusMap = {}
       const mm: LiveMetaMap   = {}
       for (const r of data) {
         sm[r.menu_item_id] = r.status as LiveStatus
-        mm[r.menu_item_id] = { note: r.note, eta_minutes: r.eta_minutes, is_urgent: r.is_urgent }
+        mm[r.menu_item_id] = { note: r.note, eta_minutes: r.eta_minutes, is_urgent: r.is_urgent, photo_url: r.photo_url }
       }
       setLiveStatus(sm)
       setLiveMeta(mm)
@@ -296,6 +319,10 @@ export default function BuffetMap() {
       },
       { onConflict: 'team_id,menu_item_id' },
     )
+    void supabase.from('buffet_refill_events').insert({
+      team_id: teamId, menu_item_id: menuItemId, item_name: dishName,
+      event_type: status, created_by: profile.id,
+    })
     setLiveStatus((prev) => ({ ...prev, [menuItemId]: status }))
     if (opts?.is_urgent !== undefined) {
       setLiveMeta((prev) => ({ ...prev, [menuItemId]: { ...prev[menuItemId], is_urgent: opts.is_urgent } }))
@@ -309,6 +336,83 @@ export default function BuffetMap() {
     const current = liveMeta[menuItemId]?.is_urgent ?? false
     const currentStatus = liveStatus[menuItemId] ?? 'full'
     await upsertLiveStatus(menuItemId, dishName, currentStatus, { is_urgent: !current })
+  }
+
+  // ── Analytics ───────────────────────────────────────────────────────────────
+
+  async function loadAnalytics() {
+    if (!teamId) return
+    setAnalyticsLoading(true)
+    try {
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+      const [{ data: events }, { data: logs }] = await Promise.all([
+        supabase.from('buffet_refill_events').select('item_name, event_type, created_at')
+          .eq('team_id', teamId).gte('created_at', todayStart.toISOString()),
+        supabase.from('buffet_shift_logs').select('*').eq('team_id', teamId)
+          .order('created_at', { ascending: false }).limit(5),
+      ])
+      const itemCounts: Record<string, number> = {}
+      const hourCounts: Record<number, number> = {}
+      for (const e of events ?? []) {
+        if (e.event_type === 'empty') itemCounts[e.item_name] = (itemCounts[e.item_name] ?? 0) + 1
+        const h = new Date(e.created_at).getHours()
+        hourCounts[h] = (hourCounts[h] ?? 0) + 1
+      }
+      const topItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]).slice(0, 8)
+        .map(([name, count]) => ({ name, count }))
+      const byHour = Array.from({ length: 18 }, (_, i) => i + 6)
+        .map(hour => ({ hour, count: hourCounts[hour] ?? 0 }))
+      setAnalyticsData({ topItems, byHour, totalToday: (events ?? []).length })
+      setShiftLogs((logs ?? []) as BuffetShiftLog[])
+    } finally { setAnalyticsLoading(false) }
+  }
+
+  useEffect(() => { if (tab === 'analytics') void loadAnalytics() }, [tab, teamId])
+
+  // ── Shift handover ───────────────────────────────────────────────────────────
+
+  async function saveShiftLog() {
+    if (!teamId || !profile?.id) return
+    setShiftSubmitting(true)
+    try {
+      const seen = new Set<string>()
+      const items: BuffetShiftLogItem[] = []
+      for (const sv of Object.values(slots)) {
+        if (!sv || seen.has(sv.menuItemId)) continue
+        seen.add(sv.menuItemId)
+        const waste = shiftWaste[sv.menuItemId]
+        if (waste) items.push({ menu_item_id: sv.menuItemId, item_name: sv.dishName, waste })
+      }
+      await supabase.from('buffet_shift_logs').insert({
+        team_id: teamId, log_date: TODAY, notes: shiftNote || null, items, created_by: profile.id,
+      })
+      setShiftLogOpen(false); setShiftWaste({}); setShiftNote('')
+      if (tab === 'analytics') void loadAnalytics()
+    } finally { setShiftSubmitting(false) }
+  }
+
+  // ── Photo-to-kitchen ─────────────────────────────────────────────────────────
+
+  async function uploadLivePhoto(file: File, menuItemId: string, dishName: string) {
+    if (!teamId || !profile?.id) return
+    setLivePhotoUploading(true)
+    try {
+      await supabase.storage.createBucket('buffet-photos', { public: true }).catch(() => {})
+      const ext  = file.name.split('.').pop() ?? 'jpg'
+      const path = `${teamId}/${menuItemId}/${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('buffet-photos').upload(path, file, { upsert: true })
+      if (error) throw error
+      const { data: { publicUrl } } = supabase.storage.from('buffet-photos').getPublicUrl(path)
+      const currentStatus = liveStatus[menuItemId] ?? 'full'
+      await supabase.from('buffet_live_status').upsert(
+        { team_id: teamId, menu_item_id: menuItemId, item_name: dishName,
+          status: currentStatus, status_changed_at: new Date().toISOString(),
+          changed_by: profile.id, photo_url: publicUrl },
+        { onConflict: 'team_id,menu_item_id' },
+      )
+      setLiveMeta(prev => ({ ...prev, [menuItemId]: { ...prev[menuItemId], photo_url: publicUrl } }))
+    } catch (err) { console.error('Photo upload failed:', err) }
+    finally { setLivePhotoUploading(false); setLivePhotoTarget(null) }
   }
 
   // ── History ─────────────────────────────────────────────────────────────────
@@ -961,8 +1065,8 @@ export default function BuffetMap() {
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-white/5 w-fit">
-        {(['design', 'assign', 'live'] as const).map((t) => (
+      <div className="flex gap-1 p-1 rounded-xl bg-white/5 w-fit flex-wrap">
+        {(['design', 'assign', 'live', 'analytics'] as const).map((t) => (
           <button key={t} onClick={() => { setTab(t); setLivePopup(null) }} className={cn(
             'px-4 py-1.5 rounded-lg text-sm font-medium transition',
             tab === t ? 'bg-brand-orange text-white' : 'text-white/60 hover:text-white',
@@ -971,14 +1075,122 @@ export default function BuffetMap() {
               ? <span className="flex items-center gap-1.5"><LayoutGrid className="h-3.5 w-3.5" />Σχεδιασμός</span>
               : t === 'assign'
               ? <span className="flex items-center gap-1.5"><ChefHat className="h-3.5 w-3.5" />Διάταξη Φαγητών</span>
-              : <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" />Ζωντανά</span>}
+              : t === 'live'
+              ? <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" />Ζωντανά</span>
+              : <span className="flex items-center gap-1.5"><BarChart2 className="h-3.5 w-3.5" />Αναλυτικά</span>}
           </button>
         ))}
       </div>
 
       <div className="flex gap-4 items-start">
-        {/* Canvas */}
-        <GlassCard className="flex-1 overflow-hidden p-0 relative">
+        {/* ── Analytics tab full-width panel ─────────────────────────────────── */}
+        {tab === 'analytics' && (
+          <GlassCard className="flex-1 p-5 space-y-6 min-h-[400px]">
+            {analyticsLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-white/30" />
+              </div>
+            ) : !analyticsData ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <BarChart2 className="h-10 w-10 text-white/15" />
+                <p className="text-sm text-white/40">Δεν υπάρχουν δεδομένα ακόμα</p>
+                <p className="text-xs text-white/25">Η καταγραφή ξεκινά μόλις αλλάξει κατάσταση κάποιος σταθμός</p>
+              </div>
+            ) : (
+              <>
+                {/* Summary */}
+                <div className="flex items-center gap-4">
+                  <div className="rounded-xl px-4 py-3 bg-teal-500/10 border border-teal-500/20 text-center">
+                    <p className="text-2xl font-black text-teal-400">{analyticsData.totalToday}</p>
+                    <p className="text-xs text-teal-400/60 mt-0.5">events σήμερα</p>
+                  </div>
+                  <div className="rounded-xl px-4 py-3 bg-red-500/10 border border-red-500/20 text-center">
+                    <p className="text-2xl font-black text-red-400">{analyticsData.topItems.reduce((s, i) => s + i.count, 0)}</p>
+                    <p className="text-xs text-red-400/60 mt-0.5">αναπληρώσεις σήμερα</p>
+                  </div>
+                </div>
+
+                {/* Top items bar chart */}
+                {analyticsData.topItems.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Πιο συχνές αναπληρώσεις (σήμερα)</p>
+                    <div className="space-y-2">
+                      {analyticsData.topItems.map(({ name, count }) => {
+                        const maxC = Math.max(...analyticsData.topItems.map(i => i.count), 1)
+                        return (
+                          <div key={name} className="flex items-center gap-2">
+                            <span className="text-xs text-white/60 w-32 truncate shrink-0">{name}</span>
+                            <div className="flex-1 h-5 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-red-500/60 transition-all"
+                                style={{ width: `${(count / maxC) * 100}%` }} />
+                            </div>
+                            <span className="text-xs font-bold text-red-400 w-4 text-right shrink-0">{count}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hourly activity */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Δραστηριότητα ανά ώρα</p>
+                  <div className="flex items-end gap-1 h-20">
+                    {analyticsData.byHour.map(({ hour, count }) => {
+                      const maxH = Math.max(...analyticsData.byHour.map(b => b.count), 1)
+                      return (
+                        <div key={hour} className="flex-1 flex flex-col items-center gap-0.5">
+                          <div className="w-full rounded-t-sm bg-teal-500/50 transition-all"
+                            style={{ height: `${(count / maxH) * 64}px`, minHeight: count > 0 ? 3 : 0 }} />
+                          <span className="text-[8px] text-white/25 tabular-nums">{hour}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Shift logs */}
+                {shiftLogs.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-white/50 uppercase tracking-wider">Τελευταίες βάρδιες</p>
+                    <div className="space-y-2">
+                      {shiftLogs.map((log) => {
+                        const WASTE_CFG: Record<BuffetShiftWasteLevel, { label: string; color: string }> = {
+                          lots:  { label: 'Πολύ',    color: 'text-red-400' },
+                          some:  { label: 'Λίγο',    color: 'text-amber-400' },
+                          empty: { label: 'Άδειο',   color: 'text-emerald-400' },
+                          none:  { label: 'Εντάξει', color: 'text-white/40' },
+                        }
+                        return (
+                          <div key={log.id} className="rounded-xl border border-white/10 bg-white/3 p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white/70">{log.log_date}</span>
+                              {log.notes && <span className="text-[10px] text-white/40 truncate max-w-[160px]">{log.notes}</span>}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(log.items as BuffetShiftLogItem[]).map((item) => {
+                                const wcfg = WASTE_CFG[item.waste]
+                                return (
+                                  <span key={item.menu_item_id}
+                                    className={cn('text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10', wcfg.color)}>
+                                    {item.item_name}: {wcfg.label}
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </GlassCard>
+        )}
+
+        {/* Canvas — hidden when analytics tab active */}
+        <GlassCard className={cn('flex-1 overflow-hidden p-0 relative', tab === 'analytics' && 'hidden')}>
           {/* Toolbar */}
           <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-white/10 flex-wrap">
             {tab === 'design' && (
@@ -1058,9 +1270,9 @@ export default function BuffetMap() {
               </span>
             )}
             {tab === 'live' && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-sm text-white/60">Κλικ σε θέση → αλλαγή κατάστασης</span>
-                <div className="flex items-center gap-2 ml-2">
+                <div className="flex items-center gap-2">
                   {(Object.entries(LIVE_STATUS_CFG) as [LiveStatus, typeof LIVE_STATUS_CFG[LiveStatus]][]).map(([, cfg]) => (
                     <span key={cfg.label} className="flex items-center gap-1 text-xs text-white/50">
                       <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: cfg.dot }}/>
@@ -1068,7 +1280,17 @@ export default function BuffetMap() {
                     </span>
                   ))}
                 </div>
+                <button onClick={() => setShiftLogOpen(true)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 transition text-xs font-medium ml-auto">
+                  <ClipboardList className="h-3.5 w-3.5" />Κλείσιμο Βάρδιας
+                </button>
               </div>
+            )}
+            {tab === 'analytics' && (
+              <button onClick={() => void loadAnalytics()} disabled={analyticsLoading}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/5 text-white/50 hover:text-white hover:bg-white/10 transition text-xs font-medium">
+                <BarChart2 className="h-3.5 w-3.5" />{analyticsLoading ? 'Φόρτωση…' : 'Ανανέωση'}
+              </button>
             )}
           </div>
 
@@ -1112,13 +1334,15 @@ export default function BuffetMap() {
             )}
             {/* Live popup overlay */}
             {livePopup && tab === 'live' && (() => {
-              const meta    = liveMeta[livePopup.menuItemId]
+              const meta       = liveMeta[livePopup.menuItemId]
               const isUrgent   = meta?.is_urgent ?? false
               const kitchenNote = meta?.note
+              const photoUrl   = meta?.photo_url
               const isUpdating = liveUpdating === livePopup.menuItemId
+              const isUploading = livePhotoUploading && livePhotoTarget?.menuItemId === livePopup.menuItemId
               return (
                 <div className="absolute inset-0 z-20 flex items-center justify-center">
-                  <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 260 }}>
+                  <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 268 }}>
                     {/* Title + close */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -1129,6 +1353,13 @@ export default function BuffetMap() {
                       </div>
                       <button onClick={() => setLivePopup(null)} className="text-white/40 hover:text-white text-lg leading-none shrink-0">×</button>
                     </div>
+
+                    {/* Photo thumbnail */}
+                    {photoUrl && (
+                      <a href={photoUrl} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden border border-white/10">
+                        <img src={photoUrl} alt="σταθμός" className="w-full object-cover" style={{ maxHeight: 80 }} />
+                      </a>
+                    )}
 
                     {/* Status grid — buffet-settable statuses only */}
                     <div className="grid grid-cols-3 gap-1.5">
@@ -1150,18 +1381,27 @@ export default function BuffetMap() {
                       })}
                     </div>
 
-                    {/* Panic / urgent toggle */}
-                    <button
-                      disabled={isUpdating}
-                      onClick={() => void toggleUrgent(livePopup.menuItemId, livePopup.dishName)}
-                      className={cn(
-                        'w-full py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5',
-                        isUrgent
-                          ? 'bg-red-500/25 border border-red-400/50 text-red-300'
-                          : 'bg-white/5 border border-white/10 text-white/40 hover:text-red-400 hover:bg-red-500/10',
-                      )}>
-                      🚨 {isUrgent ? 'Ακύρωση επείγοντος' : 'Σήμανση Επείγον'}
-                    </button>
+                    {/* Photo button + panic */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        disabled={isUploading}
+                        onClick={() => { setLivePhotoTarget({ menuItemId: livePopup.menuItemId, dishName: livePopup.dishName }); livePhotoInputRef.current?.click() }}
+                        className="py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10">
+                        {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+                        {isUploading ? 'Αποστολή…' : 'Φωτογραφία'}
+                      </button>
+                      <button
+                        disabled={isUpdating}
+                        onClick={() => void toggleUrgent(livePopup.menuItemId, livePopup.dishName)}
+                        className={cn(
+                          'py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1',
+                          isUrgent
+                            ? 'bg-red-500/25 border border-red-400/50 text-red-300'
+                            : 'bg-white/5 border border-white/10 text-white/40 hover:text-red-400 hover:bg-red-500/10',
+                        )}>
+                        🚨 {isUrgent ? 'Ακύρωση' : 'Επείγον'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )
@@ -1364,8 +1604,8 @@ export default function BuffetMap() {
           </div>
         </GlassCard>
 
-        {/* Right panel */}
-        <div className="w-64 shrink-0 space-y-3">
+        {/* Right panel — hidden on analytics tab */}
+        <div className={cn('w-64 shrink-0 space-y-3', tab === 'analytics' && 'hidden')}>
 
           {/* Design: selected station */}
           {tab === 'design' && selected && (
@@ -1833,6 +2073,82 @@ export default function BuffetMap() {
           )}
         </div>
       )}
+
+      {/* Live photo file input */}
+      <input
+        ref={livePhotoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (!file || !livePhotoTarget) return
+          await uploadLivePhoto(file, livePhotoTarget.menuItemId, livePhotoTarget.dishName)
+        }}
+      />
+
+      {/* Shift Handover Drawer */}
+      <Drawer open={shiftLogOpen} onClose={() => setShiftLogOpen(false)} title="Κλείσιμο Βάρδιας">
+        <div className="space-y-5">
+          <p className="text-sm text-white/60">Καταγραφή πλεονάσματος στο τέλος της βάρδιας.</p>
+
+          {/* Items */}
+          {(() => {
+            const seen = new Set<string>()
+            const items = Object.values(slots).filter(sv => {
+              if (!sv || seen.has(sv.menuItemId)) return false
+              seen.add(sv.menuItemId); return true
+            })
+            const WASTE_OPTIONS: { value: BuffetShiftWasteLevel; label: string; cls: string }[] = [
+              { value: 'lots',  label: 'Πολύ',    cls: 'border-red-500/50 bg-red-500/15 text-red-300' },
+              { value: 'some',  label: 'Λίγο',    cls: 'border-amber-500/50 bg-amber-500/15 text-amber-300' },
+              { value: 'empty', label: 'Άδειο',   cls: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300' },
+              { value: 'none',  label: 'Εντάξει', cls: 'border-white/10 bg-white/5 text-white/40' },
+            ]
+            if (items.length === 0)
+              return <p className="text-sm text-amber-400">⚠ Δεν υπάρχουν ανατεθειμένα φαγητά σήμερα.</p>
+            return (
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {items.map((sv) => (
+                  <div key={sv!.menuItemId} className="space-y-1.5">
+                    <p className="text-sm text-white/80 font-medium">{sv!.dishName}</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {WASTE_OPTIONS.map(({ value, label, cls }) => (
+                        <button key={value}
+                          onClick={() => setShiftWaste(prev => ({ ...prev, [sv!.menuItemId]: value }))}
+                          className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold border transition',
+                            shiftWaste[sv!.menuItemId] === value
+                              ? cls
+                              : 'border-white/10 bg-white/5 text-white/30 hover:text-white/60')}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-sm text-white/60">Σημειώσεις βάρδιας</label>
+            <textarea value={shiftNote} onChange={(e) => setShiftNote(e.target.value)} rows={3}
+              placeholder="π.χ. Η σαλάτα Caesar τελείωσε γρήγορα, χρειάζεται περισσότερο αύριο…"
+              className="w-full rounded-xl px-3 py-2.5 text-sm bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/50 resize-none" />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={() => void saveShiftLog()} className="flex-1"
+              disabled={shiftSubmitting || Object.keys(shiftWaste).length === 0}>
+              {shiftSubmitting ? 'Αποθήκευση…' : 'Αποθήκευση Βάρδιας'}
+            </Button>
+            <Button variant="secondary" onClick={() => setShiftLogOpen(false)}>Ακύρωση</Button>
+          </div>
+        </div>
+      </Drawer>
 
       {/* QR Drawer */}
       <Drawer open={qrOpen} onClose={() => setQrOpen(false)} title="QR Χάρτη Μπουφέ">

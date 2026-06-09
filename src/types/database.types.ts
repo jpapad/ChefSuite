@@ -518,6 +518,7 @@ export interface BuffetLiveStatus {
   note: string | null
   eta_minutes: number | null
   is_urgent: boolean
+  photo_url: string | null
 }
 
 export type BuffetLiveStatusUpsert = {
@@ -531,6 +532,54 @@ export type BuffetLiveStatusUpsert = {
   note?: string | null
   eta_minutes?: number | null
   is_urgent?: boolean
+  photo_url?: string | null
+}
+
+export interface BuffetRefillEvent {
+  id: UUID
+  team_id: UUID
+  menu_item_id: string | null
+  item_name: string
+  event_type: BuffetItemStatus
+  created_at: ISODateString
+  created_by: UUID | null
+}
+
+export type BuffetRefillEventInsert = {
+  team_id: UUID
+  menu_item_id?: string | null
+  item_name: string
+  event_type: BuffetItemStatus
+  created_by?: UUID | null
+}
+
+export type BuffetShiftWasteLevel = 'lots' | 'some' | 'empty' | 'none'
+
+export interface BuffetShiftLogItem {
+  menu_item_id: string
+  item_name: string
+  waste: BuffetShiftWasteLevel
+  note?: string
+}
+
+export interface BuffetShiftLog {
+  id: UUID
+  team_id: UUID
+  log_date: string
+  shift_label: string | null
+  notes: string | null
+  items: BuffetShiftLogItem[]
+  created_at: ISODateString
+  created_by: UUID | null
+}
+
+export type BuffetShiftLogInsert = {
+  team_id: UUID
+  log_date: string
+  shift_label?: string | null
+  notes?: string | null
+  items?: BuffetShiftLogItem[]
+  created_by?: UUID | null
 }
 
 export type WasteReason = 'expired' | 'spoiled' | 'overproduction' | 'dropped' | 'other'
