@@ -622,7 +622,7 @@ export default function BuffetMap() {
       video.src = objectUrl
       video.onloadedmetadata = async () => {
         const duration = video.duration
-        const sampleCount = Math.min(12, Math.max(count * 3, 6))
+        const sampleCount = Math.min(8, Math.max(count * 2, 4))
         const timestamps = Array.from({ length: sampleCount }, (_, i) => (i + 0.5) * duration / sampleCount)
         const frames: { dataUrl: string; score: number }[] = []
         for (const t of timestamps) {
@@ -630,11 +630,11 @@ export default function BuffetMap() {
             video.currentTime = t
             video.onseeked = () => {
               const canvas = document.createElement('canvas')
-              const scale = Math.min(1, 1280 / video.videoWidth)
+              const scale = Math.min(1, 768 / Math.max(video.videoWidth, video.videoHeight))
               canvas.width  = Math.round(video.videoWidth  * scale)
               canvas.height = Math.round(video.videoHeight * scale)
               canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
-              frames.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.85), score: sharpnessScore(canvas) })
+              frames.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.78), score: sharpnessScore(canvas) })
               r()
             }
           })
@@ -654,7 +654,7 @@ export default function BuffetMap() {
       })
       advStreamRef.current = stream
       setAdvScanStep('aerial')
-      setAdvCountdown(7)
+      setAdvCountdown(5)
       setTimeout(() => {
         if (advVideoRef.current) {
           advVideoRef.current.srcObject = stream
@@ -670,13 +670,14 @@ export default function BuffetMap() {
     const video = advVideoRef.current
     if (!video) return
     const canvas = document.createElement('canvas')
-    canvas.width  = video.videoWidth
-    canvas.height = video.videoHeight
-    canvas.getContext('2d')!.drawImage(video, 0, 0)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+    const scale = Math.min(1, 768 / Math.max(video.videoWidth, video.videoHeight))
+    canvas.width  = Math.round(video.videoWidth  * scale)
+    canvas.height = Math.round(video.videoHeight * scale)
+    canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
     setAerialDataUrl(dataUrl)
     setAdvScanStep('video')
-    setAdvCountdown(7)
+    setAdvCountdown(5)
     startVideoRecording()
   }
 
@@ -692,7 +693,7 @@ export default function BuffetMap() {
     recorder.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data) }
     recorder.onstop = () => { void processAdvancedScan() }
     recorder.start(100)
-    let remaining = 7
+    let remaining = 5
     const timer = setInterval(() => {
       remaining--
       setAdvCountdown(remaining)
@@ -755,7 +756,7 @@ export default function BuffetMap() {
     videoChunksRef.current = []
     setAdvScanStep(null)
     setAerialDataUrl(null)
-    setAdvCountdown(7)
+    setAdvCountdown(5)
   }
 
   // ── Draw mode ────────────────────────────────────────────────────────────────
@@ -1562,7 +1563,7 @@ export default function BuffetMap() {
                     <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4"/>
                     <circle cx="32" cy="32" r="28" fill="none" stroke="#ef4444" strokeWidth="4"
                       strokeDasharray={`${2 * Math.PI * 28}`}
-                      strokeDashoffset={`${2 * Math.PI * 28 * (1 - advCountdown / 7)}`}
+                      strokeDashoffset={`${2 * Math.PI * 28 * (1 - advCountdown / 5)}`}
                       strokeLinecap="round"/>
                   </svg>
                 </div>
