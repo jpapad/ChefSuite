@@ -73,7 +73,7 @@ interface LivePopup {
   dishName: string
 }
 
-type AdvScanStep = 'aerial' | 'video' | 'processing' | null
+type AdvScanStep = 'aerial' | 'video' | 'processing' | 'error' | null
 
 const LIVE_STATUS_CFG: Record<LiveStatus, { label: string; dot: string; bg: string; text: string }> = {
   full:  { label: 'Γεμάτο',    dot: '#22c55e', bg: 'bg-emerald-600 hover:bg-emerald-500', text: 'text-white' },
@@ -155,6 +155,7 @@ export default function BuffetMap() {
   const [advCountdown, setAdvCountdown]   = useState(5)
   const [aerialDataUrl, setAerialDataUrl] = useState<string | null>(null)
   const [scanProgress, setScanProgress]   = useState<{ label: string; pct: number }>({ label: '', pct: 0 })
+  const [scanError, setScanError]         = useState<{ reason: string; tip: string } | null>(null)
   const videoRef   = useRef<HTMLVideoElement>(null)
   const streamRef  = useRef<MediaStream | null>(null)
   const scanPurposeRef = useRef<'draw' | 'ai'>('draw')
@@ -603,6 +604,25 @@ export default function BuffetMap() {
 
   // ── Advanced scan (aerial + video sweep) ────────────────────────────────────
 
+  function validateCanvas(canvas: HTMLCanvasElement): { ok: true } | { ok: false; reason: string; tip: string } {
+    const ctx = canvas.getContext('2d')!
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+    let sum = 0, sumSq = 0, n = 0
+    for (let i = 0; i < data.length; i += 16) {
+      const lum = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!
+      sum += lum; sumSq += lum * lum; n++
+    }
+    const mean = sum / n
+    const variance = sumSq / n - mean * mean
+    if (mean < 28)
+      return { ok: false, reason: 'Η εικόνα είναι πολύ σκοτεινή', tip: 'Βεβαιώσου ότι ο χώρος έχει αρκετό φωτισμό και δοκίμασε ξανά.' }
+    if (mean > 235)
+      return { ok: false, reason: 'Η εικόνα είναι υπερεκτεθειμένη', tip: 'Απόφυγε να τραβάς κατευθείαν σε πολύ έντονο φως ή ήλιο.' }
+    if (variance < 180)
+      return { ok: false, reason: 'Δεν φαίνεται ο χώρος του μπουφέ', tip: 'Κράτα το κινητό πιο ψηλά ώστε να φαίνεται ολόκληρος ο χώρος με τα τραπέζια και τους δίσκους.' }
+    return { ok: true }
+  }
+
   function sharpnessScore(canvas: HTMLCanvasElement): number {
     const ctx = canvas.getContext('2d')!
     const { width, height } = canvas
@@ -643,9 +663,20 @@ export default function BuffetMap() {
     canvas.width  = Math.round(video.videoWidth  * scale)
     canvas.height = Math.round(video.videoHeight * scale)
     canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    // Pre-flight: validate image quality before proceeding
+    const validation = validateCanvas(canvas)
+    if (!validation.ok) {
+      advStreamRef.current?.getTracks().forEach((t) => t.stop())
+      advStreamRef.current = null
+      setScanError({ reason: validation.reason, tip: validation.tip })
+      setAdvScanStep('error')
+      return
+    }
+
     const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
     aerialDataRef.current = dataUrl   // ref — always fresh in closures
-    setAerialDataUrl(dataUrl)         // state — for display only
+    setAerialDataUrl(dataUrl)         // state — thumbnail during video step
     capturedFramesRef.current = []
     setAdvScanStep('video')
     setAdvCountdown(5)
@@ -691,6 +722,7 @@ export default function BuffetMap() {
     const aerial = aerialDataRef.current   // use ref — immune to stale closures
     if (!aerial) { setAdvScanStep(null); return }
     let fakeTimer: ReturnType<typeof setInterval> | null = null
+    let wentToError = false
     try {
       // Phase 1: pick best frames from live captures (instant)
       setScanProgress({ label: 'Επιλογή καλύτερων frames…', pct: 15 })
@@ -719,9 +751,15 @@ export default function BuffetMap() {
       clearInterval(fakeTimer); fakeTimer = null
 
       if (error || !data?.stations?.length) {
-        setScanProgress({ label: 'Δεν βρέθηκαν σταθμοί.', pct: 100 })
-        await new Promise((r) => setTimeout(r, 1200))
-        alert('Η AI ανίχνευση δεν βρήκε σταθμούς. Δοκίμασε ξανά.')
+        clearInterval(fakeTimer!); fakeTimer = null
+        wentToError = true
+        setScanError({
+          reason: error ? 'Σφάλμα σύνδεσης με το AI' : 'Δεν εντοπίστηκαν σταθμοί',
+          tip: error
+            ? 'Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'
+            : 'Βεβαιώσου ότι η εναέρια φωτογραφία δείχνει ολόκληρο τον χώρο και η κάμερα πέρασε από όλους τους σταθμούς.',
+        })
+        setAdvScanStep('error')
         return
       }
 
@@ -744,14 +782,18 @@ export default function BuffetMap() {
     } catch (err) {
       console.error(err)
       if (fakeTimer) { clearInterval(fakeTimer); fakeTimer = null }
-      alert('Σφάλμα κατά την AI επεξεργασία.')
+      wentToError = true
+      setScanError({ reason: 'Απρόσμενο σφάλμα', tip: 'Κλείσε και ξανάνοιξε τη σάρωση χώρου.' })
+      setAdvScanStep('error')
     } finally {
       if (fakeTimer) clearInterval(fakeTimer)
-      setAdvScanStep(null)
       setAerialDataUrl(null)
       aerialDataRef.current = null
       capturedFramesRef.current = []
-      setScanProgress({ label: '', pct: 0 })
+      if (!wentToError) {
+        setAdvScanStep(null)
+        setScanProgress({ label: '', pct: 0 })
+      }
     }
   }
 
@@ -766,6 +808,31 @@ export default function BuffetMap() {
     setAerialDataUrl(null)
     setAdvCountdown(5)
     setScanProgress({ label: '', pct: 0 })
+    setScanError(null)
+  }
+
+  async function retryAdvancedScan() {
+    setScanError(null)
+    setScanProgress({ label: '', pct: 0 })
+    capturedFramesRef.current = []
+    aerialDataRef.current = null
+    setAerialDataUrl(null)
+    setAdvCountdown(5)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      })
+      advStreamRef.current = stream
+      setAdvScanStep('aerial')
+      setTimeout(() => {
+        if (advVideoRef.current) {
+          advVideoRef.current.srcObject = stream
+          advVideoRef.current.play().catch(() => {})
+        }
+      }, 50)
+    } catch {
+      setAdvScanStep(null)
+    }
   }
 
   // ── Draw mode ────────────────────────────────────────────────────────────────
@@ -1590,6 +1657,38 @@ export default function BuffetMap() {
             </div>
           )}
 
+          {/* Error screen */}
+          {advScanStep === 'error' && scanError && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-[#0b0d10] px-8">
+              {/* Icon */}
+              <div className="flex items-center justify-center w-20 h-20 rounded-full border-2 border-red-500/40 bg-red-500/10">
+                <span className="text-3xl">⚠️</span>
+              </div>
+
+              {/* Message */}
+              <div className="text-center max-w-xs">
+                <p className="text-white font-semibold text-base mb-2">{scanError.reason}</p>
+                <p className="text-white/50 text-sm leading-relaxed">{scanError.tip}</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3 w-full max-w-xs">
+                <button
+                  onClick={() => void retryAdvancedScan()}
+                  className="w-full py-3 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-300 font-semibold text-sm hover:bg-teal-500/30 active:scale-[0.98] transition-all"
+                >
+                  Ξαναδοκίμασε από την αρχή
+                </button>
+                <button
+                  onClick={cancelAdvancedScan}
+                  className="w-full py-3 rounded-xl bg-white/5 text-white/50 text-sm hover:text-white hover:bg-white/10 transition-all"
+                >
+                  Κλείσιμο
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Processing step */}
           {advScanStep === 'processing' && (
             <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-[#0b0d10] px-8">
@@ -1630,7 +1729,7 @@ export default function BuffetMap() {
           )}
 
           {/* Controls bar */}
-          {advScanStep !== 'processing' && (
+          {advScanStep !== 'processing' && advScanStep !== 'error' && (
             <div className="bg-black px-6 py-8 flex items-center justify-between gap-6">
               <button
                 onClick={cancelAdvancedScan}
