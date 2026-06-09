@@ -152,8 +152,9 @@ export default function BuffetMap() {
 
   // Advanced scan: aerial photo + video sweep
   const [advScanStep, setAdvScanStep]     = useState<AdvScanStep>(null)
-  const [advCountdown, setAdvCountdown]   = useState(7)
+  const [advCountdown, setAdvCountdown]   = useState(5)
   const [aerialDataUrl, setAerialDataUrl] = useState<string | null>(null)
+  const [scanProgress, setScanProgress]   = useState<{ label: string; pct: number }>({ label: '', pct: 0 })
   const videoRef   = useRef<HTMLVideoElement>(null)
   const streamRef  = useRef<MediaStream | null>(null)
   const scanPurposeRef = useRef<'draw' | 'ai'>('draw')
@@ -614,7 +615,11 @@ export default function BuffetMap() {
     return sumSq / n - mean * mean
   }
 
-  async function extractBestFrames(videoBlob: Blob, count: number): Promise<string[]> {
+  async function extractBestFrames(
+    videoBlob: Blob,
+    count: number,
+    onProgress?: (fraction: number) => void,
+  ): Promise<string[]> {
     return new Promise((resolve) => {
       const video = document.createElement('video')
       video.muted = true
@@ -625,7 +630,8 @@ export default function BuffetMap() {
         const sampleCount = Math.min(8, Math.max(count * 2, 4))
         const timestamps = Array.from({ length: sampleCount }, (_, i) => (i + 0.5) * duration / sampleCount)
         const frames: { dataUrl: string; score: number }[] = []
-        for (const t of timestamps) {
+        for (let idx = 0; idx < timestamps.length; idx++) {
+          const t = timestamps[idx]!
           await new Promise<void>((r) => {
             video.currentTime = t
             video.onseeked = () => {
@@ -635,6 +641,7 @@ export default function BuffetMap() {
               canvas.height = Math.round(video.videoHeight * scale)
               canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
               frames.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.78), score: sharpnessScore(canvas) })
+              onProgress?.((idx + 1) / timestamps.length)
               r()
             }
           })
@@ -713,18 +720,43 @@ export default function BuffetMap() {
   async function processAdvancedScan() {
     const aerial = aerialDataUrl
     if (!aerial) { setAdvScanStep(null); return }
+    let fakeTimer: ReturnType<typeof setInterval> | null = null
     try {
+      // Phase 1: extract frames (0 → 40%)
+      setScanProgress({ label: 'Εξαγωγή frames από βίντεο…', pct: 5 })
       const videoBlob = new Blob(videoChunksRef.current, { type: 'video/webm' })
-      const groundUrls = await extractBestFrames(videoBlob, 3)
+      const groundUrls = await extractBestFrames(videoBlob, 3, (fraction) => {
+        setScanProgress({ label: 'Εξαγωγή frames από βίντεο…', pct: Math.round(5 + fraction * 35) })
+      })
+
+      // Phase 2: uploading (40 → 50%)
+      setScanProgress({ label: 'Αποστολή εικόνων στο AI…', pct: 45 })
       const images = [
         { imageBase64: aerial.split(',')[1] ?? '', mimeType: 'image/jpeg', role: 'aerial' as const },
         ...groundUrls.map(url => ({ imageBase64: url.split(',')[1] ?? '', mimeType: 'image/jpeg', role: 'ground' as const })),
       ]
+
+      // Phase 3: AI processing — crawl from 50 → 88% while waiting
+      let crawlPct = 50
+      fakeTimer = setInterval(() => {
+        crawlPct = Math.min(88, crawlPct + (Math.random() * 1.8 + 0.4))
+        setScanProgress({ label: 'Ανάλυση χώρου με AI…', pct: Math.round(crawlPct) })
+      }, 600)
+
       const { data, error } = await supabase.functions.invoke('detect-buffet-stations', { body: { images } })
+      clearInterval(fakeTimer); fakeTimer = null
+
       if (error || !data?.stations?.length) {
+        setScanProgress({ label: 'Δεν βρέθηκαν σταθμοί.', pct: 100 })
+        await new Promise((r) => setTimeout(r, 1200))
         alert('Η AI ανίχνευση δεν βρήκε σταθμούς. Δοκίμασε ξανά.')
         return
       }
+
+      // Phase 4: done
+      setScanProgress({ label: 'Ολοκληρώθηκε!', pct: 100 })
+      await new Promise((r) => setTimeout(r, 500))
+
       const detected: Station[] = (data.stations as any[]).map((s, i) => ({
         id: uid(), name: s.name || `Σταθμός ${i + 1}`, icon: '',
         x: Math.max(0, Math.min(SVG_W - 120, Math.round(s.x))),
@@ -739,11 +771,14 @@ export default function BuffetMap() {
       commit(detected, aerial)
     } catch (err) {
       console.error(err)
+      if (fakeTimer) { clearInterval(fakeTimer); fakeTimer = null }
       alert('Σφάλμα κατά την AI επεξεργασία.')
     } finally {
+      if (fakeTimer) clearInterval(fakeTimer)
       setAdvScanStep(null)
       setAerialDataUrl(null)
       videoChunksRef.current = []
+      setScanProgress({ label: '', pct: 0 })
     }
   }
 
@@ -1573,14 +1608,39 @@ export default function BuffetMap() {
 
           {/* Processing step */}
           {advScanStep === 'processing' && (
-            <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-[#0b0d10]">
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-[#0b0d10] px-8">
+              {/* Icon */}
               <div className="relative flex items-center justify-center w-20 h-20">
-                <div className="absolute inset-0 rounded-full border-4 border-teal-500/20 border-t-teal-400 animate-spin" />
-                <ScanLine className="h-8 w-8 text-teal-400" />
+                {scanProgress.pct < 100
+                  ? <div className="absolute inset-0 rounded-full border-4 border-teal-500/20 border-t-teal-400 animate-spin" />
+                  : <div className="absolute inset-0 rounded-full border-4 border-emerald-400/60" />}
+                <ScanLine className={cn('h-8 w-8 transition-colors', scanProgress.pct < 100 ? 'text-teal-400' : 'text-emerald-400')} />
               </div>
-              <div className="text-center">
-                <p className="text-white font-semibold">Επεξεργασία…</p>
-                <p className="text-white/40 text-sm mt-1">Εξαγωγή frames · Ανάλυση AI</p>
+
+              {/* Label + percentage */}
+              <div className="text-center w-full max-w-xs">
+                <p className="text-white font-semibold text-sm mb-1">
+                  {scanProgress.label || 'Επεξεργασία…'}
+                </p>
+                <p className="text-teal-400 font-mono text-2xl font-bold mb-4">
+                  {scanProgress.pct}%
+                </p>
+
+                {/* Progress bar */}
+                <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-teal-400 transition-all duration-500"
+                    style={{ width: `${scanProgress.pct}%` }}
+                  />
+                </div>
+
+                {/* Step indicators */}
+                <div className="flex justify-between mt-4 text-[10px] font-mono text-white/30">
+                  <span className={cn(scanProgress.pct >= 5  && 'text-teal-400/80')}>Frames</span>
+                  <span className={cn(scanProgress.pct >= 45 && 'text-teal-400/80')}>Αποστολή</span>
+                  <span className={cn(scanProgress.pct >= 50 && 'text-teal-400/80')}>AI</span>
+                  <span className={cn(scanProgress.pct >= 100 && 'text-emerald-400')}>Έτοιμο</span>
+                </div>
               </div>
             </div>
           )}
