@@ -63,8 +63,10 @@ interface DragState {
 
 interface SlotKey { stationId: string; slotIndex: number }
 
-type LiveStatus = 'full' | 'low' | 'empty'
+type LiveStatus = 'full' | 'low' | 'empty' | 'preparing' | 'coming'
 type LiveStatusMap = Record<string, LiveStatus>
+type LiveMeta     = { note?: string | null; eta_minutes?: number | null; is_urgent?: boolean }
+type LiveMetaMap  = Record<string, LiveMeta>
 
 interface LivePopup {
   stationId: string
@@ -75,10 +77,12 @@ interface LivePopup {
 
 type AdvScanStep = 'aerial' | 'video' | 'processing' | 'error' | null
 
-const LIVE_STATUS_CFG: Record<LiveStatus, { label: string; dot: string; bg: string; text: string }> = {
-  full:  { label: 'Γεμάτο',    dot: '#22c55e', bg: 'bg-emerald-600 hover:bg-emerald-500', text: 'text-white' },
-  low:   { label: 'Λίγο',      dot: '#f59e0b', bg: 'bg-amber-600   hover:bg-amber-500',   text: 'text-white' },
-  empty: { label: 'Τελείωσε', dot: '#ef4444', bg: 'bg-red-600     hover:bg-red-500',     text: 'text-white' },
+const LIVE_STATUS_CFG: Record<LiveStatus, { label: string; dot: string; bg: string }> = {
+  full:      { label: 'Γεμάτο',      dot: '#22c55e', bg: 'bg-emerald-600 hover:bg-emerald-500' },
+  low:       { label: 'Λίγο',        dot: '#f59e0b', bg: 'bg-amber-600   hover:bg-amber-500'   },
+  empty:     { label: 'Τελείωσε',    dot: '#ef4444', bg: 'bg-red-600     hover:bg-red-500'     },
+  preparing: { label: 'Ετοιμάζεται', dot: '#3b82f6', bg: 'bg-blue-600   hover:bg-blue-500'    },
+  coming:    { label: 'Έρχεται',     dot: '#06b6d4', bg: 'bg-cyan-600    hover:bg-cyan-500'    },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -135,6 +139,7 @@ export default function BuffetMap() {
 
   // Live tab
   const [liveStatus, setLiveStatus]   = useState<LiveStatusMap>({})
+  const [liveMeta, setLiveMeta]       = useState<LiveMetaMap>({})
   const [livePopup, setLivePopup]     = useState<LivePopup | null>(null)
   const [liveUpdating, setLiveUpdating] = useState<string | null>(null)
 
@@ -259,28 +264,51 @@ export default function BuffetMap() {
     if (!teamId || tab !== 'live') return
     const fetchLive = async () => {
       const { data } = await supabase.from('buffet_live_status')
-        .select('menu_item_id, status').eq('team_id', teamId)
+        .select('menu_item_id, status, note, eta_minutes, is_urgent').eq('team_id', teamId)
       if (!data) return
       const sm: LiveStatusMap = {}
-      for (const r of data) sm[r.menu_item_id] = r.status as LiveStatus
+      const mm: LiveMetaMap   = {}
+      for (const r of data) {
+        sm[r.menu_item_id] = r.status as LiveStatus
+        mm[r.menu_item_id] = { note: r.note, eta_minutes: r.eta_minutes, is_urgent: r.is_urgent }
+      }
       setLiveStatus(sm)
+      setLiveMeta(mm)
     }
     void fetchLive()
     const interval = setInterval(fetchLive, 5_000)
     return () => clearInterval(interval)
   }, [teamId, tab])
 
-  async function upsertLiveStatus(menuItemId: string, dishName: string, status: LiveStatus) {
+  async function upsertLiveStatus(
+    menuItemId: string,
+    dishName: string,
+    status: LiveStatus,
+    opts?: { is_urgent?: boolean },
+  ) {
     if (!teamId || !profile?.id) return
     setLiveUpdating(menuItemId)
+    const existing = liveMeta[menuItemId]
     await supabase.from('buffet_live_status').upsert(
       { team_id: teamId, menu_item_id: menuItemId, item_name: dishName, status,
-        status_changed_at: new Date().toISOString(), changed_by: profile.id },
+        status_changed_at: new Date().toISOString(), changed_by: profile.id,
+        is_urgent: opts?.is_urgent ?? existing?.is_urgent ?? false,
+      },
       { onConflict: 'team_id,menu_item_id' },
     )
     setLiveStatus((prev) => ({ ...prev, [menuItemId]: status }))
+    if (opts?.is_urgent !== undefined) {
+      setLiveMeta((prev) => ({ ...prev, [menuItemId]: { ...prev[menuItemId], is_urgent: opts.is_urgent } }))
+    }
     setLiveUpdating(null)
     setLivePopup(null)
+  }
+
+  async function toggleUrgent(menuItemId: string, dishName: string) {
+    if (!teamId || !profile?.id) return
+    const current = liveMeta[menuItemId]?.is_urgent ?? false
+    const currentStatus = liveStatus[menuItemId] ?? 'full'
+    await upsertLiveStatus(menuItemId, dishName, currentStatus, { is_urgent: !current })
   }
 
   // ── History ─────────────────────────────────────────────────────────────────
@@ -1083,34 +1111,61 @@ export default function BuffetMap() {
               </div>
             )}
             {/* Live popup overlay */}
-            {livePopup && tab === 'live' && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center">
-                <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 240 }}>
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold text-white leading-tight">{livePopup.dishName}</p>
-                    <button onClick={() => setLivePopup(null)} className="text-white/40 hover:text-white text-lg leading-none shrink-0">×</button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(Object.entries(LIVE_STATUS_CFG) as [LiveStatus, typeof LIVE_STATUS_CFG[LiveStatus]][]).map(([s, cfg]) => {
-                      const isCurrent = liveStatus[livePopup.menuItemId] === s
-                      const isUpdating = liveUpdating === livePopup.menuItemId
-                      return (
-                        <button key={s} disabled={isUpdating}
-                          onClick={() => void upsertLiveStatus(livePopup.menuItemId, livePopup.dishName, s)}
-                          className={cn(
-                            'py-2 rounded-lg text-xs font-bold transition text-white text-center',
-                            cfg.bg,
-                            isCurrent ? 'ring-2 ring-white/60 scale-105' : 'opacity-70 hover:opacity-100',
-                            isUpdating && 'opacity-40 cursor-not-allowed',
-                          )}>
-                          {cfg.label}
-                        </button>
-                      )
-                    })}
+            {livePopup && tab === 'live' && (() => {
+              const meta    = liveMeta[livePopup.menuItemId]
+              const isUrgent   = meta?.is_urgent ?? false
+              const kitchenNote = meta?.note
+              const isUpdating = liveUpdating === livePopup.menuItemId
+              return (
+                <div className="absolute inset-0 z-20 flex items-center justify-center">
+                  <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 260 }}>
+                    {/* Title + close */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white leading-tight truncate">{livePopup.dishName}</p>
+                        {kitchenNote && (
+                          <p className="text-xs text-blue-300/80 mt-0.5">💬 {kitchenNote}</p>
+                        )}
+                      </div>
+                      <button onClick={() => setLivePopup(null)} className="text-white/40 hover:text-white text-lg leading-none shrink-0">×</button>
+                    </div>
+
+                    {/* Status grid — buffet-settable statuses only */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['full', 'low', 'empty'] as LiveStatus[]).map((s) => {
+                        const cfg = LIVE_STATUS_CFG[s]
+                        const isCurrent = liveStatus[livePopup.menuItemId] === s
+                        return (
+                          <button key={s} disabled={isUpdating}
+                            onClick={() => void upsertLiveStatus(livePopup.menuItemId, livePopup.dishName, s)}
+                            className={cn(
+                              'py-2 rounded-lg text-xs font-bold transition text-white text-center',
+                              cfg.bg,
+                              isCurrent ? 'ring-2 ring-white/60 scale-105' : 'opacity-70 hover:opacity-100',
+                              isUpdating && 'opacity-40 cursor-not-allowed',
+                            )}>
+                            {cfg.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Panic / urgent toggle */}
+                    <button
+                      disabled={isUpdating}
+                      onClick={() => void toggleUrgent(livePopup.menuItemId, livePopup.dishName)}
+                      className={cn(
+                        'w-full py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5',
+                        isUrgent
+                          ? 'bg-red-500/25 border border-red-400/50 text-red-300'
+                          : 'bg-white/5 border border-white/10 text-white/40 hover:text-red-400 hover:bg-red-500/10',
+                      )}>
+                      🚨 {isUrgent ? 'Ακύρωση επείγοντος' : 'Σήμανση Επείγον'}
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             <svg ref={svgRef} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
               className="absolute inset-0 w-full h-full select-none"
@@ -1234,18 +1289,35 @@ export default function BuffetMap() {
 
                             {/* Live tab: clickable slot overlay + status dot */}
                             {tab === 'live' && assignment && (() => {
-                              const st = liveStatus[assignment.menuItemId]
+                              const st       = liveStatus[assignment.menuItemId]
+                              const meta     = liveMeta[assignment.menuItemId]
                               const dotColor = st ? LIVE_STATUS_CFG[st].dot : '#6b7280'
                               const isActive = livePopup?.stationId === s.id && livePopup?.slotIndex === i
+                              const isUrgent = meta?.is_urgent ?? false
                               return (
                                 <>
                                   <rect x={sx + 1} y={s.y + 1} width={slotW - 2} height={s.height - 2} rx="6"
-                                    fill={isActive ? `${s.color}25` : 'transparent'}
-                                    stroke={isActive ? s.color : 'transparent'} strokeWidth="1.5"
-                                    style={{ cursor: 'pointer' }}
+                                    fill={isActive ? `${s.color}25` : isUrgent ? 'rgba(239,68,68,0.08)' : 'transparent'}
+                                    stroke={isActive ? s.color : isUrgent ? 'rgba(239,68,68,0.6)' : 'transparent'}
+                                    strokeWidth="1.5" style={{ cursor: 'pointer' }}
                                     onClick={(e) => { e.stopPropagation(); setLivePopup({ stationId: s.id, slotIndex: i, menuItemId: assignment.menuItemId, dishName: assignment.dishName }) }}/>
+                                  {/* Status dot */}
                                   <circle cx={sx + slotW - 9} cy={s.y + 10} r="5" fill={dotColor} opacity="0.9"
                                     style={{ pointerEvents: 'none' }}/>
+                                  {/* Urgent exclamation */}
+                                  {isUrgent && (
+                                    <text x={sx + 8} y={s.y + 14} textAnchor="middle"
+                                      fill="#ef4444" fontSize="10" fontWeight="900"
+                                      style={{ pointerEvents: 'none' }}>!</text>
+                                  )}
+                                  {/* Kitchen status label for preparing/coming */}
+                                  {(st === 'preparing' || st === 'coming') && (
+                                    <text x={sx + slotW / 2} y={s.y + s.height - 6} textAnchor="middle"
+                                      fill={dotColor} fontSize="7.5" fontWeight="600"
+                                      style={{ pointerEvents: 'none' }}>
+                                      {LIVE_STATUS_CFG[st].label}
+                                    </text>
+                                  )}
                                 </>
                               )
                             })()}

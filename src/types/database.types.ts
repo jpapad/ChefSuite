@@ -503,7 +503,7 @@ export interface Shift {
 export type ShiftInsert = Pick<Shift, 'member_id' | 'shift_date' | 'start_time' | 'end_time' | 'role' | 'notes'> & { team_id: UUID }
 export type ShiftUpdate = Partial<Pick<Shift, 'member_id' | 'shift_date' | 'start_time' | 'end_time' | 'role' | 'notes'>>
 
-export type BuffetItemStatus = 'full' | 'low' | 'empty'
+export type BuffetItemStatus = 'full' | 'low' | 'empty' | 'preparing' | 'coming'
 
 export interface BuffetLiveStatus {
   id: UUID
@@ -515,6 +515,9 @@ export interface BuffetLiveStatus {
   status_changed_at: ISODateString
   changed_by: UUID | null
   created_at: ISODateString
+  note: string | null
+  eta_minutes: number | null
+  is_urgent: boolean
 }
 
 export type BuffetLiveStatusUpsert = {
@@ -525,6 +528,9 @@ export type BuffetLiveStatusUpsert = {
   vessel_request?: boolean
   status_changed_at?: ISODateString
   changed_by?: UUID | null
+  note?: string | null
+  eta_minutes?: number | null
+  is_urgent?: boolean
 }
 
 export type WasteReason = 'expired' | 'spoiled' | 'overproduction' | 'dropped' | 'other'
