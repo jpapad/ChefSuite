@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS menu_weekly_schedule (
 
 ALTER TABLE menu_weekly_schedule ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "team members manage weekly schedule" ON menu_weekly_schedule;
 CREATE POLICY "team members manage weekly schedule"
   ON menu_weekly_schedule FOR ALL TO authenticated
   USING (
