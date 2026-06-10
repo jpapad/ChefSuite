@@ -110,11 +110,23 @@ export default function KitchenBuffetKDS() {
   const loadAll = useCallback(async () => {
     if (!teamId) return
     setLoading(true)
+
+    // Resolve which menu to show: URL param → weekly schedule → fallback to all active buffet
+    let targetId: string | null = menuParam
+    if (!targetId) {
+      const { data } = await supabase.rpc('get_daily_menu', { p_team_id: teamId })
+      targetId = (data as string | null) ?? null
+    }
+
     let q = supabase
       .from('menus')
       .select('id, name, menu_sections(id, menu_items(id, name))')
-      .eq('team_id', teamId).eq('type', 'buffet').eq('active', true)
-    if (menuParam) q = q.eq('id', menuParam)
+      .eq('team_id', teamId)
+    if (targetId) {
+      q = q.eq('id', targetId)
+    } else {
+      q = q.eq('type', 'buffet').eq('active', true)
+    }
 
     const [{ data: menuData }, { data: statusData }] = await Promise.all([
       q,

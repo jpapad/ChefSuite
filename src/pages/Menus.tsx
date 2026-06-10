@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2 } from 'lucide-react'
+import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { translateMenuItems } from '../lib/gemini'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -71,17 +71,40 @@ export default function Menus() {
   const [saving, setSaving] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const [dailyMenuId, setDailyMenuId] = useState<string | null>(null)
+  const [weeklySchedule, setWeeklySchedule] = useState<Record<number, string>>({})
+  const [weeklyOpen, setWeeklyOpen] = useState(false)
   const [todayQr, setTodayQr] = useState<{ url: string; dataUrl: string } | null>(null)
   const [todayQrOpen, setTodayQrOpen] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [translateDone, setTranslateDone] = useState(false)
 
-  // Load current daily menu from team
+  // Load current daily menu + weekly schedule
   useEffect(() => {
     if (!teamId) return
     supabase.from('teams').select('daily_menu_id').eq('id', teamId).single()
       .then(({ data }) => setDailyMenuId(data?.daily_menu_id ?? null))
+    supabase.from('menu_weekly_schedule').select('day_of_week, menu_id').eq('team_id', teamId)
+      .then(({ data }) => {
+        const map: Record<number, string> = {}
+        for (const row of data ?? []) map[row.day_of_week] = row.menu_id
+        setWeeklySchedule(map)
+      })
   }, [teamId])
+
+  async function setWeeklyDay(dayOfWeek: number, menuId: string | null) {
+    if (!teamId) return
+    if (menuId) {
+      await supabase.from('menu_weekly_schedule').upsert(
+        { team_id: teamId, day_of_week: dayOfWeek, menu_id: menuId },
+        { onConflict: 'team_id,day_of_week' },
+      )
+      setWeeklySchedule(prev => ({ ...prev, [dayOfWeek]: menuId }))
+    } else {
+      await supabase.from('menu_weekly_schedule')
+        .delete().eq('team_id', teamId).eq('day_of_week', dayOfWeek)
+      setWeeklySchedule(prev => { const n = { ...prev }; delete n[dayOfWeek]; return n })
+    }
+  }
 
   async function setDailyMenu(menuId: string | null) {
     if (!teamId) return
@@ -253,6 +276,85 @@ export default function Menus() {
           </Button>
         </div>
       </header>
+
+      {/* ── Weekly schedule ─────────────────────────────────────────────────── */}
+      {!loading && menus.length > 0 && (() => {
+        const DAYS = ['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή']
+        const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay()
+        const hasSchedule = Object.keys(weeklySchedule).length > 0
+        return (
+          <GlassCard className="space-y-3">
+            <button onClick={() => setWeeklyOpen(v => !v)}
+              className="w-full flex items-center justify-between gap-2 text-left">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-brand-orange" />
+                <span className="font-semibold text-sm">Πρόγραμμα Εβδομάδας</span>
+                {hasSchedule && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold">
+                    Ενεργό
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {!weeklyOpen && hasSchedule && (
+                  <span className="text-xs text-white/40">
+                    {weeklySchedule[todayDow]
+                      ? menus.find(m => m.id === weeklySchedule[todayDow])?.name ?? '—'
+                      : '— σήμερα χωρίς πρόγραμμα'}
+                  </span>
+                )}
+                {weeklyOpen
+                  ? <ChevronUp className="h-4 w-4 text-white/40" />
+                  : <ChevronDown className="h-4 w-4 text-white/40" />}
+              </div>
+            </button>
+
+            {weeklyOpen && (
+              <div className="space-y-2 pt-1 border-t border-white/8">
+                <p className="text-xs text-white/40">
+                  Επίλεξε ποιο μενού ισχύει κάθε μέρα. Αλλάζει αυτόματα στο QR και σε όλες τις λειτουργίες.
+                </p>
+                <div className="grid gap-2">
+                  {DAYS.map((day, i) => {
+                    const dow = i + 1
+                    const isToday = dow === todayDow
+                    const selectedId = weeklySchedule[dow] ?? ''
+                    return (
+                      <div key={dow} className={cn(
+                        'flex items-center gap-3 rounded-xl px-3 py-2',
+                        isToday ? 'bg-brand-orange/10 border border-brand-orange/25' : 'bg-white/3',
+                      )}>
+                        <span className={cn(
+                          'text-sm font-medium w-24 shrink-0',
+                          isToday ? 'text-brand-orange' : 'text-white/60',
+                        )}>
+                          {isToday ? `${day} ←` : day}
+                        </span>
+                        <select
+                          value={selectedId}
+                          onChange={(e) => void setWeeklyDay(dow, e.target.value || null)}
+                          className="flex-1 rounded-lg px-2.5 py-1.5 text-sm bg-white/5 border border-white/10 text-white focus:outline-none focus:border-brand-orange/60 appearance-none"
+                        >
+                          <option value="">— καμία αυτόματη επιλογή —</option>
+                          {menus.filter(m => m.active).map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </select>
+                        {selectedId && (
+                          <button onClick={() => void setWeeklyDay(dow, null)}
+                            className="shrink-0 text-white/25 hover:text-red-400 transition text-xs px-1">
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </GlassCard>
+        )
+      })()}
 
       {loading ? (
         <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>

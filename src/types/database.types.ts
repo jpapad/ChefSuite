@@ -562,6 +562,20 @@ export interface BuffetShiftLogItem {
   note?: string
 }
 
+export interface MenuWeeklySchedule {
+  id: UUID
+  team_id: UUID
+  day_of_week: number
+  menu_id: UUID
+  created_at: ISODateString
+}
+
+export type MenuWeeklyScheduleUpsert = {
+  team_id: UUID
+  day_of_week: number
+  menu_id: UUID
+}
+
 export interface BuffetShiftLog {
   id: UUID
   team_id: UUID

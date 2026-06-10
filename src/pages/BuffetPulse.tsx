@@ -27,11 +27,20 @@ export default function BuffetPulse() {
   const [loading, setLoading] = useState(true)
   const [todayMenuId, setTodayMenuId] = useState<string | null>(null)
 
-  // Load persisted selection for today
+  // Load persisted selection for today, auto-fill from weekly schedule if none
   useEffect(() => {
     if (!teamId) return
     const saved = localStorage.getItem(todayKey(teamId))
-    if (saved) setTodayMenuId(saved)
+    if (saved) {
+      setTodayMenuId(saved)
+    } else {
+      supabase.rpc('get_daily_menu', { p_team_id: teamId }).then(({ data }) => {
+        if (data) {
+          setTodayMenuId(data as string)
+          localStorage.setItem(todayKey(teamId), data as string)
+        }
+      })
+    }
   }, [teamId])
 
   const loadMenus = useCallback(async () => {

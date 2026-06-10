@@ -235,11 +235,10 @@ export default function BuffetMap() {
   useEffect(() => {
     if (!teamId || tab !== 'assign') return
     ;(async () => {
-      const { data: team } = await supabase.from('teams')
-        .select('daily_menu_id').eq('id', teamId).single()
-      if (!team?.daily_menu_id) return
+      const { data: menuId } = await supabase.rpc('get_daily_menu', { p_team_id: teamId })
+      if (!menuId) return
       const { data } = await supabase.from('menus')
-        .select('menu_sections(menu_items(id,name))').eq('id', team.daily_menu_id).single()
+        .select('menu_sections(menu_items(id,name))').eq('id', menuId as string).single()
       if (!data) return
       const items: MenuItem[] = ((data as any).menu_sections ?? [])
         .flatMap((s: any) => (s.menu_items ?? []).map((i: any) => ({ id: i.id, name: i.name })))
