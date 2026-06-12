@@ -54,7 +54,10 @@ async function callGemini(prompt: string): Promise<string> {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
   })
-  if (json.error) throw new Error(json.error.message)
+  if (json.error) {
+    const msg = typeof json.error === 'string' ? json.error : (json.error.message ?? 'Unknown Gemini error')
+    throw new Error(msg)
+  }
   const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
   return raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
 }
@@ -797,8 +800,9 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
       cook_time: typeof parsed.cook_time === 'number' ? Math.round(parsed.cook_time) : null,
       servings: typeof parsed.servings === 'number' ? Math.round(parsed.servings) : null,
     }
-  } catch {
-    throw new Error('AI suggestion failed. Please fill in the fields manually.')
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`AI suggestion failed: ${msg}`)
   }
 }
 
