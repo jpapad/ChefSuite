@@ -186,7 +186,7 @@ Rules:
 - Quantities in descriptions must be scaled for ${covers} covers.
 - Do NOT include markdown, explanation, or any text outside the JSON array.`
 
-  const raw = await callGemini(prompt)
+  const raw = await callClaude(prompt)
 
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch { return [] }
@@ -288,7 +288,7 @@ Rules:
 - Prices in EUR, realistic for the cuisine style (null for buffet)
 - Do NOT include markdown or any text outside the JSON`
 
-  const raw = await callGemini(p)
+  const raw = await callClaude(p)
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch {
     throw new Error('AI returned an invalid menu structure. Please try again.')
@@ -300,7 +300,7 @@ Rules:
 }
 
 export async function importRecipeFromText(text: string): Promise<ImportedRecipe> {
-  const cleaned = await callGemini(`${SYSTEM_PROMPT}\n\nRecipe text:\n${text}`)
+  const cleaned = await callClaude(`${SYSTEM_PROMPT}\n\nRecipe text:\n${text}`)
 
   let parsed: unknown
   try {
@@ -382,7 +382,7 @@ Rules:
 - Estimate based on typical preparation methods
 - Do NOT include markdown, explanation, or any text outside the JSON`
 
-  const raw = await callGemini(prompt)
+  const raw = await callClaude(prompt)
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch {
     throw new Error('Could not parse nutrition data from AI response.')
@@ -783,7 +783,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
 
   try {
-    const raw = await callGemini(prompt)
+    const raw = await callClaude(prompt)
     const parsed = JSON.parse(raw) as Record<string, unknown>
 
     return {
