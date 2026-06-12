@@ -46,6 +46,7 @@
       "team": "Team",
       "revenue": "Revenue",
       "comms": "Comms",
+      "buffet": "Buffet Live",
       "library": "Library"
     },
     "search": "Search…",
@@ -1576,6 +1577,7 @@
       "team": "Team",
       "revenue": "Revenue",
       "comms": "Communications",
+      "buffet": "Buffet Live",
       "library": "Library"
     }
   },

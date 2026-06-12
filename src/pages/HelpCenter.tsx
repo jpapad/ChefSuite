@@ -8,6 +8,7 @@ import {
   Users, CalendarDays, TimerIcon, Award, Star, CalendarCheck,
   TrendingUp, BarChart3, MessageSquare, Radio, BookOpen, Heart,
   Bot, Scale, BookMarked, Layers, Keyboard, HelpCircle, Sparkles,
+  Activity, Camera, BarChart2,
   type LucideIcon,
 } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -63,16 +64,16 @@ const FEATURE_GROUPS: FeatureGroup[] = [
         name: 'Recipes', nameEl: 'Συνταγές',
         description: 'Full recipe library with cost analysis, allergens, nutrition, version history, AI import, variations, and team comments.',
         descriptionEl: 'Πλήρης βιβλιοθήκη συνταγών με ανάλυση κόστους, αλλεργιογόνα, θρεπτικά, ιστορικό, AI εισαγωγή, παραλλαγές και σχόλια.',
-        bullets: ['Automatic food cost per portion', 'AI recipe import from text or description', 'Nutrition estimation via Gemini AI', 'Version history with diff view', 'Recipe variations (e.g. vegan/GF versions)', 'Team comments per recipe'],
-        bulletsEl: ['Αυτόματο κόστος φαγητού ανά μερίδα', 'AI εισαγωγή συνταγής από κείμενο ή περιγραφή', 'Εκτίμηση θρεπτικών μέσω Gemini AI', 'Ιστορικό εκδόσεων με diff view', 'Παραλλαγές συνταγής (π.χ. vegan/χωρίς γλουτένη)', 'Σχόλια ομάδας ανά συνταγή'],
+        bullets: ['Automatic food cost per portion', 'AI recipe import from text or photo', 'Batch AI Processor: enrich description, instructions, nutrition + auto-generate prep templates for all selected recipes in one run', 'Version history with restore', 'Recipe variations (e.g. vegan/GF versions)', 'Team comments per recipe'],
+        bulletsEl: ['Αυτόματο κόστος φαγητού ανά μερίδα', 'AI εισαγωγή συνταγής από κείμενο ή φωτογραφία', 'Batch AI Processor: μαζική συμπλήρωση περιγραφής, οδηγιών, διατροφικών + αυτόματη δημιουργία prep templates για επιλεγμένες συνταγές', 'Ιστορικό εκδόσεων με επαναφορά', 'Παραλλαγές συνταγής (π.χ. vegan/χωρίς γλουτένη)', 'Σχόλια ομάδας ανά συνταγή'],
       },
       {
         path: '/menus', icon: UtensilsCrossed,
         name: 'Menus', nameEl: 'Μενού',
-        description: 'Build multi-section menus linked to recipes. Generate QR-code menu pages, print buffet labels, and track food cost per menu.',
-        descriptionEl: 'Φτιάξτε μενού με πολλαπλές ενότητες συνδεδεμένες με συνταγές. QR-code σελίδα, εκτύπωση ετικετών και κόστος φαγητού.',
-        bullets: ['Drag-and-drop item ordering', 'Shareable public QR-code menu page', 'Print buffet labels (EN/EL, custom size)', 'Food cost % per menu'],
-        bulletsEl: ['Αναδιάταξη items με drag-and-drop', 'Κοινόχρηστη σελίδα μενού με QR code', 'Εκτύπωση ετικετών μπουφέ (EN/EL, custom μέγεθος)', 'Ποσοστό κόστους φαγητού ανά μενού'],
+        description: 'Build multi-section menus linked to recipes. Set a weekly schedule so the active menu rotates automatically per day.',
+        descriptionEl: 'Φτιάξτε μενού συνδεδεμένα με συνταγές. Ορίστε εβδομαδιαίο πρόγραμμα ώστε το ενεργό μενού να αλλάζει αυτόματα κάθε μέρα.',
+        bullets: ['Drag-and-drop item ordering', 'Weekly schedule: assign a different menu per day (Mon–Sun) — QR, Monitor, KDS all switch automatically', 'Print buffet labels (EN/EL, custom size)', 'Food cost % per menu'],
+        bulletsEl: ['Αναδιάταξη items με drag-and-drop', 'Εβδομαδιαίο πρόγραμμα: διαφορετικό μενού ανά ημέρα (Δε–Κυ) — QR, Monitor, KDS αλλάζουν αυτόματα', 'Εκτύπωση ετικετών μπουφέ (EN/EL, custom μέγεθος)', 'Ποσοστό κόστους φαγητού ανά μενού'],
       },
       {
         path: '/prep', icon: ClipboardList,
@@ -265,6 +266,43 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     ],
   },
   {
+    id: 'buffet', labelKey: 'nav.groups.buffet',
+    cards: [
+      {
+        path: '/buffet-pulse', icon: Activity,
+        name: 'Buffet Pulse', nameEl: 'Buffet Pulse',
+        description: 'Launch hub for buffet operations. Select today\'s menu (or it auto-loads from the weekly schedule) then open Monitor or KDS in one tap.',
+        descriptionEl: 'Κεντρικό hub λειτουργίας μπουφέ. Επιλέξτε το σημερινό μενού (ή φορτώνεται αυτόματα από το εβδομαδιαίο πρόγραμμα) και ανοίξτε Monitor ή KDS.',
+        bullets: ['Auto-selects menu from weekly schedule', 'One-tap launch of Monitor or Kitchen KDS', 'Works on any device — tablet, phone, desktop'],
+        bulletsEl: ['Αυτόματη επιλογή μενού από εβδομαδιαίο πρόγραμμα', 'Εκκίνηση Monitor ή Kitchen KDS με ένα tap', 'Λειτουργεί σε οποιαδήποτε συσκευή'],
+      },
+      {
+        path: '/buffet-map', icon: Monitor,
+        name: 'Buffet Monitor', nameEl: 'Buffet Monitor',
+        description: 'Tablet-mounted live display for buffet stations. Staff mark items as Full / Low / Empty and send instant refill requests to the kitchen.',
+        descriptionEl: 'Ζωντανή οθόνη για σταθμούς μπουφέ (σε tablet). Το προσωπικό σηματοδοτεί Full / Low / Empty και στέλνει αμέσως αίτημα ανεφοδιασμού στην κουζίνα.',
+        bullets: ['Real-time status per dish (Full / Low / Empty / Refilling)', 'Panic button for urgent refill', 'Live photo capture per station — visible instantly in kitchen KDS', 'Shift handover: log waste level per item (Low / Medium / High / Critical)', 'Analytics tab: top-refilled items + hourly distribution charts'],
+        bulletsEl: ['Real-time κατάσταση ανά πιάτο (Full / Low / Empty / Refilling)', 'Panic button για επείγοντα ανεφοδιασμό', 'Live φωτογραφία σταθμού — εμφανίζεται αμέσως στο KDS κουζίνας', 'Κλείσιμο βάρδιας: καταγραφή επιπέδου σπατάλης ανά πιάτο', 'Tab αναλυτικών: top πιάτα & ωριαία κατανομή ανεφοδιασμών'],
+      },
+      {
+        path: '/buffet-kds', icon: Camera,
+        name: 'Kitchen Buffet KDS', nameEl: 'Kitchen Buffet KDS',
+        description: 'Kitchen-side screen showing incoming refill requests per station. Displays live photo, status history, and refill count.',
+        descriptionEl: 'Οθόνη κουζίνας που δείχνει αιτήματα ανεφοδιασμού ανά σταθμό. Εμφανίζει live φωτογραφία, ιστορικό κατάστασης και αριθμό ανεφοδιασμών.',
+        bullets: ['Live photo from buffet monitor staff', 'Real-time refill counter per item', 'Confirm refill to update monitor instantly', 'Full-screen mode for wall-mounted screens'],
+        bulletsEl: ['Live φωτογραφία από το προσωπικό του μπουφέ', 'Real-time μετρητής ανεφοδιασμών ανά πιάτο', 'Επιβεβαίωση ανεφοδιασμού για άμεση ενημέρωση monitor', 'Full-screen mode για οθόνες τοίχου'],
+      },
+      {
+        path: '/buffet-map', icon: BarChart2,
+        name: 'Buffet Analytics', nameEl: 'Αναλυτικά Μπουφέ',
+        description: 'Shift-level consumption data automatically captured from every status change. View top items by refill count and hourly demand distribution.',
+        descriptionEl: 'Δεδομένα κατανάλωσης βάρδιας από κάθε αλλαγή κατάστασης. Top πιάτα ανά αριθμό ανεφοδιασμών και ωριαία κατανομή ζήτησης.',
+        bullets: ['Auto-logged from every status change — no manual entry', 'Bar chart: top items by refill frequency', 'Hourly distribution: see which hours are most demanding', 'Shift log history per session'],
+        bulletsEl: ['Αυτόματη καταγραφή από κάθε αλλαγή κατάστασης', 'Bar chart: top πιάτα ανά συχνότητα ανεφοδιασμού', 'Ωριαία κατανομή: δείτε ποιες ώρες είναι πιο απαιτητικές', 'Ιστορικό αρχείου βάρδιας'],
+      },
+    ],
+  },
+  {
     id: 'library', labelKey: 'nav.groups.library',
     cards: [
       {
@@ -308,10 +346,22 @@ const FAQ: FAQItem[] = [
     aEl: 'Το κόστος φαγητού υπολογίζεται ανά συνταγή αθροίζοντας το κόστος κάθε υλικού (τιμή × ποσότητα που χρησιμοποιείται) διαιρεμένο με τον αριθμό μερίδων. Οι τιμές υλικών προέρχονται από το αποθεματικό σας. Βεβαιωθείτε ότι τα αποθεματικά σας έχουν ενημερωμένες τιμές για ακριβή αποτελέσματα.',
   },
   {
-    q: 'Which features require a Gemini API key?',
-    qEl: 'Ποιες λειτουργίες χρειάζονται Gemini API key;',
-    a: 'Three features require a GEMINI_API_KEY set as a Supabase secret: (1) AI Recipe Import — paste text or describe a dish to auto-structure it as a recipe, (2) Nutrition Estimation — analyse a recipe\'s macros from its ingredients, (3) Chef Copilot — the conversational AI kitchen assistant. All other features work without it.',
-    aEl: 'Τρεις λειτουργίες χρειάζονται GEMINI_API_KEY ως Supabase secret: (1) AI Εισαγωγή Συνταγής — επικολλήστε κείμενο ή περιγράψτε πιάτο για αυτόματη δομή, (2) Εκτίμηση Θρεπτικών — ανάλυση μακροθρεπτικών συνταγής από τα υλικά, (3) Chef Copilot — ο AI βοηθός κουζίνας. Όλες οι άλλες λειτουργίες δουλεύουν χωρίς αυτό.',
+    q: 'Which features require an AI API key?',
+    qEl: 'Ποιες λειτουργίες χρειάζονται AI API key;',
+    a: 'ChefSuite uses two AI providers, both set as Supabase Edge Function secrets — never exposed in the browser. ANTHROPIC_API_KEY powers: Batch AI Processor (recipe enrichment + prep templates), nutrition estimation, invoice parsing, and recipe import from text/photo. GEMINI_API_KEY powers: Chef Copilot chat, Regional Recipes search (Google Grounding), and AI Menu Generator. All other features work without any AI key.',
+    aEl: 'Το ChefSuite χρησιμοποιεί δύο AI providers, και οι δύο ορίζονται ως Supabase Edge Function secrets — δεν εκτίθενται ποτέ στον browser. ANTHROPIC_API_KEY: Batch AI Processor (συμπλήρωση συνταγών + prep templates), εκτίμηση διατροφικών, parsing τιμολογίων, εισαγωγή συνταγής. GEMINI_API_KEY: Chef Copilot chat, Τοπικές Συνταγές (Google Grounding), AI Menu Generator. Όλες οι άλλες λειτουργίες δουλεύουν χωρίς AI key.',
+  },
+  {
+    q: 'How accurate is the Batch AI Processor?',
+    qEl: 'Πόσο ακριβής είναι ο Batch AI Processor;',
+    a: 'Accuracy varies by field. Recipe descriptions and allergen detection are typically 85–95% accurate for well-known dishes. Instructions are ~80–90% — always review them before using for service, as timings and techniques may need adjustment for your specific kitchen. Nutrition estimates are approximate (±15–20%) and should not replace lab analysis for medical dietary requirements. Prep template breakdown is ~80–85% accurate — treat it as a solid starting draft that your head chef should verify.',
+    aEl: 'Η ακρίβεια ποικίλλει ανά πεδίο. Περιγραφές συνταγών και ανίχνευση αλλεργιογόνων: ~85–95% για γνωστά πιάτα. Οδηγίες: ~80–90% — πάντα τις ελέγχετε πριν τη χρήση στην υπηρεσία, χρόνοι και τεχνικές μπορεί να χρειαστούν προσαρμογή. Εκτίμηση διατροφικών: κατά προσέγγιση (±15–20%), δεν αντικαθιστά εργαστηριακή ανάλυση. Breakdown prep template: ~80–85% — αντιμετωπίστε το ως καλή αρχική βάση που ο head chef επαληθεύει.',
+  },
+  {
+    q: 'How does the Weekly Menu Schedule work?',
+    qEl: 'Πώς λειτουργεί το Εβδομαδιαίο Πρόγραμμα Μενού;',
+    a: 'Go to Menus → expand "Εβδομαδιαίο Πρόγραμμα". Assign a buffet menu to each day of the week (Mon–Sun). From that point, Buffet Pulse auto-selects today\'s menu on load, the Buffet Monitor and Kitchen KDS automatically show the correct items, and the QR code always points to the right menu. Days with no assignment fall back to the team\'s default daily menu. You can override the selection manually in Buffet Pulse at any time.',
+    aEl: 'Πηγαίνετε στο Μενού → ανοίξτε "Εβδομαδιαίο Πρόγραμμα". Αναθέστε ένα μενού μπουφέ σε κάθε ημέρα (Δε–Κυ). Από εκεί, το Buffet Pulse επιλέγει αυτόματα το σημερινό μενού, ο Monitor και το KDS δείχνουν τα σωστά items, και το QR code δείχνει πάντα στο σωστό μενού. Ημέρες χωρίς ανάθεση χρησιμοποιούν το προεπιλεγμένο μενού της ομάδας. Μπορείτε να κάνετε override χειροκίνητα στο Buffet Pulse.',
   },
   {
     q: 'How do I set up automated email reports?',

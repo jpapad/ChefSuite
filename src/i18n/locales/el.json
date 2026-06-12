@@ -57,6 +57,7 @@
       "team": "Ομάδα",
       "revenue": "Έσοδα",
       "comms": "Επικοινωνία",
+      "buffet": "Buffet Live",
       "library": "Βιβλιοθήκη"
     },
     "search": "Αναζήτηση…",
@@ -1574,6 +1575,7 @@
       "team": "Ομάδα",
       "revenue": "Έσοδα",
       "comms": "Επικοινωνία",
+      "buffet": "Buffet Live",
       "library": "Βιβλιοθήκη"
     }
   },
