@@ -151,6 +151,20 @@ const ALLERGEN_SVG_PATH: Record<string, string> = {
   no_lactose: `<path d="M8 6 L7 20 Q7 22 12 22 Q17 22 17 20 L16 6 Z"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="6" y1="5" x2="18" y2="21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`,
 }
 
+// Adaptive font size: reduces name pt based on character length + number of stacked lines
+function adaptiveNamePt(basePt: number, longestName: string, lineCount = 1): number {
+  const len = longestName.length
+  let scale =
+    len > 45 ? 0.58 :
+    len > 35 ? 0.70 :
+    len > 25 ? 0.82 :
+    len > 18 ? 0.90 : 1.0
+  // Extra penalty when multiple languages are stacked (less vertical room per line)
+  if (lineCount >= 3) scale = Math.min(scale, 0.68)
+  else if (lineCount >= 2) scale = Math.min(scale, 0.80)
+  return Math.max(8, Math.round(basePt * scale))
+}
+
 function allergenLabel(key: string, lang: 'en' | 'el' | 'bg' | 'both'): string {
   const k  = key.toLowerCase()
   const en = ALLERGEN_EN[k] ?? key
@@ -315,6 +329,7 @@ function labelCss(settings: LabelSettings, d: Dims): string {
       gap: ${sm ? '2mm' : '4mm'};
       break-inside: avoid; page-break-inside: avoid;
       overflow: hidden;
+      box-sizing: border-box;
     }
     .label-qr-wrap {
       position: absolute;
@@ -462,6 +477,8 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
           }))
           .filter((l): l is { k: LK; text: string } => !!l.text)
         if (lines.length === 0) lines.push({ k: 'source', text: item.name })
+        const longestLine = lines.reduce((max, l) => l.text.length > max.length ? l.text : max, '')
+        const adaptivePt = adaptiveNamePt(d.namePt, longestLine, lines.length)
         const defaultStyles: LabelSettings['langStyles'] = {
           source: { bold: true,  italic: false, sizeScale: 1.0 },
           en:     { bold: true,  italic: false, sizeScale: 1.0 },
@@ -474,7 +491,7 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
       const st = stylesMap[l.k] ?? defaultStyles[l.k]
       const fw  = st.bold   ? 'bold'   : 'normal'
       const fs  = st.italic ? 'italic' : 'normal'
-      const sz  = Math.round(d.namePt * st.sizeScale)
+      const sz  = Math.round(adaptivePt * st.sizeScale)
       const col = '#111'
       return `<div style="font-weight:${fw};font-style:${fs};font-size:${sz}pt;line-height:1.2;color:${col}">${l.text}</div>`
     }).join('')}
@@ -482,7 +499,11 @@ function labelHtml(item: MenuItem, recipe: Recipe | undefined, settings: LabelSe
   ${price}
 </div>`
       })()
-    : `<div class="label-name">${itemName(item, settings.language, recipe)}${price}</div>`
+    : (() => {
+        const name = itemName(item, settings.language, recipe)
+        const adaptivePt = adaptiveNamePt(d.namePt, name)
+        return `<div class="label-name" style="font-size:${adaptivePt}pt">${name}${price}</div>`
+      })()
 
   return `
 <div class="label" style="width:${d.w}mm;height:${d.h}mm">
@@ -537,8 +558,8 @@ export function printLabels(items: MenuItem[], menu: Menu, recipes: Recipe[], se
   <style>
     ${labelCss(settings, d)}
     @page { size: A4; margin: 10mm }
-    .grid { display: grid; grid-template-columns: repeat(${settings.labelsPerRow ?? 3}, 1fr); gap: 5mm }
-    .label { width: 100% !important; height: auto !important; min-height: ${d.h}mm; }
+    .grid { display: grid; grid-template-columns: repeat(${settings.labelsPerRow ?? 3}, 1fr); gap: 5mm; align-items: start }
+    .label { width: 100% !important; height: ${d.h}mm !important; overflow: hidden !important; }
   </style>
 </head>
 <body>
