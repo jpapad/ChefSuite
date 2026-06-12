@@ -9,6 +9,7 @@
 ## Κύρια Χαρακτηριστικά (Features)
 
 ### 🧑‍🍳 Διαχείριση Συνταγών
+
 - **Βιβλιοθήκη Συνταγών** με κατηγοριοποίηση, επίπεδο δυσκολίας, χρόνο προετοιμασίας, κόστος ανά μερίδα και τιμή πώλησης
 - **Ιστορικό Εκδόσεων** (Version History) για κάθε συνταγή — επαναφορά σε οποιαδήποτε προηγούμενη έκδοση
 - **AI Import Συνταγών** από URL ή κείμενο με αυτόματη εξαγωγή δομημένων δεδομένων
@@ -17,6 +18,7 @@
 - **Import Excel → Συνταγές + Νέο Μενού ταυτόχρονα** σε ένα βήμα
 - **Bulk AI Update**: μαζική αυτόματη συμπλήρωση αγγλικών/βουλγαρικών ονομάτων, αγγλικών περιγραφών και ανίχνευση αλλεργιογόνων για ολόκληρη τη βιβλιοθήκη
 - **AI Allergen Scan**: ανίχνευση αλλεργιογόνων βάσει πλήρους κειμένου συνταγής (τίτλος + περιγραφή + οδηγίες)
+- **🆕 Batch AI Συμπλήρωση & Prep**: επιλογή συνταγών και μαζική επεξεργασία σε ένα βήμα — AI συμπληρώνει περιγραφή, οδηγίες, κατηγορία, χρόνους, διατροφικά στοιχεία, αλλεργιογόνα **και** δημιουργεί αυτόματα Prep Template ανά σταθμό εργασίας. Animated progress bar ανά συνταγή και φάση.
 - **Ομαδοποιημένη Προβολή** κατά κατηγορία και φιλτράρισμα για συνταγές χωρίς αλλεργιογόνα
 - **Διαχείριση Αλλεργιογόνων** με γραφικά εικονίδια για τα 14 αλλεργιογόνα ΕΕ + ειδικές ετικέτες (vegan, vegetarian, spicy, local, no_gluten, no_lactose)
 - **Επεξεργαστής Συστατικών** με σύνδεση στο απόθεμα και αυτόματο υπολογισμό κόστους
@@ -24,9 +26,11 @@
 - **Recipe Comments**: σχόλια ομάδας ανά συνταγή
 
 ### 🍽️ Διαχείριση Μενού
+
 - **Δημιουργία Μενού** τύπου À la Carte, Buffet, Tasting Menu ή Daily Special
 - **Drag & Drop** οργάνωση ενοτήτων (sections) και αντικειμένων μενού
 - **Σύνδεση Συνταγών** με menu items για αυτόματη ενημέρωση τιμών, αλλεργιογόνων και περιγραφών
+- **🆕 Εβδομαδιαίο Πρόγραμμα Μενού**: ορισμός διαφορετικού μενού ανά ημέρα εβδομάδας (Δε–Κυ). Το σύστημα αλλάζει αυτόματα το ενεργό μενού για το QR, το Buffet Monitor, το KDS και όλες τις λειτουργίες — χωρίς χειροκίνητη αλλαγή κάθε μέρα
 - **Αποκλεισμός Συνταγών** ανά μενού κατά την επιλογή από βιβλιοθήκη (αποφυγή διπλοεμφάνισης)
 - **AI Menu Generator**: αυτόματη δημιουργία πλήρους μενού από περιγραφή σε φυσική γλώσσα
 - **Ανάλυση Κόστους Μενού** (Menu Cost Analysis) με food cost % ανά item
@@ -36,6 +40,7 @@
 - **Εκτύπωση Ετικετών Buffet** με QR codes, πολυγλωσσικές ονομασίες, αποθηκευόμενα profiles εκτύπωσης και custom διαστάσεις
 
 ### 📲 Ψηφιακό Μενού & Online Παραγγελίες
+
 - **Δημόσιο Ψηφιακό Μενού** με επιλογή 3 templates (Classic, Modern, Elegant)
 - **QR Code** ανά μενού για instant πρόσβαση πελατών χωρίς login
 - **Online Ordering** μέσω QR: πλήρες σύστημα παραγγελιών με καλάθι αγορών, προβολή αλλεργιογόνων και real-time αποστολή στην κουζίνα
@@ -43,6 +48,7 @@
 - **Ψηφιακές Κρατήσεις**: δημόσια φόρμα κράτησης τραπεζιού μέσω QR με διαχείριση και επιβεβαίωση
 
 ### 🏪 Αποθήκη & Προμήθειες
+
 - **Inventory Management** με παρακολούθηση stock, ελάχιστα επίπεδα και ειδοποιήσεις low stock
 - **Barcode Scanner** για γρήγορη καταγραφή εισερχομένων και αναζήτηση προϊόντων
 - **Receiving Scanner**: σάρωση κατά παραλαβή για αυτόματη ενημέρωση αποθέματος
@@ -56,14 +62,16 @@
 - **Εκτύπωση Ετικετών** για προϊόντα αποθήκης
 
 ### 💰 Οικονομικά & Αναλυτικά
+
 - **Costing**: υπολογισμός food cost ανά συνταγή, gross margin και τιμή πώλησης
 - **Profit & Loss**: εβδομαδιαία ανάλυση εσόδων (POS + online παραγγελίες), αγορών, κόστους απωλειών
 - **Analytics Dashboard**: έσοδα 7 ημερών, top πιάτα 30 ημερών, πρόβλεψη αποθέματος
-- **AI Profitability Suggestions**: αυτόματες συστάσεις αναπροσαρμογής τιμών βάσει food cost και δεδομένων πωλήσεων (Gemini)
+- **AI Profitability Suggestions**: αυτόματες συστάσεις αναπροσαρμογής τιμών βάσει food cost και δεδομένων πωλήσεων
 - **Email Reports**: αυτόματη εβδομαδιαία αποστολή αναφοράς (food cost, waste, prep rate, low stock, HACCP) μέσω Resend
 - **POS Integration**: σύνδεση με Viva Wallet / Square μέσω webhook για αυτόματη καταγραφή εσόδων
 
 ### 🍳 Λειτουργίες Κουζίνας
+
 - **KDS (Kitchen Display System)**: real-time οθόνη παραγγελιών και prep tasks με full-screen mode και χρωματική κωδικοποίηση
 - **Prep Tasks** (Kanban Board): διαχείριση εργασιών προετοιμασίας με στήλες Todo / In Progress / Done, ανάθεση σε workstation και υπεύθυνο
 - **Prep Templates**: αποθήκευση επαναχρησιμοποιήσιμων προτύπων prep για επαναλαμβανόμενες βάρδιες
@@ -73,7 +81,17 @@
 - **Handover Notes**: ψηφιακή παράδοση βάρδιας με κοινόχρηστες σημειώσεις μεταξύ βαρδιών
 - **Kitchen Pulse**: εβδομαδιαίο ανώνυμο check-in ευεξίας ομάδας με τάσεις και trend chart
 
+### 📡 Buffet Live Operations
+
+- **Buffet Pulse**: κεντρικό hub εκκίνησης — επιλογή σημερινού μενού (ή αυτόματη φόρτωση από εβδομαδιαίο πρόγραμμα) και εκκίνηση Monitor ή KDS με ένα tap
+- **Buffet Monitor** (tablet): real-time παρακολούθηση κατάστασης κάθε πιάτου (Full / Low / Empty / Refilling) με panic button και live φωτογραφίες σταθμών
+- **Kitchen Buffet KDS**: οθόνη κουζίνας για εντολές ανεφοδιασμού — εμφανίζει φωτογραφία, κατάσταση και ιστορικό ανά σταθμό
+- **🆕 Live Photo Capture**: κουμπί κάμερας στο Monitor — λήψη φωτογραφίας σταθμού (iOS camera + upload) που εμφανίζεται άμεσα στο KDS της κουζίνας
+- **🆕 Κλείσιμο Βάρδιας**: drawer με καταγραφή επιπέδου σπατάλης (Low / Medium / High / Critical) ανά πιάτο και σημειώσεις — αποθηκεύεται ως `buffet_shift_log`
+- **🆕 Αναλυτικά Μπουφέ**: tab με bar charts — top πιάτα ανά αριθμό ανεφοδιασμών και κατανομή ανά ώρα — βάσει `buffet_refill_events` που καταγράφονται αυτόματα σε κάθε αλλαγή κατάστασης
+
 ### 👥 Διαχείριση Προσωπικού
+
 - **Διαχείριση Ομάδας** με ρόλους και granular δικαιώματα (Role-based Access Control)
 - **Πρόσκληση Μελών** μέσω email με αυτόματη ενεργοποίηση λογαριασμού
 - **Πρόγραμμα Βαρδιών** (Shifts): εβδομαδιαίο ημερολόγιο με οπτική κατανομή ανά μέλος και εκτυπώσιμο A4 πρόγραμμα
@@ -81,19 +99,23 @@
 - **Απόδοση Προσωπικού** (Staff Performance): παρακολούθηση παρουσιών, αργοπορίας και εκτέλεσης βάσει προγραμματισμένων βαρδιών
 - **Κρατήσεις Τραπεζιών**: πλήρης διαχείριση με ημερολόγιο, κατάσταση και στοιχεία επισκεπτών
 
-### 📡 Επικοινωνία Ομάδας
+### 💬 Επικοινωνία Ομάδας
+
 - **Team Chat** (real-time): κανάλια ανά τμήμα (#kitchen, #general, #orders κ.λπ.) + direct messages μεταξύ μελών
 - **Walkie-Talkie** (Push-to-Talk): φωνητική επικοινωνία real-time μέσω Web Speech Recognition API — ιδανικό για χέρια που δεν μπορούν να χρησιμοποιήσουν οθόνη
 
 ### 🤖 AI & Αυτοματισμός
-- **Chef Copilot**: συνομιλητικός AI βοηθός (Gemini) με πλήρη context — γνωρίζει το απόθεμα, τις συνταγές, τα κόστη και τα αλλεργιογόνα της ομάδας
-- **Τοπικές Συνταγές** (Regional Recipes): ανακάλυψη γνήσιων τοπικών συνταγών από οποιοδήποτε μέρος (web scraping με Gemini Grounding + DuckDuckGo fallback, AI extraction)
+
+- **Chef Copilot**: συνομιλητικός AI βοηθός με πλήρη context — γνωρίζει το απόθεμα, τις συνταγές, τα κόστη και τα αλλεργιογόνα της ομάδας
+- **Batch AI Processor**: μαζική συμπλήρωση & δημιουργία prep templates για επιλεγμένες συνταγές με live progress UI
+- **Τοπικές Συνταγές** (Regional Recipes): ανακάλυψη γνήσιων τοπικών συνταγών από οποιοδήποτε μέρος (Google Search Grounding + DuckDuckGo fallback, AI extraction)
 - **AI Menu Generator**: δημιουργία πλήρους δομημένου μενού από φυσική γλώσσα
 - **Bulk AI Translations**: μαζική μετάφραση ονομάτων και περιγραφών σε Αγγλικά και Βουλγαρικά
-- **AI Invoice Parsing**: αυτόματη εξαγωγή γραμμών από τιμολόγια προμηθευτών
+- **AI Invoice Parsing**: αυτόματη εξαγωγή γραμμών από τιμολόγια προμηθευτών (Claude)
 - **AI Profitability Analysis**: προτάσεις βελτιστοποίησης τιμολογίου βάσει δεδομένων
 
 ### 📚 Επαγγελματική Γνωσιακή Βάση
+
 - **Culinary Tools**: μετατροπέας μονάδων (βάρος, όγκος, θερμοκρασία), scaler συνταγών, αντικατάσταση υλικών
 - **Βιβλιοθήκη Τεχνικών** (Technique Library): οδηγοί επαγγελματικών τεχνικών κουζίνας με επίπεδο δυσκολίας και χρόνο εκτέλεσης
 - **Εγκυκλοπαίδεια Υλικών** (Ingredients Encyclopedia): πλήρης βάση γνώσεων για μπαχαρικά, βότανα, τυριά και έλαια (origin, flavour, uses)
@@ -115,7 +137,8 @@
 | **Database & Auth** | Supabase (PostgreSQL + Row Level Security) |
 | **Real-time** | Supabase Realtime (WebSockets) |
 | **Backend Functions** | Supabase Edge Functions (Deno runtime) |
-| **AI / LLM** | Google Gemini API (`gemini-2.0-flash` + Grounding) |
+| **Primary AI / LLM** | Anthropic Claude (`claude-haiku-4-5`) — text generation, enrichment, prep breakdown |
+| **Search AI** | Google Gemini (`gemini-2.0-flash` + Grounding) — recipe search, regional recipes, chat |
 | **Excel Processing** | SheetJS (xlsx) |
 | **QR Codes** | qrcode |
 | **Image Processing** | @imgly/background-removal (client-side AI) |
@@ -135,33 +158,35 @@
 │   React SPA (Vite + TypeScript)                             │
 │   ├── 45+ Pages / Routes                                    │
 │   ├── Custom Hooks (data layer per domain)                  │
-│   ├── AI Logic (Gemini API calls)                           │
 │   └── Service Worker (PWA / offline cache)                  │
 └────────────────┬────────────────────────────────────────────┘
                  │
-       ┌─────────┴──────────┐
-       │                    │
-┌──────▼──────┐    ┌────────▼────────┐
-│  Supabase   │    │  Google Gemini  │
-│             │    │       API       │
-│ PostgreSQL  │    │                 │
-│ Auth (JWT)  │    │ gemini-2.0-flash│
-│ Realtime WS │    │ + Grounding     │
-│ Storage     │    └─────────────────┘
-│             │
-│ Edge Funcs  │ ◄─ fetch-url, parse-invoice,
-└─────────────┘    profitability-ai, weekly-report
+       ┌─────────┴──────────────────┐
+       │                            │
+┌──────▼──────┐          ┌──────────▼──────────┐
+│  Supabase   │          │   Edge Functions     │
+│             │          │   (Deno runtime)     │
+│ PostgreSQL  │          │                      │
+│ Auth (JWT)  │          │ claude-proxy  ───────┼──► Anthropic API
+│ Realtime WS │          │ gemini-proxy  ───────┼──► Google Gemini
+│ Storage     │          │ parse-recipe  ───────┼──► Claude (vision)
+│             │          │ parse-invoice ───────┼──► Claude
+│ RPC funcs   │          │ profitability-ai      │
+│ (SQL)       │          │ weekly-report ───────┼──► Resend
+└─────────────┘          │ fetch-url             │
+                         │ send-push             │
+                         └───────────────────────┘
 ```
 
-**Frontend SPA**: Η εφαρμογή είναι Pure Frontend Single Page Application — όλη η λογική (υπολογισμοί κόστους, φιλτράρισμα, ανάλυση δεδομένων) τρέχει στον browser. Δεν υπάρχει custom backend server.
+**Frontend SPA**: Pure Frontend Single Page Application — όλη η λογική (υπολογισμοί κόστους, φιλτράρισμα, ανάλυση δεδομένων) τρέχει στον browser. Δεν υπάρχει custom backend server.
 
-**Supabase (BaaS)**: Χρησιμοποιείται ως backend υπηρεσία για PostgreSQL database, authentication (JWT), real-time subscriptions (chat, KDS, orders) και file storage. Η ασφάλεια δεδομένων εξασφαλίζεται μέσω **Row Level Security (RLS)** — κάθε χρήστης βλέπει αποκλειστικά τα δεδομένα της ομάδας του.
+**Supabase (BaaS)**: Χρησιμοποιείται ως backend υπηρεσία για PostgreSQL database, authentication (JWT), real-time subscriptions (chat, KDS, orders), file storage (buffet photos) και RPC functions (π.χ. `get_daily_menu`). Η ασφάλεια δεδομένων εξασφαλίζεται μέσω **Row Level Security (RLS)** — κάθε χρήστης βλέπει αποκλειστικά τα δεδομένα της ομάδας του.
 
-**Supabase Edge Functions**: Deno runtime functions για server-side λειτουργίες — web scraping εξωτερικών σελίδων (`fetch-url`), AI parsing τιμολογίων (`parse-invoice`), ανάλυση κερδοφορίας (`profitability-ai`) και αποστολή email αναφορών (`weekly-report` μέσω Resend).
+**Supabase Edge Functions**: Deno runtime functions που λειτουργούν ως authenticated proxies για εξωτερικές AI υπηρεσίες (κανένα API key δεν εκτίθεται στον browser) καθώς και για server-side λειτουργίες όπως web scraping και αποστολή email.
 
 **PWA**: Η εφαρμογή είναι εγκαταστάσιμη ως Progressive Web App σε desktop και mobile, με Service Worker που επιτρέπει βασική offline χρήση και asset caching.
 
-**Real-time**: Team Chat, Walkie-Talkie, KDS και Online Παραγγελίες χρησιμοποιούν Supabase Realtime (WebSocket channels) για instantaneous ενημερώσεις σε όλους τους συνδεδεμένους χρήστες της ομάδας.
+**Real-time**: Team Chat, Walkie-Talkie, KDS, Buffet Monitor και Online Παραγγελίες χρησιμοποιούν Supabase Realtime (WebSocket channels) για instantaneous ενημερώσεις σε όλους τους συνδεδεμένους χρήστες της ομάδας.
 
 ---
 
@@ -170,6 +195,7 @@
 - Κάθε χρήστης ανήκει σε **Team** — τα δεδομένα ομάδων είναι πλήρως απομονωμένα μέσω PostgreSQL Row Level Security
 - Authentication μέσω Supabase Auth (email/password + JWT tokens)
 - Role-based Access Control με granular permissions ανά λειτουργία (PermissionGuard component)
+- Κανένα AI API key δεν εκτίθεται στο frontend — όλες οι κλήσεις δρομολογούνται μέσω Edge Functions
 - API keys και credentials εξαιρούνται από το git μέσω `.gitignore`
 
 ---
@@ -180,7 +206,8 @@
 
 - Node.js 18+
 - Ένα [Supabase](https://supabase.com) project
-- Ένα [Google Gemini](https://aistudio.google.com) API key (προαιρετικό — για AI features)
+- Ένα [Anthropic](https://console.anthropic.com) API key (για AI features: enrichment, prep breakdown, invoice parsing)
+- Ένα [Google Gemini](https://aistudio.google.com) API key (για: Copilot chat, regional recipes, search grounding)
 - Ένα [Resend](https://resend.com) API key (προαιρετικό — για email reports)
 
 ### 1. Clone & install
@@ -202,8 +229,9 @@ Edit `.env.local`:
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-public-key
-VITE_GEMINI_API_KEY=your-gemini-api-key
 ```
+
+> Τα AI API keys **δεν** χρειάζονται στο `.env.local` — ορίζονται ως Edge Function secrets (βλ. παρακάτω).
 
 ### 3. Apply database migrations
 
@@ -219,17 +247,29 @@ All migrations are in `supabase/migrations/`. If you prefer, run the SQL files i
 ### 4. Deploy Edge Functions
 
 ```bash
+supabase functions deploy --project-ref your-project-ref
+```
+
+Ή ανά function:
+
+```bash
+supabase functions deploy claude-proxy      --project-ref your-project-ref
+supabase functions deploy gemini-proxy      --project-ref your-project-ref
+supabase functions deploy parse-recipe      --project-ref your-project-ref
+supabase functions deploy parse-invoice     --project-ref your-project-ref
+supabase functions deploy profitability-ai  --project-ref your-project-ref
+supabase functions deploy weekly-report     --project-ref your-project-ref
+supabase functions deploy fetch-url         --project-ref your-project-ref
+supabase functions deploy send-push         --project-ref your-project-ref
 supabase functions deploy create-team-member --project-ref your-project-ref
-supabase functions deploy parse-invoice       --project-ref your-project-ref
-supabase functions deploy profitability-ai    --project-ref your-project-ref
-supabase functions deploy weekly-report       --project-ref your-project-ref
-supabase functions deploy fetch-url           --project-ref your-project-ref
 ```
 
 ### 5. Set Edge Function secrets
 
 ```bash
-supabase secrets set RESEND_API_KEY=your-resend-api-key --project-ref your-project-ref
+supabase secrets set ANTHROPIC_API_KEY=your-anthropic-key  --project-ref your-project-ref
+supabase secrets set GEMINI_API_KEY=your-gemini-key        --project-ref your-project-ref
+supabase secrets set RESEND_API_KEY=your-resend-key        --project-ref your-project-ref
 ```
 
 ### 6. Run the dev server
@@ -249,7 +289,8 @@ src/
 ├── components/
 │   ├── ui/           # Base components (Button, Drawer, Input, AllergenIcon…)
 │   ├── layout/       # AppShell, Sidebar, TopBar, BottomNav
-│   ├── recipes/      # RecipeDetail, RecipeForm, BulkAIUpdateDrawer, ImportExcelMenuDrawer…
+│   ├── recipes/      # RecipeDetail, RecipeForm, BulkAIUpdateDrawer,
+│   │                 # BatchRecipeProcessorDrawer, ImportExcelMenuDrawer…
 │   ├── menus/        # AIMenuGeneratorDrawer, BuffetLabelsDrawer, ProductionSheetDrawer…
 │   ├── inventory/    # BarcodeScanner, ReceivingScanner, InventoryMovementsDrawer…
 │   ├── haccp/        # HACCPCheckForm, HACCPRemindersDrawer, HACCPBlankFormDrawer
@@ -258,19 +299,24 @@ src/
 │   └── team/         # InviteForm
 ├── pages/            # 45+ Route-level page components
 ├── hooks/            # Data hooks (one per domain, wraps Supabase)
-├── contexts/         # AuthContext
-├── lib/              # Supabase client, Gemini helpers, Excel parsing, print utilities
+├── contexts/         # AuthContext, RecipesContext
+├── lib/              # Supabase client, AI helpers (gemini.ts), Excel parsing, print utilities
 ├── i18n/             # Translation files (en.json, el.json)
 └── types/            # TypeScript database types
 
 supabase/
-├── migrations/       # Incremental SQL migrations
+├── migrations/       # 76+ incremental SQL migrations
 └── functions/
-    ├── create-team-member/
-    ├── fetch-url/            # Server-side HTML fetching for recipe scraping
-    ├── parse-invoice/        # AI invoice parsing
+    ├── claude-proxy/         # Authenticated proxy → Anthropic API (Haiku)
+    ├── gemini-proxy/         # Authenticated proxy → Google Gemini API
+    ├── parse-recipe/         # Claude vision — image/PDF recipe extraction
+    ├── parse-invoice/        # Claude — supplier invoice line extraction
     ├── profitability-ai/     # AI pricing suggestions
-    └── weekly-report/        # Scheduled HTML email report via Resend
+    ├── weekly-report/        # Scheduled HTML email report via Resend
+    ├── fetch-url/            # Server-side HTML fetching for recipe scraping
+    ├── send-push/            # Web push notifications
+    ├── create-team-member/   # Secure team member creation
+    └── pos-webhook/          # POS integration (Viva Wallet / Square)
 ```
 
 ---
@@ -283,13 +329,14 @@ supabase/
 |---|---|---|
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key |
-| `VITE_GEMINI_API_KEY` | No | Enables AI features (Copilot, translations, allergen scan, regional recipes) |
 
-### Edge Function secrets (Supabase CLI)
+### Edge Function secrets (Supabase Dashboard → Edge Functions → Secrets)
 
 | Secret | Description |
 |---|---|
-| `RESEND_API_KEY` | API key from [resend.com](https://resend.com) — για email reports |
+| `ANTHROPIC_API_KEY` | Anthropic API key — AI enrichment, prep breakdown, invoice parsing |
+| `GEMINI_API_KEY` | Google Gemini API key — Chef Copilot, regional recipes, search grounding |
+| `RESEND_API_KEY` | [resend.com](https://resend.com) — εβδομαδιαία email αναφορά |
 
 ---
 
