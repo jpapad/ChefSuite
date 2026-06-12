@@ -49,18 +49,6 @@ async function callGeminiRaw(body: object): Promise<GeminiResponse> {
   return data as GeminiResponse
 }
 
-async function callGemini(prompt: string): Promise<string> {
-  const json = await callGeminiRaw({
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-  })
-  if (json.error) {
-    const msg = typeof json.error === 'string' ? json.error : (json.error.message ?? 'Unknown Gemini error')
-    throw new Error(msg)
-  }
-  const raw = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-  return raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
-}
 
 interface ClaudeResponse {
   content?: Array<{ type: string; text?: string }>
