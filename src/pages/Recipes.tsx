@@ -16,11 +16,13 @@ import { ImportRecipeDrawer } from '../components/recipes/ImportRecipeDrawer'
 import { ScanRecipeDrawer } from '../components/recipes/ScanRecipeDrawer'
 import { ImportExcelMenuDrawer } from '../components/recipes/ImportExcelMenuDrawer'
 import { BulkAIUpdateDrawer } from '../components/recipes/BulkAIUpdateDrawer'
+import { BatchRecipeProcessorDrawer } from '../components/recipes/BatchRecipeProcessorDrawer'
 import { RecipeVersionHistory } from '../components/recipes/RecipeVersionHistory'
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../hooks/useInventory'
 import { useRecipeIngredients } from '../hooks/useRecipeIngredients'
 import { useMenus } from '../hooks/useMenus'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { RECIPE_CATEGORIES } from '../components/recipes/RecipeForm'
 import type { ImportedRecipe } from '../lib/gemini'
@@ -42,6 +44,8 @@ const CATEGORY_META: Record<RecipeCategory, { emoji: string; label: string }> = 
 
 export default function Recipes() {
   const { t } = useTranslation()
+  const { profile } = useAuth()
+  const teamId = profile?.team_id ?? ''
   const { recipes, loading, error, create, update, remove, consumeRecipe } = useRecipes()
   const { create: createMenu } = useMenus()
   const { items: inventory } = useInventory()
@@ -57,6 +61,8 @@ export default function Recipes() {
   const [excelMenuDrawerOpen, setExcelMenuDrawerOpen] = useState(false)
   const [bulkAIUpdateOpen, setBulkAIUpdateOpen] = useState(false)
   const [allergenScanOpen, setAllergenScanOpen] = useState(false)
+  const [batchProcessorOpen, setBatchProcessorOpen] = useState(false)
+  const [batchProcessorInitial, setBatchProcessorInitial] = useState<Set<string> | undefined>()
   const [editing, setEditing] = useState<Recipe | null>(null)
   const [viewing, setViewing] = useState<Recipe | null>(null)
   const [saving, setSaving] = useState(false)
@@ -414,6 +420,13 @@ export default function Recipes() {
                   >
                     Bulk AI Update
                   </Button>
+                  <Button
+                    variant="secondary"
+                    leftIcon={<ChefHat className="h-5 w-5" />}
+                    onClick={() => { setBatchProcessorInitial(undefined); setBatchProcessorOpen(true) }}
+                  >
+                    AI Συμπλήρωση & Prep
+                  </Button>
                 </>
               )}
               <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
@@ -709,6 +722,15 @@ export default function Recipes() {
               </button>
               <button
                 type="button"
+                onClick={() => { setBatchProcessorInitial(new Set(selectedIds)); setBatchProcessorOpen(true) }}
+                disabled={selectedIds.size === 0}
+                className="flex items-center gap-1.5 rounded-xl bg-brand-orange px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-orange/80 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Συμπλήρωση & Prep
+              </button>
+              <button
+                type="button"
                 onClick={() => void bulkDelete()}
                 disabled={selectedIds.size === 0 || bulkDeleting}
                 className="flex items-center gap-1.5 rounded-xl bg-red-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-40 disabled:pointer-events-none"
@@ -756,6 +778,17 @@ export default function Recipes() {
         onUpdate={update}
         initialFillOptions={{ nameEl: false, nameBg: false, descriptionEl: false, allergens: true }}
         initialOnlyEmpty={false}
+      />
+
+      <BatchRecipeProcessorDrawer
+        open={batchProcessorOpen}
+        onClose={() => setBatchProcessorOpen(false)}
+        recipes={recipes}
+        teamId={teamId}
+        onUpdate={update}
+        getIngredients={getIngredients}
+        inventory={inventory}
+        initialSelectedIds={batchProcessorInitial}
       />
 
       {batchImportError && (
