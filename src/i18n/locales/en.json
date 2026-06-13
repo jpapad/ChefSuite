@@ -521,6 +521,9 @@
     "selectAll": "Select all",
     "deselectAll": "Deselect all",
     "memberLanguage": "App language",
+    "memberExpiry": "Account expiry",
+    "memberExpiryHint": "Optional. Leave empty for a permanent account.",
+    "removeExpiry": "Remove expiry",
     "savePermissions": "Save permissions",
     "savingPermissions": "Saving…",
     "permissionsSaved": "Permissions saved"
@@ -761,11 +764,16 @@
     "signingIn": "Signing in…",
     "signIn": "Sign in",
     "noAccount": "No account?",
-    "createOne": "Create one"
+    "createOne": "Create one",
+    "newHere": "New establishment?",
+    "createNewTeam": "Create Team — New owner"
   },
   "signup": {
     "title": "Create account",
     "subtitle": "Start your kitchen setup.",
+    "ownerTitle": "New owner",
+    "ownerSubtitle": "Create your account & team.",
+    "ownerNote": "This page is for owners of a new establishment. If you were invited to a team, use your invite link instead.",
     "fullName": "Full name",
     "fullNamePlaceholder": "Chef Giannis",
     "email": "Email",
@@ -1887,5 +1895,22 @@
     "namePlaceholder": "e.g. Extra Virgin Olive Oil",
     "deleteConfirm": "Delete product?",
     "lowStockCount": "low stock"
+  },
+  "menuPdf": {
+    "title": "Import Menu from PDF",
+    "subtitle": "Upload a menu PDF or image and AI will extract all dishes with their ingredients.",
+    "buttonLabel": "PDF Menu",
+    "dropPdf": "Drag & drop your file here",
+    "orClick": "or click to select",
+    "processing": "AI is processing the menu…",
+    "processingHint": "This may take 10–30 seconds for full menus.",
+    "found": "Found {{count}} dishes",
+    "uploadNew": "Upload new",
+    "copyShoppingList": "Copy shopping list",
+    "copied": "Copied!",
+    "downloadCsv": "Download CSV",
+    "ingredients": "ingredients",
+    "ingredientsNeeded": "Ingredients needed",
+    "allergens": "Allergens"
   }
 }

@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password, full_name, role, permissions } = await req.json()
+    const { email, password, full_name, role, permissions, expires_at } = await req.json()
 
     // Admin client (service role — available only server-side)
     const supabaseAdmin = createClient(
@@ -83,6 +83,24 @@ Deno.serve(async (req) => {
       // Rollback: delete the auth user
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
       return new Response(JSON.stringify({ error: profileError.message }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Insert team_memberships row (with optional expiry)
+    const { error: membershipError } = await supabaseAdmin
+      .from('team_memberships')
+      .upsert({
+        user_id: newUser.user.id,
+        team_id: callerProfile.team_id,
+        role,
+        invited_by: caller.id,
+        expires_at: expires_at ?? null,
+      })
+
+    if (membershipError) {
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
+      return new Response(JSON.stringify({ error: membershipError.message }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

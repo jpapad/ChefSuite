@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { UserPlus, Copy, Check, Trash2, Shield, Pencil, Save, Lock, Languages } from 'lucide-react'
+import { UserPlus, Copy, Check, Trash2, Shield, Pencil, Save, Lock, Languages, Clock, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
@@ -7,7 +7,7 @@ import { Input } from '../components/ui/Input'
 import { Drawer } from '../components/ui/Drawer'
 import { InviteForm } from '../components/team/InviteForm'
 import { useAuth } from '../contexts/AuthContext'
-import { useTeam } from '../hooks/useTeam'
+import { useTeam, type MemberExpiry } from '../hooks/useTeam'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/cn'
 import { ALL_MODULES, MODULE_GROUPS, MODULE_LABEL_KEY, type AppModule } from '../hooks/usePermissions'
@@ -18,6 +18,15 @@ function roleLabel(role: UserRole): string {
     .split('_')
     .map((w) => w[0].toUpperCase() + w.slice(1))
     .join(' ')
+}
+
+function expiryInfo(expiresAt: string | null): { label: string; urgent: boolean; expired: boolean } | null {
+  if (!expiresAt) return null
+  const diff = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000)
+  if (diff < 0) return { label: 'Έληξε', urgent: true, expired: true }
+  if (diff === 0) return { label: 'Λήγει σήμερα', urgent: true, expired: false }
+  if (diff <= 7) return { label: `Λήγει σε ${diff} μ.`, urgent: true, expired: false }
+  return { label: `Λήγει ${new Date(expiresAt).toLocaleDateString('el-GR')}`, urgent: false, expired: false }
 }
 
 function initialsFor(name: string | null): string {
@@ -33,11 +42,13 @@ export default function Team() {
   const {
     team,
     members,
+    memberExpiries,
     invites,
     loading,
     error,
     createInvite,
     revokeInvite,
+    updateMemberExpiry,
   } = useTeam()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -51,7 +62,7 @@ export default function Team() {
 
   // Create member drawer state
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '', role: 'staff' as UserRole })
+  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '', role: 'staff' as UserRole, expiresAt: '' })
   const [createPerms, setCreatePerms] = useState<Set<AppModule>>(new Set(ALL_MODULES))
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -71,6 +82,7 @@ export default function Team() {
           full_name: createForm.name,
           role: createForm.role,
           permissions: allPerms ? null : [...createPerms],
+          expires_at: createForm.expiresAt ? new Date(createForm.expiresAt).toISOString() : null,
         },
       })
       if (error) throw error
@@ -78,7 +90,7 @@ export default function Team() {
       setCreateSuccess(true)
       setTimeout(() => {
         setCreateOpen(false)
-        setCreateForm({ name: '', email: '', password: '', role: 'staff' })
+        setCreateForm({ name: '', email: '', password: '', role: 'staff', expiresAt: '' })
         setCreatePerms(new Set(ALL_MODULES))
         setCreateSuccess(false)
       }, 1000)
@@ -93,6 +105,7 @@ export default function Team() {
   const [permMember, setPermMember] = useState<Profile | null>(null)
   const [permChecked, setPermChecked] = useState<Set<AppModule>>(new Set())
   const [permLang, setPermLang] = useState<string>('en')
+  const [permExpiry, setPermExpiry] = useState<string>('')
   const [savingPerms, setSavingPerms] = useState(false)
   const [permSaved, setPermSaved] = useState(false)
 
@@ -105,6 +118,11 @@ export default function Team() {
       : new Set(member.permissions as AppModule[])
     setPermChecked(initial)
     setPermLang(member.preferred_lang ?? 'en')
+    const expiry = memberExpiries.find((e) => e.userId === member.id)
+    const expiryVal = expiry?.expiresAt
+      ? new Date(expiry.expiresAt).toISOString().slice(0, 10)
+      : ''
+    setPermExpiry(expiryVal)
     setPermMember(member)
     setPermSaved(false)
   }
@@ -126,12 +144,17 @@ export default function Team() {
     try {
       const allChecked = permChecked.size === ALL_MODULES.length
       const newPerms: string[] | null = allChecked ? null : [...permChecked]
+      const expiryMembership = memberExpiries.find((e) => e.userId === permMember.id)
+      const newExpiry = permExpiry ? new Date(permExpiry).toISOString() : null
       await Promise.all([
         supabase.rpc('update_member_permissions', {
           member_id: permMember.id,
           new_permissions: newPerms,
         }),
         supabase.from('profiles').update({ preferred_lang: permLang }).eq('id', permMember.id),
+        expiryMembership
+          ? updateMemberExpiry(expiryMembership.membershipId, newExpiry)
+          : Promise.resolve(),
       ])
       setPermSaved(true)
       setTimeout(() => setPermMember(null), 800)
@@ -253,40 +276,58 @@ export default function Team() {
         ) : (
           <GlassCard className="p-0 overflow-hidden">
             <ul className="divide-y divide-glass-border">
-              {members.map((m) => (
-                <li
-                  key={m.id}
-                  className="flex items-center gap-4 px-5 py-4"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange font-semibold">
-                    {initialsFor(m.full_name)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">
-                      {m.full_name ?? '—'}
-                      {m.id === profile?.id && (
-                        <span className="ml-2 text-xs text-white/50">
-                          {t('team.you')}
-                        </span>
+              {members.map((m) => {
+                const exp = memberExpiries.find((e) => e.userId === m.id)
+                const expInfo = expiryInfo(exp?.expiresAt ?? null)
+                return (
+                  <li
+                    key={m.id}
+                    className="flex items-center gap-4 px-5 py-4"
+                  >
+                    <div className={cn(
+                      'flex h-12 w-12 items-center justify-center rounded-full font-semibold',
+                      expInfo?.expired
+                        ? 'bg-red-500/20 text-red-400'
+                        : 'bg-brand-orange/20 text-brand-orange',
+                    )}>
+                      {initialsFor(m.full_name)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {m.full_name ?? '—'}
+                        {m.id === profile?.id && (
+                          <span className="ml-2 text-xs text-white/50">
+                            {t('team.you')}
+                          </span>
+                        )}
+                      </div>
+                      {expInfo && (
+                        <div className={cn(
+                          'inline-flex items-center gap-1 mt-0.5 text-xs',
+                          expInfo.expired ? 'text-red-400' : expInfo.urgent ? 'text-amber-400' : 'text-white/40',
+                        )}>
+                          {expInfo.expired ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                          {expInfo.label}
+                        </div>
                       )}
                     </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-glass-border px-2.5 py-1 text-sm text-white/80">
-                    <Shield className="h-3.5 w-3.5" />
-                    {roleLabel(m.role)}
-                  </span>
-                  {isOwner && m.id !== profile?.id && m.role !== 'owner' && (
-                    <button
-                      type="button"
-                      onClick={() => openPermissions(m)}
-                      title={t('team.editPermissions')}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl text-white/40 hover:text-brand-orange hover:bg-brand-orange/10 transition"
-                    >
-                      <Lock className="h-4 w-4" />
-                    </button>
-                  )}
-                </li>
-              ))}
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-glass-border px-2.5 py-1 text-sm text-white/80">
+                      <Shield className="h-3.5 w-3.5" />
+                      {roleLabel(m.role)}
+                    </span>
+                    {isOwner && m.id !== profile?.id && m.role !== 'owner' && (
+                      <button
+                        type="button"
+                        onClick={() => openPermissions(m)}
+                        title={t('team.editPermissions')}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl text-white/40 hover:text-brand-orange hover:bg-brand-orange/10 transition"
+                      >
+                        <Lock className="h-4 w-4" />
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </GlassCard>
         )}
@@ -419,6 +460,20 @@ export default function Team() {
                 ))}
               </div>
             </div>
+            <div>
+              <label className="block text-xs text-white/50 mb-1">
+                <Clock className="inline h-3 w-3 mr-1" />
+                {t('team.memberExpiry')}
+              </label>
+              <input
+                type="date"
+                value={createForm.expiresAt}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setCreateForm((f) => ({ ...f, expiresAt: e.target.value }))}
+                className="w-full rounded-xl px-4 py-3 text-sm text-white/80 bg-white/5 border border-white/12 focus:outline-none focus:border-brand-orange/50"
+              />
+              <p className="text-[11px] text-white/30 mt-1">{t('team.memberExpiryHint')}</p>
+            </div>
           </div>
 
           {/* Permissions */}
@@ -505,6 +560,28 @@ export default function Team() {
                   )
                 })}
               </div>
+            </div>
+
+            {/* Expiry date */}
+            <div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> {t('team.memberExpiry')}
+              </p>
+              <input
+                type="date"
+                value={permExpiry}
+                onChange={(e) => setPermExpiry(e.target.value)}
+                className="w-full rounded-xl px-4 py-3 text-sm text-white/80 bg-white/5 border border-white/12 focus:outline-none focus:border-brand-orange/50"
+              />
+              {permExpiry && (
+                <button
+                  type="button"
+                  onClick={() => setPermExpiry('')}
+                  className="mt-1 text-xs text-white/40 hover:text-white/70"
+                >
+                  {t('team.removeExpiry')}
+                </button>
+              )}
             </div>
 
             <div className="flex gap-2">

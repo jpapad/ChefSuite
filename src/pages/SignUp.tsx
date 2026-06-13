@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Flame, Lock, Mail, User as UserIcon } from 'lucide-react'
+import { Building2, Lock, Mail, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Input } from '../components/ui/Input'
@@ -28,7 +28,7 @@ export default function SignUp() {
     try {
       const { hasSession } = await signUp(email, password, fullName)
       if (hasSession) {
-        navigate('/', { replace: true })
+        navigate('/onboarding', { replace: true })
       } else {
         setInfo(t('signup.accountCreated'))
         setTimeout(() => navigate('/login', { replace: true }), 1500)
@@ -48,14 +48,18 @@ export default function SignUp() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-chef-dark p-6">
       <GlassCard variant="strong" className="w-full max-w-md">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-orange">
-            <Flame className="h-7 w-7 text-white" />
+            <Building2 className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">{t('signup.title')}</h1>
-            <p className="text-white/60 text-sm">{t('signup.subtitle')}</p>
+            <h1 className="text-2xl font-semibold">{t('signup.ownerTitle')}</h1>
+            <p className="text-white/60 text-sm">{t('signup.ownerSubtitle')}</p>
           </div>
+        </div>
+
+        <div className="mb-5 px-3 py-2.5 rounded-xl bg-brand-orange/10 border border-brand-orange/20 text-xs text-white/70">
+          {t('signup.ownerNote')}
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">

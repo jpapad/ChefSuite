@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2, ChevronDown, ChevronUp, FileSearch } from 'lucide-react'
 import { translateMenuItems } from '../lib/gemini'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
 import { AIMenuGeneratorDrawer } from '../components/menus/AIMenuGeneratorDrawer'
+import { MenuPdfImportDrawer } from '../components/menus/MenuPdfImportDrawer'
 import { useMenus } from '../hooks/useMenus'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -66,6 +67,7 @@ export default function Menus() {
   const { menus, loading, create, update, remove, duplicate } = useMenus()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [aiGeneratorOpen, setAiGeneratorOpen] = useState(false)
+  const [pdfImportOpen, setPdfImportOpen] = useState(false)
   const [editing, setEditing] = useState<Menu | null>(null)
   const [form, setForm] = useState<MenuFormValues>(EMPTY)
   const [saving, setSaving] = useState(false)
@@ -268,6 +270,9 @@ export default function Menus() {
               QR Μενού Ημέρας
             </Button>
           )}
+          <Button variant="secondary" leftIcon={<FileSearch className="h-4 w-4" />} onClick={() => setPdfImportOpen(true)}>
+            {t('menuPdf.buttonLabel')}
+          </Button>
           <Button variant="secondary" leftIcon={<Sparkles className="h-4 w-4" />} onClick={() => setAiGeneratorOpen(true)}>
             {t('menus.aiGenerator.button')}
           </Button>
@@ -690,6 +695,11 @@ export default function Menus() {
         open={aiGeneratorOpen}
         onClose={() => setAiGeneratorOpen(false)}
         onCreated={() => {}}
+      />
+
+      <MenuPdfImportDrawer
+        open={pdfImportOpen}
+        onClose={() => setPdfImportOpen(false)}
       />
 
       {/* ── Today's Menu QR Drawer ── */}

@@ -279,28 +279,22 @@ export default function Login() {
               )}
             </button>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 pt-1">
-              <span className="h-px flex-1 bg-neutral-200" />
-              <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">{t('common.or')}</span>
-              <span className="h-px flex-1 bg-neutral-200" />
-            </div>
-
-            {/* Team links */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Owner sign-up path */}
+            <div className="pt-1">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="h-px flex-1 bg-neutral-200" />
+                <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">{t('login.newHere')}</span>
+                <span className="h-px flex-1 bg-neutral-200" />
+              </div>
               <Link
                 to="/signup"
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white/50 hover:bg-white hover:border-neutral-400 transition py-2.5 text-xs font-semibold text-neutral-700"
+                className="flex items-center justify-center gap-2 w-full rounded-xl border border-amber-300/60 bg-amber-50/60 hover:bg-amber-50 hover:border-amber-400 transition py-2.5 text-xs font-semibold text-amber-800"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                {t('onboarding.createTeam')}
-              </Link>
-              <Link
-                to="/onboarding"
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white/50 hover:bg-white hover:border-neutral-400 transition py-2.5 text-xs font-semibold text-neutral-700"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                {t('onboarding.joinTeam')}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                {t('login.createNewTeam')}
               </Link>
             </div>
           </form>

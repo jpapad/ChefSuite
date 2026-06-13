@@ -17,6 +17,7 @@ export interface MyTeam {
   id: string
   name: string
   role: UserRole
+  expires_at: string | null
 }
 
 interface AuthContextValue {
@@ -24,6 +25,7 @@ interface AuthContextValue {
   user: AuthUser | null
   profile: Profile | null
   loading: boolean
+  accountExpired: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (
     email: string,
@@ -55,7 +57,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
   const { data } = await supabase
     .from('team_memberships')
-    .select('team_id, role, teams(id, name)')
+    .select('team_id, role, expires_at, teams(id, name)')
     .eq('user_id', userId)
 
   if (!data) return []
@@ -65,6 +67,7 @@ async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
       id: row.team_id as string,
       name: team?.name ?? '—',
       role: row.role as UserRole,
+      expires_at: (row.expires_at as string | null) ?? null,
     }
   })
 }
@@ -131,12 +134,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Derived: is the current team membership expired?
+  const accountExpired = useMemo<boolean>(() => {
+    if (!profile?.team_id || myTeams.length === 0) return false
+    const membership = myTeams.find((t) => t.id === profile.team_id)
+    if (!membership?.expires_at) return false
+    return new Date(membership.expires_at) < new Date()
+  }, [profile, myTeams])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       user: session?.user ?? null,
       profile,
       loading,
+      accountExpired,
       myTeams,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({
@@ -177,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRawProfile((prev) => (prev ? { ...prev, active_team_id: teamId } : prev))
       },
     }),
-    [session, profile, rawProfile, loading, myTeams],
+    [session, profile, rawProfile, loading, accountExpired, myTeams],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

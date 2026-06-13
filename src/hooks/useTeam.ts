@@ -8,10 +8,17 @@ import type {
   UserRole,
 } from '../types/database.types'
 
+export interface MemberExpiry {
+  userId: string
+  expiresAt: string | null
+  membershipId: string
+}
+
 interface State {
   team: Team | null
   members: Profile[]
   invites: TeamInvite[]
+  memberExpiries: MemberExpiry[]
   loading: boolean
   error: string | null
 }
@@ -23,6 +30,7 @@ export function useTeam() {
     team: null,
     members: [],
     invites: [],
+    memberExpiries: [],
     loading: true,
     error: null,
   })
@@ -33,6 +41,7 @@ export function useTeam() {
         team: null,
         members: [],
         invites: [],
+        memberExpiries: [],
         loading: false,
         error: null,
       })
@@ -40,13 +49,17 @@ export function useTeam() {
     }
     setState((s) => ({ ...s, loading: true, error: null }))
 
-    const [teamRes, membersRes, invitesRes] = await Promise.all([
+    const [teamRes, membersRes, membershipsRes, invitesRes] = await Promise.all([
       supabase.from('teams').select('*').eq('id', teamId).maybeSingle(),
       supabase
         .from('profiles')
         .select('*')
         .eq('team_id', teamId)
         .order('full_name', { ascending: true }),
+      supabase
+        .from('team_memberships')
+        .select('id, user_id, expires_at')
+        .eq('team_id', teamId),
       supabase
         .from('team_invites')
         .select('*')
@@ -61,10 +74,17 @@ export function useTeam() {
       invitesRes.error?.message ??
       null
 
+    const expiries: MemberExpiry[] = (membershipsRes.data ?? []).map((row) => ({
+      userId: row.user_id as string,
+      expiresAt: (row.expires_at as string | null) ?? null,
+      membershipId: row.id as string,
+    }))
+
     setState({
       team: (teamRes.data as Team | null) ?? null,
       members: (membersRes.data ?? []) as Profile[],
       invites: (invitesRes.data ?? []) as TeamInvite[],
+      memberExpiries: expiries,
       loading: false,
       error: firstError,
     })
@@ -210,5 +230,22 @@ export function useTeam() {
     }))
   }, [])
 
-  return { ...state, reload: load, createInvite, revokeInvite }
+  const updateMemberExpiry = useCallback(
+    async (membershipId: string, expiresAt: string | null) => {
+      const { error } = await supabase
+        .from('team_memberships')
+        .update({ expires_at: expiresAt })
+        .eq('id', membershipId)
+      if (error) throw error
+      setState((s) => ({
+        ...s,
+        memberExpiries: s.memberExpiries.map((e) =>
+          e.membershipId === membershipId ? { ...e, expiresAt } : e,
+        ),
+      }))
+    },
+    [],
+  )
+
+  return { ...state, reload: load, createInvite, revokeInvite, updateMemberExpiry }
 }
