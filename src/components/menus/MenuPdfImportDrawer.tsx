@@ -250,7 +250,7 @@ export function MenuPdfImportDrawer({ open, onClose }: Props) {
                 </p>
                 {dishes
                   .filter((d) => (d.category ?? 'Γενικά') === cat)
-                  .map((dish, globalIdx) => {
+                  .map((dish) => {
                     const idx = dishes.indexOf(dish)
                     const isOpen = expandedIdx === idx
                     return (
