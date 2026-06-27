@@ -236,6 +236,7 @@ export default function MenuDetail() {
           price: recipe.selling_price ?? null,
           available: true,
           recipe_id: recipe.id,
+          portions: 1,
           tags: [],
         })
       }
@@ -557,6 +558,7 @@ export default function MenuDetail() {
           price: recipe.selling_price ?? null,
           available: true,
           recipe_id: recipe.id,
+          portions: 1,
           tags: [],
         })
       }

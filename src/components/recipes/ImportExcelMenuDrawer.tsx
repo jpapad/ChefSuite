@@ -117,6 +117,7 @@ function buildSyntheticMenu(rows: ExcelMenuRow[]): { menu: MenuWithSections; rec
         descriptions_extra: null,
         price: row.price,
         available: true,
+        portions: 1,
         tags: [],
         sort_order: sortOrder++ + ri,
         created_at: now,
