@@ -47,19 +47,21 @@ const QR_BORDER: Record<QrStatus, string> = {
 }
 
 interface LabelCardProps {
-  item:      MenuItem
-  menu:      MenuWithSections
-  settings:  LabelSettings
-  qrDataUrl: string | undefined
-  shortCode: string | undefined
-  status:    QrStatus | undefined
-  selected:  boolean
-  onToggle:  () => void
+  item:           MenuItem
+  menu:           MenuWithSections
+  settings:       LabelSettings
+  qrDataUrl:      string | undefined
+  shortCode:      string | undefined
+  status:         QrStatus | undefined
+  selected:       boolean
+  copies:         number
+  onToggle:       () => void
+  onCopiesChange: (n: number) => void
 }
 
 // Quiet Luxury · 160×160 square · brand (absolute TL) + code (absolute TR)
 // + bilingual titles (centre) + QR-in-frame + SCAN ME badge (bottom)
-function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, selected, onToggle }: LabelCardProps) {
+function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, selected, copies, onToggle, onCopiesChange }: LabelCardProps) {
   const border = status ? QR_BORDER[status] : 'border-gray-200'
   const showQr = settings.showQr && !!qrDataUrl
 
@@ -84,6 +86,29 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
       )}>
         {selected && <Check className="h-1.5 w-1.5 text-white" />}
       </div>
+
+      {/* ── Copies stepper (UI only, shown when selected) ── */}
+      {selected && (
+        <div
+          className="absolute bottom-1 right-1 z-20 flex items-center gap-0.5 print:hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => onCopiesChange(Math.max(1, copies - 1))}
+            disabled={copies <= 1}
+            className="h-4 w-4 rounded flex items-center justify-center bg-black/60 text-white/80 hover:bg-black/80 disabled:opacity-30 text-[10px] leading-none"
+          >−</button>
+          <span className="min-w-[14px] text-center text-[9px] font-bold text-white bg-brand-orange rounded px-0.5 leading-4">
+            ×{copies}
+          </span>
+          <button
+            type="button"
+            onClick={() => onCopiesChange(copies + 1)}
+            className="h-4 w-4 rounded flex items-center justify-center bg-black/60 text-white/80 hover:bg-black/80 text-[10px] leading-none"
+          >+</button>
+        </div>
+      )}
 
       {/* ── Absolute top-left: logo or brand name ── */}
       <div className="absolute top-3.5 left-3.5 flex flex-col text-left max-w-[80px]">
@@ -237,6 +262,10 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
   const [settings, setSettings] = useState<LabelSettings>(() => DEFAULT_SETTINGS(menu.logo_url))
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(allItems.map((fi) => fi.item.id)))
+  const [copiesMap, setCopiesMap] = useState<Map<string, number>>(new Map())
+  const setCopies = useCallback((id: string, n: number) => {
+    setCopiesMap(prev => new Map(prev).set(id, n))
+  }, [])
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>(() => loadPresets())
   const [presetName, setPresetName] = useState('')
   const [qrMap, setQrMap] = useState<Map<string, string>>(new Map())
@@ -565,8 +594,11 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
   const handlePrint = useCallback(() => {
     if (selectedItems.length === 0) return
-    printLabels(selectedItems, menu, recipes, settings, settings.showQr ? effectiveQrMap : undefined, settings.showQr ? shortCodeMap : undefined)
-  }, [selectedItems, menu, recipes, settings, effectiveQrMap, shortCodeMap])
+    const itemsForPrint = selectedItems.flatMap(item =>
+      Array(copiesMap.get(item.id) ?? 1).fill(item)
+    )
+    printLabels(itemsForPrint, menu, recipes, settings, settings.showQr ? effectiveQrMap : undefined, settings.showQr ? shortCodeMap : undefined)
+  }, [selectedItems, copiesMap, menu, recipes, settings, effectiveQrMap, shortCodeMap])
 
   // ── QR Validation stats ───────────────────────────────────────────────────
 
@@ -1437,7 +1469,9 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                     shortCode={shortCodeMap.get(item.id)}
                     status={qrValidation.get(item.id)}
                     selected={selectedIds.has(item.id)}
+                    copies={copiesMap.get(item.id) ?? 1}
                     onToggle={() => toggleItem(item.id)}
+                    onCopiesChange={(n) => setCopies(item.id, n)}
                   />
                 ))}
               </div>
@@ -1448,18 +1482,23 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
 
             {/* ── Print ── */}
             <div className="flex gap-2 pt-2">
-              <Button type="button" leftIcon={<Printer className="h-4 w-4" />}
-                onClick={handlePrint}
-                disabled={selectedItems.length === 0 || hasFailedQr || (validationStats?.pending ?? 0) > 0}
-                className="flex-1">
-                {selectedItems.length === 0
-                  ? t('menus.labels.noItems')
-                  : hasFailedQr
-                    ? '🔒 QR αποτυχία — κλειδωμένο'
-                    : (validationStats?.pending ?? 0) > 0
-                      ? 'Έλεγχος QR…'
-                      : t('menus.labels.printButton', { count: selectedItems.length })}
-              </Button>
+              {(() => {
+                const totalLabels = selectedItems.reduce((sum, item) => sum + (copiesMap.get(item.id) ?? 1), 0)
+                return (
+                  <Button type="button" leftIcon={<Printer className="h-4 w-4" />}
+                    onClick={handlePrint}
+                    disabled={selectedItems.length === 0 || hasFailedQr || (validationStats?.pending ?? 0) > 0}
+                    className="flex-1">
+                    {selectedItems.length === 0
+                      ? t('menus.labels.noItems')
+                      : hasFailedQr
+                        ? '🔒 QR αποτυχία — κλειδωμένο'
+                        : (validationStats?.pending ?? 0) > 0
+                          ? 'Έλεγχος QR…'
+                          : t('menus.labels.printButton', { count: totalLabels })}
+                  </Button>
+                )
+              })()}
               <Button type="button" variant="secondary" onClick={onClose}>
                 {t('common.cancel')}
               </Button>
