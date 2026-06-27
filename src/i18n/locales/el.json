@@ -1004,6 +1004,8 @@
       "itemDescriptionEl": "Περιγραφή στα Ελληνικά",
       "itemDescriptionElPlaceholder": "Προαιρετική σύντομη περιγραφή…",
       "itemPrice": "Τιμή (€)",
+      "portions": "Μερίδες",
+      "portionsHint": "×{{n}} — το πιάτο σερβίρεται σε {{n}} μερίδες",
       "available": "Διαθέσιμο",
       "unavailable": "Μη διαθέσιμο",
       "linkRecipe": "Σύνδεση με συνταγή (προαιρετικό)",

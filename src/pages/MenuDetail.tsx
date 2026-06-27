@@ -57,13 +57,14 @@ interface ItemFormValues {
   price: string
   available: boolean
   recipe_id: string
+  portions: number
   tags: MenuItemTag[]
 }
 
 const EMPTY_ITEM: ItemFormValues = {
   name: '', description: '', name_el: '', description_el: '',
   name_bg: '', description_bg: '',
-  price: '', available: true, recipe_id: '', tags: [],
+  price: '', available: true, recipe_id: '', portions: 1, tags: [],
 }
 
 export default function MenuDetail() {
@@ -421,6 +422,7 @@ export default function MenuDetail() {
       price: item.price != null ? String(item.price) : '',
       available: item.available,
       recipe_id: item.recipe_id ?? '',
+      portions: item.portions ?? 1,
       tags: item.tags ?? [],
     })
     setRecipePickerSearch('')
@@ -453,6 +455,7 @@ export default function MenuDetail() {
         price: itemForm.price ? parseFloat(itemForm.price) : null,
         available: itemForm.available,
         recipe_id: itemForm.recipe_id || null,
+        portions: itemForm.portions,
         tags: itemForm.tags,
       }
       if (editingItem) await updateItem(editingItem.id, itemSectionId, payload)
@@ -767,6 +770,11 @@ export default function MenuDetail() {
                         <span className={cn('font-medium text-sm', !item.available && 'line-through text-white/40')}>
                           {item.name}
                         </span>
+                        {(item.portions ?? 1) > 1 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange font-semibold">
+                            ×{item.portions}
+                          </span>
+                        )}
                         {!item.available && (
                           <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/10 text-white/40">
                             {t('menus.detail.unavailable')}
@@ -1306,6 +1314,28 @@ export default function MenuDetail() {
               label={t('menus.detail.itemPrice')} placeholder="e.g. 18.50"
               value={itemForm.price} onChange={(e) => setItemForm((f) => ({ ...f, price: e.target.value }))} />
           )}
+
+          {/* Portions stepper */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-white/70">{t('menus.detail.portions')}</label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setItemForm((f) => ({ ...f, portions: Math.max(1, f.portions - 1) }))}
+                disabled={itemForm.portions <= 1}
+                className="h-9 w-9 rounded-xl border border-glass-border flex items-center justify-center text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-30"
+              >−</button>
+              <span className="w-8 text-center font-semibold text-lg tabular-nums">{itemForm.portions}</span>
+              <button
+                type="button"
+                onClick={() => setItemForm((f) => ({ ...f, portions: f.portions + 1 }))}
+                className="h-9 w-9 rounded-xl border border-glass-border flex items-center justify-center text-white/60 hover:text-white hover:bg-white/8 transition"
+              >+</button>
+              {itemForm.portions > 1 && (
+                <span className="text-xs text-white/40">{t('menus.detail.portionsHint', { n: itemForm.portions })}</span>
+              )}
+            </div>
+          </div>
 
           {/* Tags */}
           <div className="space-y-2">

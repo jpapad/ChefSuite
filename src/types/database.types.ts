@@ -647,13 +647,14 @@ export interface MenuItem {
   descriptions_extra: Record<string, string | null> | null
   price: number | null
   available: boolean
+  portions: number
   tags: MenuItemTag[]
   sort_order: number
   created_at: ISODateString
 }
 
-export type MenuItemInsert = Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'tags'> & { section_id: UUID; name_ro?: string | null; name_sl?: string | null; name_uk?: string | null; name_tr?: string | null; name_sr?: string | null; name_sk?: string | null; name_pl?: string | null; name_cs?: string | null; name_md?: string | null; descriptions_extra?: Record<string, string | null> | null }
-export type MenuItemUpdate = Partial<Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'name_ro' | 'name_sl' | 'name_uk' | 'name_tr' | 'name_sr' | 'name_sk' | 'name_pl' | 'name_cs' | 'name_md' | 'descriptions_extra' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'tags'>>
+export type MenuItemInsert = Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'portions' | 'tags'> & { section_id: UUID; name_ro?: string | null; name_sl?: string | null; name_uk?: string | null; name_tr?: string | null; name_sr?: string | null; name_sk?: string | null; name_pl?: string | null; name_cs?: string | null; name_md?: string | null; descriptions_extra?: Record<string, string | null> | null }
+export type MenuItemUpdate = Partial<Pick<MenuItem, 'name' | 'description' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'name_ro' | 'name_sl' | 'name_uk' | 'name_tr' | 'name_sr' | 'name_sk' | 'name_pl' | 'name_cs' | 'name_md' | 'descriptions_extra' | 'price' | 'available' | 'sort_order' | 'recipe_id' | 'portions' | 'tags'>>
 
 export interface MenuSectionWithItems extends MenuSection {
   items: MenuItem[]

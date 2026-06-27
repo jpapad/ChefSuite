@@ -1004,6 +1004,8 @@
       "itemDescriptionEl": "Description in Greek",
       "itemDescriptionElPlaceholder": "Προαιρετική σύντομη περιγραφή…",
       "itemPrice": "Price (€)",
+      "portions": "Portions",
+      "portionsHint": "×{{n}} — dish is served as {{n}} portions",
       "available": "Available",
       "unavailable": "Unavailable",
       "linkRecipe": "Link to recipe (optional)",
