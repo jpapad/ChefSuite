@@ -866,6 +866,15 @@ export default function MenuDetail() {
                         className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition">
                         {item.available ? <ToggleRight className="h-4 w-4 text-emerald-400" /> : <ToggleLeft className="h-4 w-4" />}
                       </button>
+                      {item.recipe_id && (
+                        <button type="button"
+                          onClick={() => { const r = linkedRecipe(item.recipe_id ?? null); if (r) { setEditingRecipeInline(r); setRecipeEditOpen(true) } }}
+                          aria-label="Επεξεργασία συνταγής"
+                          title="Επεξεργασία συνταγής"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-sky-400/60 hover:text-sky-300 hover:bg-sky-500/10 transition">
+                          <BookOpen className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       <button type="button" onClick={() => openEditItem(item, section.id)} aria-label={t('menus.detail.editItem')}
                         className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition">
                         <Pencil className="h-3.5 w-3.5" />
