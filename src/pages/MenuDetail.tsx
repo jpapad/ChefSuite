@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
   Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
-  Link2, Loader2, Search, AlertCircle, Download, BookOpen, ArrowRightLeft, Wand2,
+  Link2, Loader2, Search, AlertCircle, Download, BookOpen, ArrowRightLeft, Wand2, ExternalLink,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -21,7 +21,9 @@ import { PrepFromMenuDrawer, type GeneratedPrepItem } from '../components/prep/P
 import { useMenuDetail, useMenus } from '../hooks/useMenus'
 import { useMenuScans } from '../hooks/useMenuScans'
 import { useRecipes } from '../hooks/useRecipes'
+import { useRecipeIngredients } from '../hooks/useRecipeIngredients'
 import { useWorkstations } from '../hooks/useWorkstations'
+import { RecipeForm, type RecipeFormValues } from '../components/recipes/RecipeForm'
 import { useTeam } from '../hooks/useTeam'
 import { useAuth } from '../contexts/AuthContext'
 import { useInventory } from '../contexts/InventoryContext'
@@ -75,7 +77,8 @@ export default function MenuDetail() {
     addSection, updateSection, removeSection, moveSectionUp, moveSectionDown,
     addItem, updateItem, removeItem, moveItemUp, moveItemDown,
   } = useMenuDetail(id ?? null)
-  const { recipes, loading: recipesLoading } = useRecipes()
+  const { recipes, loading: recipesLoading, update: updateRecipe } = useRecipes()
+  const { getFor: getIngredients, save: saveIngredients } = useRecipeIngredients()
   const { menus: allMenus } = useMenus()
   const { items: inventory } = useInventory()
   const { workstations } = useWorkstations()
@@ -93,6 +96,11 @@ export default function MenuDetail() {
   const [itemSectionId, setItemSectionId] = useState<string>('')
   const [itemForm, setItemForm] = useState<ItemFormValues>(EMPTY_ITEM)
   const [savingItem, setSavingItem] = useState(false)
+
+  // ── Recipe quick-edit (stacked over item drawer) ───────────────────────────
+  const [recipeEditOpen, setRecipeEditOpen] = useState(false)
+  const [editingRecipeInline, setEditingRecipeInline] = useState<(typeof recipes)[0] | null>(null)
+  const [savingRecipeInline, setSavingRecipeInline] = useState(false)
 
   // ── Link recipes (batch) ───────────────────────────────────────────────────
   const [linkRecipesOpen, setLinkRecipesOpen] = useState(false)
@@ -441,6 +449,35 @@ export default function MenuDetail() {
       price: f.price || (recipe.selling_price != null ? String(recipe.selling_price) : ''),
     }))
   }
+  async function onSubmitRecipeInline(values: RecipeFormValues) {
+    if (!editingRecipeInline) return
+    setSavingRecipeInline(true)
+    try {
+      await updateRecipe(editingRecipeInline.id, {
+        title: values.title,
+        description: values.description,
+        instructions: values.instructions,
+        cost_per_portion: values.cost_per_portion,
+        selling_price: values.selling_price,
+        category: values.category,
+        difficulty: values.difficulty,
+        prep_time: values.prep_time,
+        cook_time: values.cook_time,
+        servings: values.servings,
+        allergens: values.allergens,
+        image_url: values.image_url,
+        name_el: values.name_el,
+        description_el: values.description_el,
+        name_bg: values.name_bg,
+        description_bg: values.description_bg,
+      })
+      await saveIngredients(editingRecipeInline.id, values.ingredients)
+      setRecipeEditOpen(false)
+    } finally {
+      setSavingRecipeInline(false)
+    }
+  }
+
   async function onSubmitItem(e: React.FormEvent) {
     e.preventDefault()
     if (!itemForm.name.trim()) return
@@ -1248,6 +1285,17 @@ export default function MenuDetail() {
                           <div className="text-xs text-white/30 truncate">{r.allergens.slice(0, 4).join(', ')}</div>
                         )}
                       </div>
+                      {sel && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setEditingRecipeInline(r); setRecipeEditOpen(true) }}
+                          className="shrink-0 flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-white/50 hover:text-white hover:bg-white/10 transition"
+                          title="Επεξεργασία συνταγής"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Επεξ.
+                        </button>
+                      )}
                     </button>
                   )
                 })
@@ -1872,6 +1920,31 @@ export default function MenuDetail() {
           </div>
         </div>
       )}
+      {/* ── Recipe quick-edit drawer (stacked) ── */}
+      <Drawer
+        open={recipeEditOpen}
+        onClose={() => { if (!savingRecipeInline) setRecipeEditOpen(false) }}
+        title={
+          <span className="flex items-center gap-2">
+            <Pencil className="h-4 w-4 text-brand-orange" />
+            {editingRecipeInline?.title ?? 'Επεξεργασία Συνταγής'}
+          </span>
+        }
+      >
+        {editingRecipeInline && (
+          <RecipeForm
+            initial={editingRecipeInline}
+            initialIngredients={getIngredients(editingRecipeInline.id).map((i) => ({
+              inventory_item_id: i.inventory_item_id,
+              quantity: i.quantity,
+            }))}
+            inventory={inventory}
+            submitting={savingRecipeInline}
+            onSubmit={(values) => void onSubmitRecipeInline(values)}
+            onCancel={() => setRecipeEditOpen(false)}
+          />
+        )}
+      </Drawer>
     </div>
   )
 }
