@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
   Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
-  Link2, Loader2, Search, AlertCircle, Download, BookOpen, ArrowRightLeft, Wand2, ExternalLink,
+  Link2, Loader2, Search, AlertCircle, Download, BookOpen, ArrowRightLeft, Wand2,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
