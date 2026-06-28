@@ -1264,12 +1264,14 @@ export default function MenuDetail() {
                 ) : filtered.map((r) => {
                   const sel = r.id === itemForm.recipe_id
                   return (
-                    <button
+                    <div
                       key={r.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onRecipeSelect(r.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onRecipeSelect(r.id) }}
                       className={cn(
-                        'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition',
+                        'w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition cursor-pointer',
                         sel ? 'border-brand-orange/40 bg-brand-orange/8' : 'border-glass-border hover:bg-white/5',
                       )}
                     >
@@ -1296,7 +1298,7 @@ export default function MenuDetail() {
                           Επεξ.
                         </button>
                       )}
-                    </button>
+                    </div>
                   )
                 })
               })()}
