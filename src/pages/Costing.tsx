@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calculator, Search, Check, TrendingUp, Package, AlertTriangle } from 'lucide-react'
+import { Calculator, Search, Check, TrendingUp, Package, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
 import { ErrorState } from '../components/ui/ErrorState'
+import { costStatus } from '../lib/foodCost'
+import { useTeamSettings } from '../hooks/useTeamSettings'
 
 type Tab = 'ingredients' | 'recipes'
 
@@ -13,6 +15,12 @@ interface CostItem {
   name: string
   unit: string
   cost_per_unit: number | null
+}
+
+interface AffectedRecipe {
+  recipeId: string
+  title: string
+  qty: number
 }
 
 interface RecipeCostRow {
@@ -36,6 +44,7 @@ export default function Costing() {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const teamId = profile?.team_id
+  const { targetFoodCostPct: target } = useTeamSettings()
 
   const [tab, setTab] = useState<Tab>('ingredients')
   const [ingredients, setIngredients] = useState<CostItem[]>([])
@@ -45,7 +54,10 @@ export default function Costing() {
   const [search, setSearch] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [editVal, setEditVal] = useState('')
+  const [editOriginalVal, setEditOriginalVal] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [affectedRecipes, setAffectedRecipes] = useState<AffectedRecipe[]>([])
+  const [rippleExpanded, setRippleExpanded] = useState(false)
 
   function load() {
     if (!teamId) return
@@ -99,12 +111,30 @@ export default function Costing() {
     await supabase.from('inventory').update({ cost_per_unit: val }).eq('id', id)
     setIngredients((prev) => prev.map((i) => i.id === id ? { ...i, cost_per_unit: val } : i))
     setEditId(null)
+    setAffectedRecipes([])
+    setRippleExpanded(false)
     setSaving(false)
   }
 
   function startEdit(item: CostItem) {
     setEditId(item.id)
     setEditVal(item.cost_per_unit != null ? String(item.cost_per_unit) : '')
+    setEditOriginalVal(item.cost_per_unit ?? 0)
+    setRippleExpanded(false)
+    setAffectedRecipes([])
+    void supabase
+      .from('recipe_ingredients')
+      .select('quantity, recipe:recipe_id(id, title)')
+      .eq('inventory_item_id', item.id)
+      .then(({ data }) => {
+        type Row = { quantity: number; recipe: { id: string; title: string } | null }
+        const rows = (data ?? []) as unknown as Row[]
+        setAffectedRecipes(
+          rows
+            .filter((r) => r.recipe != null)
+            .map((r) => ({ recipeId: r.recipe!.id, title: r.recipe!.title, qty: r.quantity })),
+        )
+      })
   }
 
   return (
@@ -190,6 +220,7 @@ export default function Costing() {
                 </thead>
                 <tbody>
                   {filteredIngredients.map((item) => (
+                    <>
                     <tr key={item.id} className="border-b border-white/5 hover:bg-white/3 transition-colors group">
                       <td className="px-4 py-2.5 font-medium text-white/90">{item.name}</td>
                       <td className="px-4 py-2.5 text-white/40 text-xs">{item.unit}</td>
@@ -233,6 +264,43 @@ export default function Costing() {
                         )}
                       </td>
                     </tr>
+                    {editId === item.id && affectedRecipes.length > 0 && (() => {
+                      const newCost = parseFloat(editVal)
+                      const delta = isNaN(newCost) ? 0 : newCost - editOriginalVal
+                      return (
+                        <tr key={`${item.id}-ripple`} className="border-b border-brand-orange/10 bg-brand-orange/5">
+                          <td colSpan={3} className="px-4 py-2">
+                            <button
+                              type="button"
+                              onClick={() => setRippleExpanded((v) => !v)}
+                              className="flex items-center gap-1.5 text-xs text-brand-orange/70 hover:text-brand-orange transition"
+                            >
+                              {rippleExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                              Χρησιμοποιείται σε {affectedRecipes.length} συνταγ{affectedRecipes.length === 1 ? 'ή' : 'ές'} — κλικ για λεπτομέρειες
+                            </button>
+                            {rippleExpanded && (
+                              <ul className="mt-1.5 space-y-0.5">
+                                {affectedRecipes.map((r) => {
+                                  const d = r.qty * delta
+                                  return (
+                                    <li key={r.recipeId} className="flex justify-between text-xs text-white/60">
+                                      <span>{r.title}</span>
+                                      <span className={cn(
+                                        'font-medium tabular-nums',
+                                        d > 0 ? 'text-red-400' : d < 0 ? 'text-emerald-400' : 'text-white/40',
+                                      )}>
+                                        {d >= 0 ? '+' : ''}{d.toFixed(3)}€/μερίδα
+                                      </span>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })()}
+                    </>
                   ))}
                 </tbody>
               </table>
@@ -264,7 +332,8 @@ export default function Costing() {
                     const margin = hasCost && hasPrice
                       ? recipe.selling_price! - recipe.cost_per_portion!
                       : null
-                    const isHighCost = foodCostPct != null && foodCostPct > 35
+                    const status = costStatus(foodCostPct, target)
+                    const isHighCost = status === 'bad'
                     const isLowMargin = margin != null && margin < 5
 
                     return (
@@ -296,7 +365,7 @@ export default function Costing() {
                           {foodCostPct != null ? (
                             <span className={cn(
                               'font-semibold',
-                              foodCostPct > 35 ? 'text-red-400' : foodCostPct > 28 ? 'text-amber-400' : 'text-green-400',
+                              status === 'bad' ? 'text-red-400' : status === 'warn' ? 'text-amber-400' : 'text-green-400',
                             )}>
                               {foodCostPct.toFixed(1)}%
                             </span>

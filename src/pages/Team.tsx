@@ -1,5 +1,5 @@
-import { type FormEvent, useState } from 'react'
-import { UserPlus, Copy, Check, Trash2, Shield, Pencil, Save, Lock, Languages, Clock, AlertTriangle } from 'lucide-react'
+import { type FormEvent, useEffect, useState } from 'react'
+import { UserPlus, Copy, Check, Trash2, Shield, Pencil, Save, Lock, Languages, Clock, AlertTriangle, Percent } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
@@ -8,6 +8,7 @@ import { Drawer } from '../components/ui/Drawer'
 import { InviteForm } from '../components/team/InviteForm'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeam } from '../hooks/useTeam'
+import { useTeamSettings } from '../hooks/useTeamSettings'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/cn'
 import { ALL_MODULES, MODULE_GROUPS, MODULE_LABEL_KEY, type AppModule } from '../hooks/usePermissions'
@@ -59,6 +60,27 @@ export default function Team() {
   const [teamName, setTeamName] = useState(team?.name ?? '')
   const [savingTeam, setSavingTeam] = useState(false)
   const [teamNameError, setTeamNameError] = useState<string | null>(null)
+
+  // Food cost target
+  const { targetFoodCostPct, loading: loadingTarget, save: saveTarget } = useTeamSettings()
+  const [targetInput, setTargetInput] = useState(String(targetFoodCostPct))
+  const [savingTarget, setSavingTarget] = useState(false)
+  const [targetSaved, setTargetSaved] = useState(false)
+  useEffect(() => { setTargetInput(String(targetFoodCostPct)) }, [targetFoodCostPct])
+
+  async function onSaveTarget(e: FormEvent) {
+    e.preventDefault()
+    const pct = parseFloat(targetInput)
+    if (Number.isNaN(pct) || pct <= 0) return
+    setSavingTarget(true)
+    try {
+      await saveTarget(pct)
+      setTargetSaved(true)
+      setTimeout(() => setTargetSaved(false), 2000)
+    } finally {
+      setSavingTarget(false)
+    }
+  }
 
   // Create member drawer state
   const [createOpen, setCreateOpen] = useState(false)
@@ -264,6 +286,34 @@ export default function Team() {
       {error && (
         <GlassCard className="border border-red-500/40 text-red-300">
           {error}
+        </GlassCard>
+      )}
+
+      {isOwner && (
+        <GlassCard className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Percent className="h-4 w-4 text-brand-orange" />
+            <h2 className="text-base font-semibold">Στόχος Food Cost %</h2>
+          </div>
+          <p className="text-sm text-white/50">
+            Ορίζει το επιθυμητό ποσοστό κόστους τροφίμων. Χρησιμοποιείται για τα χρώματα κατάστασης στο Costing και την ανάλυση κόστους μενού, καθώς και για προτεινόμενες τιμές πώλησης.
+          </p>
+          <form onSubmit={onSaveTarget} className="flex items-center gap-2">
+            <div className="relative w-32">
+              <input
+                type="number" step="0.5" min="1" max="90"
+                value={targetInput}
+                onChange={(e) => setTargetInput(e.target.value)}
+                disabled={loadingTarget}
+                className="w-full rounded-xl border border-glass-border bg-white/5 px-3 py-2 pr-7 text-sm text-white focus:outline-none focus:border-brand-orange/50"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-white/40">%</span>
+            </div>
+            <Button type="submit" size="md" leftIcon={<Save className="h-4 w-4" />} disabled={savingTarget || loadingTarget}>
+              {savingTarget ? t('team.savingTeam') : t('common.save')}
+            </Button>
+            {targetSaved && <Check className="h-4 w-4 text-emerald-400" />}
+          </form>
         </GlassCard>
       )}
 

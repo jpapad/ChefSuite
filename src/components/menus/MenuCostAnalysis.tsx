@@ -1,16 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrendingUp, AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 import { Drawer } from '../ui/Drawer'
 import { cn } from '../../lib/cn'
+import { costStatus, computeAutoCosts } from '../../lib/foodCost'
+import { useTeamSettings } from '../../hooks/useTeamSettings'
 import type { MenuWithSections, Recipe } from '../../types/database.types'
-
-interface IngredientRow {
-  recipe_id: string
-  quantity: number
-  inventory: { cost_per_unit: number | null } | null
-}
 
 interface CostRow {
   itemName: string
@@ -22,25 +17,28 @@ interface CostRow {
   margin: number | null
 }
 
-function statusColor(pct: number | null): string {
-  if (pct === null) return 'text-white/30'
-  if (pct <= 35) return 'text-emerald-400'
-  if (pct <= 45) return 'text-amber-400'
-  return 'text-red-400'
+function statusColor(pct: number | null, target: number): string {
+  const status = costStatus(pct, target)
+  if (status === 'good') return 'text-emerald-400'
+  if (status === 'warn') return 'text-amber-400'
+  if (status === 'bad') return 'text-red-400'
+  return 'text-white/30'
 }
 
-function statusBg(pct: number | null): string {
-  if (pct === null) return 'bg-white/5'
-  if (pct <= 35) return 'bg-emerald-400/10'
-  if (pct <= 45) return 'bg-amber-400/10'
-  return 'bg-red-500/10'
+function statusBg(pct: number | null, target: number): string {
+  const status = costStatus(pct, target)
+  if (status === 'good') return 'bg-emerald-400/10'
+  if (status === 'warn') return 'bg-amber-400/10'
+  if (status === 'bad') return 'bg-red-500/10'
+  return 'bg-white/5'
 }
 
-function StatusIcon({ pct }: { pct: number | null }) {
-  if (pct === null) return <Info className="h-4 w-4 text-white/20" />
-  if (pct <= 35) return <CheckCircle className="h-4 w-4 text-emerald-400" />
-  if (pct <= 45) return <AlertTriangle className="h-4 w-4 text-amber-400" />
-  return <XCircle className="h-4 w-4 text-red-400" />
+function StatusIcon({ pct, target }: { pct: number | null; target: number }) {
+  const status = costStatus(pct, target)
+  if (status === 'good') return <CheckCircle className="h-4 w-4 text-emerald-400" />
+  if (status === 'warn') return <AlertTriangle className="h-4 w-4 text-amber-400" />
+  if (status === 'bad') return <XCircle className="h-4 w-4 text-red-400" />
+  return <Info className="h-4 w-4 text-white/20" />
 }
 
 interface Props {
@@ -52,6 +50,7 @@ interface Props {
 
 export function MenuCostAnalysis({ open, onClose, menu, recipes }: Props) {
   const { t } = useTranslation()
+  const { targetFoodCostPct: target } = useTeamSettings()
   const [autoCosts, setAutoCosts] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(false)
 
@@ -69,21 +68,10 @@ export function MenuCostAnalysis({ open, onClose, menu, recipes }: Props) {
   useEffect(() => {
     if (!open || linkedRecipeIds.length === 0) return
     setLoading(true)
-    supabase
-      .from('recipe_ingredients')
-      .select('recipe_id, quantity, inventory:inventory_item_id(cost_per_unit)')
-      .in('recipe_id', linkedRecipeIds)
-      .then(({ data }) => {
-        const rows = (data ?? []) as unknown as IngredientRow[]
-        const costMap = new Map<string, number>()
-        for (const row of rows) {
-          const cpu = row.inventory?.cost_per_unit ?? null
-          if (cpu == null) continue
-          costMap.set(row.recipe_id, (costMap.get(row.recipe_id) ?? 0) + row.quantity * cpu)
-        }
-        setAutoCosts(costMap)
-        setLoading(false)
-      })
+    void computeAutoCosts(linkedRecipeIds).then((costMap) => {
+      setAutoCosts(costMap)
+      setLoading(false)
+    })
   }, [open, linkedRecipeIds.join(',')])
 
   const rows: CostRow[] = useMemo(() => {
@@ -146,10 +134,10 @@ export function MenuCostAnalysis({ open, onClose, menu, recipes }: Props) {
               </div>
               <div className={cn(
                 'rounded-xl border border-glass-border p-3 space-y-0.5',
-                summary.avgPct != null ? statusBg(summary.avgPct) : 'bg-white/5',
+                summary.avgPct != null ? statusBg(summary.avgPct, target) : 'bg-white/5',
               )}>
                 <p className="text-xs text-white/50">{t('menus.cost.avgFoodCost')}</p>
-                <p className={cn('text-2xl font-bold', statusColor(summary.avgPct))}>
+                <p className={cn('text-2xl font-bold', statusColor(summary.avgPct, target))}>
                   {summary.avgPct != null ? `${summary.avgPct}%` : '—'}
                 </p>
                 <p className="text-xs text-white/40">{t('menus.cost.targetHint')}</p>
@@ -158,9 +146,9 @@ export function MenuCostAnalysis({ open, onClose, menu, recipes }: Props) {
 
             {/* Legend */}
             <div className="flex flex-wrap gap-3 text-xs text-white/50">
-              <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> ≤35%</span>
-              <span className="flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5 text-amber-400" /> 35–45%</span>
-              <span className="flex items-center gap-1"><XCircle className="h-3.5 w-3.5 text-red-400" /> &gt;45%</span>
+              <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> ≤{target}%</span>
+              <span className="flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5 text-amber-400" /> {target}–{target + 10}%</span>
+              <span className="flex items-center gap-1"><XCircle className="h-3.5 w-3.5 text-red-400" /> &gt;{target + 10}%</span>
             </div>
 
             {/* Rows */}
@@ -168,14 +156,14 @@ export function MenuCostAnalysis({ open, onClose, menu, recipes }: Props) {
               {rows.map((row, idx) => (
                 <div key={idx} className={cn(
                   'rounded-xl border border-glass-border p-3 space-y-1.5',
-                  statusBg(row.foodCostPct),
+                  statusBg(row.foodCostPct, target),
                 )}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">{row.itemName}</p>
                       <p className="text-xs text-white/40">{row.sectionName} · {row.recipeTitle}</p>
                     </div>
-                    <StatusIcon pct={row.foodCostPct} />
+                    <StatusIcon pct={row.foodCostPct} target={target} />
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
@@ -192,7 +180,7 @@ export function MenuCostAnalysis({ open, onClose, menu, recipes }: Props) {
                     </div>
                     <div>
                       <p className="text-white/40">{t('menus.cost.foodCostPct')}</p>
-                      <p className={cn('font-semibold', statusColor(row.foodCostPct))}>
+                      <p className={cn('font-semibold', statusColor(row.foodCostPct, target))}>
                         {row.foodCostPct != null ? `${row.foodCostPct}%` : '—'}
                       </p>
                     </div>

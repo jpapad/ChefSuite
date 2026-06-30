@@ -9,6 +9,7 @@ import { ImageUpload } from '../ui/ImageUpload'
 import { AllergenChips } from './AllergenChips'
 import { IngredientsEditor } from './IngredientsEditor'
 import { useRecipes } from '../../hooks/useRecipes'
+import { useTeamSettings } from '../../hooks/useTeamSettings'
 import { suggestRecipeDetails } from '../../lib/gemini'
 import type {
   InventoryItem,
@@ -96,6 +97,7 @@ export function RecipeForm({
 }: RecipeFormProps) {
   const { t } = useTranslation()
   const { recipes: allRecipes } = useRecipes()
+  const { targetFoodCostPct } = useTeamSettings()
   const otherRecipes = allRecipes.filter((r) => r.id !== initial?.id)
   const [values, setValues] = useState<RecipeFormValues>(() =>
     blank(initial, initialIngredients, prefill),
@@ -381,6 +383,13 @@ export function RecipeForm({
           }))
         }
       />
+
+      {values.cost_per_portion != null && values.cost_per_portion > 0 && (
+        <p className="text-xs text-brand-orange/80 -mt-2">
+          Για στόχο {targetFoodCostPct}% food cost, προτεινόμενη τιμή:{' '}
+          <span className="font-semibold">{(values.cost_per_portion / (targetFoodCostPct / 100)).toFixed(2)}€</span>
+        </p>
+      )}
 
       <AllergenChips
         value={values.allergens}

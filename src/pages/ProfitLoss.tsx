@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TrendingUp, TrendingDown, Euro, ShoppingBag, Trash2, Percent } from 'lucide-react'
+import { TrendingUp, TrendingDown, Euro, ShoppingBag, Trash2, Percent, Scale, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
+import { computeAutoCosts, costStatus } from '../lib/foodCost'
+import { useTeamSettings } from '../hooks/useTeamSettings'
 
 type Period = '7d' | '30d' | '90d' | 'mtd' | 'ytd'
 
@@ -53,12 +55,15 @@ interface WeekRow {
 export default function ProfitLoss() {
   const { t } = useTranslation()
   const { profile } = useAuth()
+  const { targetFoodCostPct: target } = useTeamSettings()
   const [period, setPeriod] = useState<Period>('30d')
   const [revenue, setRevenue] = useState(0)
   const [purchases, setPurchases] = useState(0)
   const [waste, setWaste] = useState(0)
   const [weeks, setWeeks] = useState<WeekRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [idealFoodCost, setIdealFoodCost] = useState(0)
+  const [actualFoodCost, setActualFoodCost] = useState(0)
 
   useEffect(() => {
     if (!profile?.team_id) return
@@ -72,7 +77,7 @@ export default function ProfitLoss() {
         // Revenue: completed online orders
         supabase
           .from('online_order_items')
-          .select('price, quantity, online_orders!inner(created_at, status, team_id)')
+          .select('price, quantity, menu_item_id, online_orders!inner(created_at, status, team_id)')
           .eq('online_orders.status', 'completed')
           .eq('online_orders.team_id', teamId)
           .gte('online_orders.created_at', from),
@@ -102,7 +107,7 @@ export default function ProfitLoss() {
           .gte('transacted_at', from),
       ])
 
-      type RevRow = { price: number; quantity: number; online_orders: { created_at: string } }
+      type RevRow = { price: number; quantity: number; menu_item_id: string | null; online_orders: { created_at: string } }
       type PurRow = { unit_price: number; quantity: number; purchase_orders: { received_at: string } }
       type WasteRow = { cost: number; wasted_at: string }
       type PosRow = { amount: number; transacted_at: string }
@@ -142,6 +147,51 @@ export default function ProfitLoss() {
         }))
 
       setWeeks(weekRows)
+
+      // ── Ideal vs Actual food cost ──────────────────────────────────────────
+      const soldMenuItemIds = [...new Set(revRows.map((r) => r.menu_item_id).filter(Boolean) as string[])]
+      if (soldMenuItemIds.length > 0 && totalOnlineRev > 0) {
+        const { data: menuItemsData } = await supabase
+          .from('menu_items')
+          .select('id, recipe_id, portions')
+          .in('id', soldMenuItemIds)
+
+        type MenuItemRow = { id: string; recipe_id: string | null; portions: number }
+        const menuItemsRows = (menuItemsData ?? []) as MenuItemRow[]
+        const menuItemMap = new Map(menuItemsRows.map((m) => [m.id, m]))
+
+        const recipeIds = [...new Set(menuItemsRows.map((m) => m.recipe_id).filter(Boolean) as string[])]
+        const autoCosts = recipeIds.length > 0 ? await computeAutoCosts(recipeIds) : new Map<string, number>()
+
+        let idealCost = 0
+        for (const row of revRows) {
+          if (!row.menu_item_id) continue
+          const mi = menuItemMap.get(row.menu_item_id)
+          if (!mi?.recipe_id) continue
+          const recipeCost = autoCosts.get(mi.recipe_id)
+          if (recipeCost == null) continue
+          idealCost += row.quantity * (mi.portions ?? 1) * recipeCost
+        }
+        setIdealFoodCost(Math.round(idealCost * 100) / 100)
+
+        type MvRow = { delta: number; inventory: { cost_per_unit: number | null } | null }
+        const { data: mvData } = await supabase
+          .from('inventory_movements')
+          .select('delta, inventory:item_id(cost_per_unit)')
+          .eq('team_id', teamId)
+          .lt('delta', 0)
+          .gte('created_at', from)
+        const mvRows = (mvData ?? []) as unknown as MvRow[]
+        const actualCost = mvRows.reduce((sum, mv) => {
+          const cpu = mv.inventory?.cost_per_unit ?? null
+          return cpu != null ? sum + Math.abs(mv.delta) * cpu : sum
+        }, 0)
+        setActualFoodCost(Math.round(actualCost * 100) / 100)
+      } else {
+        setIdealFoodCost(0)
+        setActualFoodCost(0)
+      }
+
       setLoading(false)
     }
 
@@ -331,6 +381,59 @@ export default function ProfitLoss() {
           </div>
         </GlassCard>
       )}
+
+      {/* Ideal vs Actual food cost */}
+      {!loading && revenue > 0 && (idealFoodCost > 0 || actualFoodCost > 0) && (() => {
+        const idealPct = revenue > 0 ? (idealFoodCost / revenue) * 100 : null
+        const actualPct = revenue > 0 ? (actualFoodCost / revenue) * 100 : null
+        const variance = idealPct != null && actualPct != null ? actualPct - idealPct : null
+        const idealStatus = costStatus(idealPct, target)
+        const actualStatus = costStatus(actualPct, target)
+        return (
+          <GlassCard className="space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Scale className="h-5 w-5 text-brand-orange" />
+                Ιδανικό vs Πραγματικό Food Cost
+              </h2>
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1 text-xs text-white/40">
+                <Info className="h-3.5 w-3.5 shrink-0" />
+                Ιδανικό: μόνο online παραγγελίες
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: 'Ιδανικό Food Cost %', pct: idealPct, status: idealStatus, cost: idealFoodCost },
+                { label: 'Πραγματικό Food Cost %', pct: actualPct, status: actualStatus, cost: actualFoodCost },
+                { label: 'Απόκλιση', pct: variance, status: null, cost: null },
+              ].map(({ label, pct, status, cost }) => {
+                const color = label === 'Απόκλιση'
+                  ? variance == null ? 'text-white/40' : variance > 3 ? 'text-red-400' : variance > 0 ? 'text-amber-400' : 'text-emerald-400'
+                  : status === 'good' ? 'text-emerald-400' : status === 'warn' ? 'text-amber-400' : status === 'bad' ? 'text-red-400' : 'text-white/40'
+                return (
+                  <div key={label} className="rounded-xl bg-white/5 border border-glass-border p-3 space-y-1">
+                    <p className="text-xs text-white/50">{label}</p>
+                    <p className={cn('text-2xl font-bold', color)}>
+                      {pct != null ? `${label === 'Απόκλιση' && pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : '—'}
+                    </p>
+                    {cost != null && (
+                      <p className="text-xs text-white/40">€{fmt2(cost)}</p>
+                    )}
+                    {label === 'Απόκλιση' && variance != null && (
+                      <p className="text-xs text-white/40">
+                        {variance > 0 ? 'Υπερκατανάλωση / φύρα' : variance < 0 ? 'Κάτω από ιδανικό' : 'Εντός στόχου'}
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <div className="text-xs text-white/30">
+              Ιδανικό = θεωρητικό κόστος από συνταγές × πωλήσεις. Πραγματικό = κατανάλωση από αποθήκη. Θετική απόκλιση υποδηλώνει φύρα ή υπερμερίδες.
+            </div>
+          </GlassCard>
+        )
+      })()}
 
       {!loading && revenue === 0 && purchases === 0 && waste === 0 && (
         <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
