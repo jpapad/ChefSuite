@@ -24,7 +24,8 @@ function formatQty(n: number): string {
 
 export function InventoryList({ items, locationMap, onEdit, onDelete, onRestock, onHistory, onQR, onPrint, onSuppliers }: InventoryListProps) {
   const { t } = useTranslation()
-  const trNames = useAutoTranslateMany(items.map((i) => i.name))
+  // Skip auto-translation for large lists to avoid 300+ concurrent API calls
+  const trNames = useAutoTranslateMany(items.length <= 50 ? items.map((i) => i.name) : [])
 
   return (
     <GlassCard className="p-0 overflow-hidden">
@@ -57,7 +58,7 @@ export function InventoryList({ items, locationMap, onEdit, onDelete, onRestock,
                       aria-label={t('inventory.lowStock', { count: 0 }).replace(' (0)', '')}
                     />
                   )}
-                  <span className="font-medium truncate">{displayName}</span>
+                  <span className="font-medium truncate">{trNames.length > 0 ? (trNames[idx] ?? item.name) : item.name}</span>
                 </div>
                 {locationMap && item.location_id && locationMap.has(item.location_id) && (
                   <span className="flex items-center gap-1 text-xs text-white/40 mt-0.5">
