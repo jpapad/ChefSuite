@@ -40,7 +40,7 @@ export function InventoryList({ items, locationMap, onEdit, onDelete, onRestock,
       <ul className="divide-y divide-glass-border">
         {items.map((item, idx) => {
           const low = isLowStock(item)
-          const displayName = trNames[idx] ?? item.name
+          const displayName = trNames.length > 0 ? (trNames[idx] ?? item.name) : item.name
           return (
             <li
               key={item.id}
@@ -58,7 +58,7 @@ export function InventoryList({ items, locationMap, onEdit, onDelete, onRestock,
                       aria-label={t('inventory.lowStock', { count: 0 }).replace(' (0)', '')}
                     />
                   )}
-                  <span className="font-medium truncate">{trNames.length > 0 ? (trNames[idx] ?? item.name) : item.name}</span>
+                  <span className="font-medium truncate">{displayName}</span>
                 </div>
                 {locationMap && item.location_id && locationMap.has(item.location_id) && (
                   <span className="flex items-center gap-1 text-xs text-white/40 mt-0.5">
