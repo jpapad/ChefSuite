@@ -2,12 +2,12 @@ import { useEffect, useState, useMemo } from 'react'
 import {
   Plus, X, Check, ChevronDown, ChevronUp, ArrowRight,
   Clock, CheckCircle2, AlertTriangle, XCircle, Loader2,
-  PackageCheck, Pencil, Trash2,
+  PackageCheck, Trash2,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/cn'
-import type { WhTransfer, WhTransferItem, WhStorageLocation, WhProduct } from '../../types/warehouse.types'
+import type { WhTransfer, WhStorageLocation, WhProduct } from '../../types/warehouse.types'
 
 type TabKey = 'active' | 'completed'
 
