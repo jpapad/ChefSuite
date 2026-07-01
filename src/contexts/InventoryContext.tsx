@@ -35,10 +35,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!teamId) { setItems([]); setLoading(false); return }
+    if (!teamId) { console.log('[INV] no teamId, skip'); setItems([]); setLoading(false); return }
     setLoading(true); setError(null)
+    console.log('[INV] loading for team:', teamId)
     const { data, error: err } = await supabase
       .from('inventory').select('*').order('name', { ascending: true })
+    console.log('[INV] result:', data?.length ?? 0, 'items, error:', err?.message ?? null)
     setItems((data ?? []) as InventoryItem[])
     setError(err?.message ?? null)
     setLoading(false)
