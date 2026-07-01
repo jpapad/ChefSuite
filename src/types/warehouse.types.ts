@@ -37,11 +37,42 @@ export interface WhProduct {
   min_quantity: number
   current_stock: number
   notes: string | null
+  discontinued: boolean
   created_at: string
   // joined (aliases match Supabase select aliases)
   wh_categories?: Pick<WhCategory, 'id' | 'name'> | null
   wh_suppliers?: Pick<WhSupplier, 'id' | 'name'> | null
   wh_storage_locations?: Pick<WhStorageLocation, 'id' | 'name'> | null
+}
+
+export interface WhTransfer {
+  id: string
+  from_location_id: string | null
+  to_location_id: string | null
+  status: 'pending' | 'sent' | 'partial' | 'rejected' | 'completed'
+  requested_by: string | null
+  notes: string | null
+  rejection_reason: string | null
+  needed_by: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  from_location?: Pick<WhStorageLocation, 'id' | 'name'> | null
+  to_location?: Pick<WhStorageLocation, 'id' | 'name'> | null
+  wh_transfer_items?: WhTransferItem[]
+}
+
+export interface WhTransferItem {
+  id: string
+  transfer_id: string
+  product_id: string | null
+  product_name: string
+  unit: string
+  requested_quantity: number
+  fulfilled_quantity: number
+  created_at: string
+  // joined
+  wh_products?: Pick<WhProduct, 'id' | 'name' | 'unit' | 'current_stock'> | null
 }
 
 export type WhOrderStatus = 'pending' | 'received' | 'cancelled'
@@ -220,3 +251,4 @@ export type WarehousePage =
   | 'price-comparison'
   | 'schedule'
   | 'import'
+  | 'transfers'

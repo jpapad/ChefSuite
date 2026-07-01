@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Package, Building2, FolderOpen, MapPin, ShoppingCart,
-  ClipboardList, CalendarDays, FileSpreadsheet, ArrowLeft, BookOpen,
+  ClipboardList, CalendarDays, FileSpreadsheet, ArrowLeft, BookOpen, ArrowLeftRight,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
@@ -14,6 +14,7 @@ import { WareInventory }         from '../components/warehouse/WareInventory'
 import { WareSchedule }          from '../components/warehouse/WareSchedule'
 import { WareImportExcel }       from '../components/warehouse/WareImportExcel'
 import { WareCatalogs }          from '../components/warehouse/WareCatalogs'
+import { WareTransfers }         from '../components/warehouse/WareTransfers'
 import type { WarehousePage }    from '../types/warehouse.types'
 
 interface NavItem {
@@ -37,6 +38,7 @@ export default function Warehouse() {
     { id: 'categories', label: t('warehousePage.nav.categories'), sublabel: t('warehousePage.nav.categoriesSub'),icon: FolderOpen,      color: 'text-amber-400 bg-amber-500/10' },
     { id: 'storage',    label: t('warehousePage.nav.locations'),  sublabel: t('warehousePage.nav.locationsSub'),  icon: MapPin,          color: 'text-rose-400 bg-rose-500/10' },
     { id: 'catalogs',   label: t('warehousePage.nav.pricelists'), sublabel: t('warehousePage.nav.pricelistsSub'), icon: BookOpen,        color: 'text-indigo-400 bg-indigo-500/10' },
+    { id: 'transfers',  label: 'Μεταφορές',                       sublabel: 'Εσωτερικές μεταφορές αποθέματος',   icon: ArrowLeftRight,  color: 'text-cyan-400 bg-cyan-500/10' },
     { id: 'schedule',   label: t('warehousePage.nav.schedule'),   sublabel: t('warehousePage.nav.scheduleSub'),   icon: CalendarDays,    color: 'text-teal-400 bg-teal-500/10' },
     { id: 'import',     label: t('warehousePage.nav.importExcel'),sublabel: t('warehousePage.nav.importExcelSub'),icon: FileSpreadsheet, color: 'text-lime-400 bg-lime-500/10' },
   ]
@@ -76,6 +78,7 @@ export default function Warehouse() {
       {page === 'categories'&& <WareCategories onNavigate={navigateTo} />}
       {page === 'storage'   && <WareStorageLocations onNavigate={navigateTo} />}
       {page === 'catalogs'  && <WareCatalogs />}
+      {page === 'transfers' && <WareTransfers />}
       {page === 'schedule'  && <WareSchedule />}
       {page === 'import'    && <WareImportExcel />}
 

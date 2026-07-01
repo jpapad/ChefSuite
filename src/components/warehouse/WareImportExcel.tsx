@@ -82,6 +82,45 @@ export function WareImportExcel() {
   const [done, setDone]         = useState<{ imported: number; skipped: number } | null>(null)
   const [dragOver, setDragOver] = useState(false)
 
+  const [invImporting, setInvImporting] = useState(false)
+  const [invDone, setInvDone] = useState<{ imported: number; skipped: number } | null>(null)
+
+  async function importFromInventory() {
+    const teamId = profile?.team_id
+    if (!teamId) return
+    setInvImporting(true)
+    setInvDone(null)
+
+    const [{ data: invItems }, { data: existing }] = await Promise.all([
+      supabase.from('inventory').select('name, unit, cost_per_unit, min_stock_level, quantity, barcode').eq('team_id', teamId),
+      supabase.from('wh_products').select('name'),
+    ])
+
+    const existingNames = new Set((existing ?? []).map((p: { name: string }) => p.name.toLowerCase()))
+    const toInsert = (invItems ?? [])
+      .filter((i) => !existingNames.has(i.name.toLowerCase()))
+      .map((i) => ({
+        name: i.name,
+        unit: i.unit,
+        purchase_price: i.cost_per_unit,
+        min_quantity: i.min_stock_level ?? 0,
+        current_stock: i.quantity ?? 0,
+        product_code: i.barcode ?? null,
+      }))
+
+    const skipped = (invItems ?? []).length - toInsert.length
+    if (toInsert.length > 0) {
+      const chunks: typeof toInsert[] = []
+      for (let i = 0; i < toInsert.length; i += 50) chunks.push(toInsert.slice(i, i + 50))
+      for (const chunk of chunks) await supabase.from('wh_products').insert(chunk)
+    }
+
+    whLog(user?.id, user?.email, profile?.role, 'IMPORT_FROM_INVENTORY', null,
+      `${toInsert.length} εισήχθηκαν, ${skipped} υπήρχαν ήδη`)
+    setInvDone({ imported: toInsert.length, skipped })
+    setInvImporting(false)
+  }
+
   function processFile(file: File) {
     setDone(null)
     setFileName(file.name)
@@ -285,6 +324,34 @@ export function WareImportExcel() {
           </button>
         </div>
       )}
+
+      {/* Import from Kitchen Inventory */}
+      <div className="border-t border-glass-border pt-4 mt-2 space-y-2">
+        <h3 className="text-sm font-semibold text-white/70">Ή εισαγωγή από Kitchen Inventory</h3>
+        <p className="text-xs text-white/40">Αντιγράφει τα υλικά κουζίνας στα Προϊόντα Αποθήκης. Παραλείπει όσα υπάρχουν ήδη (ίδιο όνομα).</p>
+        {invDone ? (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center space-y-1">
+            <CheckCircle2 className="h-8 w-8 text-emerald-400 mx-auto" />
+            <p className="text-base font-bold text-emerald-400">{invDone.imported} προϊόντα εισήχθηκαν</p>
+            {invDone.skipped > 0 && <p className="text-xs text-white/40">{invDone.skipped} υπήρχαν ήδη, παραλείφθηκαν</p>}
+            <button onClick={() => setInvDone(null)} className="text-xs text-white/40 hover:text-white transition">Επαναφορά</button>
+          </div>
+        ) : (
+          <button
+            onClick={() => void importFromInventory()}
+            disabled={invImporting}
+            className={cn(
+              'w-full rounded-xl py-3 text-sm font-semibold transition flex items-center justify-center gap-2',
+              invImporting
+                ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                : 'bg-brand-orange/15 text-brand-orange hover:bg-brand-orange hover:text-white border border-brand-orange/30',
+            )}
+          >
+            <Upload className="h-4 w-4" />
+            {invImporting ? 'Εισαγωγή…' : 'Εισαγωγή από Kitchen Inventory'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
