@@ -8,6 +8,44 @@ export function recordScan(menuId: string) {
   })
 }
 
+export interface DayScan { date: string; count: number }
+
+export function useQrScanHistory(days = 14) {
+  const [history, setHistory] = useState<DayScan[]>([])
+  const [today, setToday] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      const since = new Date(Date.now() - days * 86_400_000).toISOString()
+      const { data: rows } = await supabase
+        .from('menu_scans')
+        .select('scanned_at')
+        .gte('scanned_at', since)
+
+      const counts: Record<string, number> = {}
+      for (const row of rows ?? []) {
+        const d = (row.scanned_at as string).slice(0, 10)
+        counts[d] = (counts[d] ?? 0) + 1
+      }
+
+      const todayKey = new Date().toISOString().slice(0, 10)
+      setToday(counts[todayKey] ?? 0)
+
+      const result: DayScan[] = []
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
+        result.push({ date: d, count: counts[d] ?? 0 })
+      }
+      setHistory(result)
+      setLoading(false)
+    }
+    void load()
+  }, [days])
+
+  return { today, history, loading }
+}
+
 interface ScanStats {
   total: number
   today: number

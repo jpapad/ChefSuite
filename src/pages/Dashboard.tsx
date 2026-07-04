@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   ChefHat, Package, Users, ClipboardList, AlertTriangle,
   Check, ShoppingBag, CalendarCheck, Clock,
-  Utensils, ChevronRight, Flame,
+  Utensils, ChevronRight, Flame, QrCode,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '../lib/cn'
@@ -14,6 +14,7 @@ import { usePrepTasks } from '../hooks/usePrepTasks'
 import { useOnlineOrders } from '../hooks/useOnlineOrders'
 import { useReservations } from '../hooks/useReservations'
 import { useAuth } from '../contexts/AuthContext'
+import { useQrScanHistory } from '../hooks/useMenuScans'
 
 function todayIso() {
   const d = new Date()
@@ -90,6 +91,49 @@ function StatPill({
   return inner
 }
 
+function QrScanChart({ history }: { history: { date: string; count: number }[] }) {
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const max = Math.max(...history.map((d) => d.count), 1)
+  const H = 40
+  const barW = 12
+  const gap = 3
+  const total = history.reduce((s, d) => s + d.count, 0)
+
+  return (
+    <div className="flex flex-col gap-1">
+      <svg
+        width="100%"
+        viewBox={`0 0 ${history.length * (barW + gap)} ${H}`}
+        preserveAspectRatio="none"
+        className="overflow-visible"
+        style={{ height: H }}
+      >
+        {history.map(({ date, count }, i) => {
+          const h = Math.max((count / max) * H, count > 0 ? 3 : 1)
+          const isToday = date === todayKey
+          return (
+            <g key={date}>
+              <rect
+                x={i * (barW + gap)}
+                y={H - h}
+                width={barW}
+                height={h}
+                rx={3}
+                fill={isToday ? 'rgba(167,139,250,0.85)' : 'rgba(255,255,255,0.12)'}
+              />
+            </g>
+          )
+        })}
+      </svg>
+      <div className="flex justify-between text-[10px] text-white/25 tabular-nums">
+        <span>{history[0]?.date?.slice(5)}</span>
+        <span className="text-white/40">{total} σύνολο</span>
+        <span>{history[history.length - 1]?.date?.slice(5)}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { t } = useTranslation()
   const { profile } = useAuth()
@@ -99,6 +143,7 @@ export default function Dashboard() {
   const { tasks, loading: prepLoading } = usePrepTasks(todayIso())
   const { orders, loading: ordersLoading } = useOnlineOrders()
   const { reservations, loading: resLoading } = useReservations(todayIso())
+  const { today: qrToday, history: qrHistory, loading: qrLoading } = useQrScanHistory(14)
 
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -421,6 +466,38 @@ export default function Dashboard() {
                 +{members.length - 5}
               </div>
             )}
+          </div>
+        </BentoCard>
+
+        {/* QR Menu Scans — full width */}
+        <BentoCard className="lg:col-span-4" glow="-top-8 -right-8 w-48 h-48 bg-violet-600">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20">
+                <QrCode className="h-3.5 w-3.5 text-violet-400" />
+              </div>
+              <span className="text-sm font-semibold text-white/70">QR Μενού — Scans</span>
+            </div>
+            <span className="text-[10px] uppercase tracking-widest text-white/25 font-medium">14 ημέρες</span>
+          </div>
+
+          <div className="flex items-end gap-6">
+            {/* Today counter */}
+            <div className="shrink-0">
+              <div className="text-4xl font-bold tabular-nums text-violet-300">
+                {qrLoading ? '…' : qrToday}
+              </div>
+              <p className="text-xs text-white/40 mt-0.5">σήμερα</p>
+            </div>
+
+            {/* Bar chart */}
+            <div className="flex-1 min-w-0">
+              {qrLoading ? (
+                <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+              ) : (
+                <QrScanChart history={qrHistory} />
+              )}
+            </div>
           </div>
         </BentoCard>
 
