@@ -29,21 +29,46 @@ export function useMenuScanLive(days = 30) {
     const todayIso = todayStart.toISOString()
     const weekIso = new Date(Date.now() - 7 * 86_400_000).toISOString()
 
-    const { data: rows } = await supabase
+    // Fetch scans (no join — avoids FK resolution issues)
+    const { data: rows, error } = await supabase
       .from('menu_scans')
-      .select('scanned_at, menu_id, menus(name)')
+      .select('scanned_at, menu_id')
       .gte('scanned_at', since)
       .order('scanned_at', { ascending: false })
 
-    if (!rows) { setLoading(false); return }
+    if (error) {
+      console.error('[useMenuScanLive] fetch error:', error.message, error.details)
+      setLoading(false)
+      return
+    }
 
+    if (!rows?.length) {
+      setPerMenu([])
+      setPerDay(buildEmptyDays(days))
+      setTodayTotal(0)
+      setLoading(false)
+      return
+    }
+
+    // Fetch menu names separately
+    const uniqueMenuIds = [...new Set(rows.map((r) => r.menu_id as string))]
+    const { data: menuData } = await supabase
+      .from('menus')
+      .select('id, name')
+      .in('id', uniqueMenuIds)
+
+    const menuNames = new Map<string, string>(
+      (menuData ?? []).map((m) => [m.id as string, m.name as string]),
+    )
+
+    // Group by menu
     const menuMap = new Map<string, { name: string; today: number; week: number; total: number }>()
     const dayCounts: Record<string, number> = {}
     let todaySum = 0
 
     for (const row of rows) {
       const menuId = row.menu_id as string
-      const menuName = (row.menus as unknown as { name: string } | null)?.name ?? 'Άγνωστο'
+      const menuName = menuNames.get(menuId) ?? menuId.slice(0, 8)
       const scannedAt = row.scanned_at as string
       const dateKey = scannedAt.slice(0, 10)
 
@@ -73,6 +98,7 @@ export function useMenuScanLive(days = 30) {
       const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
       perDayArr.push({ date: d, count: dayCounts[d] ?? 0 })
     }
+
     setPerDay(perDayArr)
     setTodayTotal(todaySum)
     setLoading(false)
@@ -80,6 +106,8 @@ export function useMenuScanLive(days = 30) {
 
   useEffect(() => { void load() }, [load])
 
+  // Realtime — requires menu_scans added to supabase_realtime publication:
+  // ALTER PUBLICATION supabase_realtime ADD TABLE menu_scans;
   useEffect(() => {
     const channel = supabase
       .channel('menu-scans-live')
@@ -98,4 +126,11 @@ export function useMenuScanLive(days = 30) {
   }, [load])
 
   return { perMenu, perDay, todayTotal, loading, flash }
+}
+
+function buildEmptyDays(days: number): DayTotal[] {
+  return Array.from({ length: days }, (_, i) => ({
+    date: new Date(Date.now() - (days - 1 - i) * 86_400_000).toISOString().slice(0, 10),
+    count: 0,
+  }))
 }
