@@ -43,7 +43,7 @@ export function useMenuScanLive(days = 30) {
 
     for (const row of rows) {
       const menuId = row.menu_id as string
-      const menuName = (row.menus as { name: string } | null)?.name ?? 'Άγνωστο'
+      const menuName = (row.menus as unknown as { name: string } | null)?.name ?? 'Άγνωστο'
       const scannedAt = row.scanned_at as string
       const dateKey = scannedAt.slice(0, 10)
 

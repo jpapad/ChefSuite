@@ -1,16 +1,6 @@
 import { cn } from '../../lib/cn'
 import { useMenuScanLive } from '../../hooks/useMenuScanLive'
 
-const DAYS_LABEL: Record<string, string> = {
-  '0': 'Κυρ', '1': 'Δευ', '2': 'Τρι', '3': 'Τετ',
-  '4': 'Πεμ', '5': 'Παρ', '6': 'Σαβ',
-}
-
-function dayLabel(dateStr: string) {
-  const d = new Date(dateStr)
-  return DAYS_LABEL[d.getDay().toString()] ?? ''
-}
-
 function TimelineChart({ perDay }: { perDay: { date: string; count: number }[] }) {
   const todayKey = new Date().toISOString().slice(0, 10)
   const max = Math.max(...perDay.map((d) => d.count), 1)
