@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2, ChevronDown, ChevronUp, FileSearch } from 'lucide-react'
+import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2, ChevronDown, ChevronUp, FileSearch, BarChart2 } from 'lucide-react'
 import { translateMenuItems } from '../lib/gemini'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +10,7 @@ import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
 import { AIMenuGeneratorDrawer } from '../components/menus/AIMenuGeneratorDrawer'
 import { MenuPdfImportDrawer } from '../components/menus/MenuPdfImportDrawer'
+import { MenuScanAnalytics } from '../components/menus/MenuScanAnalytics'
 import { useMenus } from '../hooks/useMenus'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -77,6 +78,7 @@ export default function Menus() {
   const [weeklyOpen, setWeeklyOpen] = useState(false)
   const [todayQr, setTodayQr] = useState<{ url: string; dataUrl: string } | null>(null)
   const [todayQrOpen, setTodayQrOpen] = useState(false)
+  const [scanAnalyticsOpen, setScanAnalyticsOpen] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [translateDone, setTranslateDone] = useState(false)
 
@@ -265,6 +267,9 @@ export default function Menus() {
           <p className="text-white/60 mt-1">{t('menus.subtitle')}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="secondary" leftIcon={<BarChart2 className="h-4 w-4" />} onClick={() => setScanAnalyticsOpen(true)}>
+            Scans
+          </Button>
           {dailyMenuId && (
             <Button variant="secondary" leftIcon={<QrCode className="h-4 w-4" />} onClick={openTodayQr}>
               QR Μενού Ημέρας
@@ -747,6 +752,20 @@ export default function Menus() {
             </Button>
           </div>
         </div>
+      </Drawer>
+
+      {/* ── Scan Analytics Drawer ── */}
+      <Drawer
+        open={scanAnalyticsOpen}
+        onClose={() => setScanAnalyticsOpen(false)}
+        title={
+          <div className="flex items-center gap-2">
+            <BarChart2 className="h-4 w-4 text-brand-orange" />
+            <span>Αναλυτικά Scans QR Μενού</span>
+          </div>
+        }
+      >
+        <MenuScanAnalytics />
       </Drawer>
     </div>
   )
