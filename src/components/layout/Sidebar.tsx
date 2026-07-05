@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Home, ChefHat, Users, ClipboardList,
   TrendingUp, MessageSquare, Monitor, Radio, Languages,
@@ -7,6 +7,7 @@ import {
   BookOpen, Heart, Bot, Search, X, Scale, BookMarked,
   Layers, HelpCircle, FlaskConical, CreditCard, Building2,
   Tag, Calculator, MapPin, Activity, BookLock, Thermometer, Map,
+  ArrowLeftRight,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -53,7 +54,8 @@ const GROUP_META: Record<string, { icon: LucideIcon; color: string }> = {
 }
 
 export function Sidebar() {
-  const { profile, user } = useAuth()
+  const { profile, user, myTeams } = useAuth()
+  const navigate = useNavigate()
   const { t } = useTranslation()
   const { can } = usePermissions()
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
@@ -261,6 +263,16 @@ export function Sidebar() {
             {getInitials(profile?.full_name)}
           </div>
         </NavLink>
+        {myTeams.length > 1 && (
+          <button
+            type="button"
+            title="Αλλαγή Κουζίνας"
+            onClick={() => { setActiveGroupId(null); navigate('/pick-team') }}
+            className={iconBtnCls}
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+          </button>
+        )}
         <button type="button" onClick={toggleLang} title="Language" className={iconBtnCls}>
           <Languages className="h-4 w-4" />
         </button>

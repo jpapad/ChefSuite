@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 
 export function RequireTeam({ children }: { children: ReactNode }) {
-  const { profile, loading } = useAuth()
+  const { profile, loading, myTeams } = useAuth()
 
   if (loading) {
     return (
@@ -15,6 +15,10 @@ export function RequireTeam({ children }: { children: ReactNode }) {
 
   if (!profile?.team_id) {
     return <Navigate to="/onboarding" replace />
+  }
+
+  if (myTeams.length > 1 && !profile.active_team_id) {
+    return <Navigate to="/pick-team" replace />
   }
 
   return <>{children}</>

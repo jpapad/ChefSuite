@@ -25,6 +25,7 @@ const NotFound           = lazy(() => import('./pages/NotFound'))
 const Login              = lazy(() => import('./pages/Login'))
 const SignUp             = lazy(() => import('./pages/SignUp'))
 const Onboarding         = lazy(() => import('./pages/Onboarding'))
+const TeamPicker         = lazy(() => import('./pages/TeamPicker'))
 const Welcome            = lazy(() => import('./pages/Welcome'))
 const Menus              = lazy(() => import('./pages/Menus'))
 const MenuDetail         = lazy(() => import('./pages/MenuDetail'))
@@ -78,6 +79,15 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <Onboarding />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/pick-team"
+                element={
+                  <ProtectedRoute>
+                    <TeamPicker />
                   </ProtectedRoute>
                 }
               />
