@@ -46,6 +46,7 @@ export function NotificationsBell() {
   }, [open])
 
   function handleOpen() {
+    if (!open && unreadCount > 0) void markAllRead()
     setOpen((v) => !v)
   }
 
