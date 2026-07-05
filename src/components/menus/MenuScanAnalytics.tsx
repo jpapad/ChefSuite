@@ -51,7 +51,7 @@ function TimelineChart({ perDay }: { perDay: { date: string; count: number }[] }
   )
 }
 
-export function MenuScanAnalytics() {
+export function MenuScanAnalytics({ currentMenuName }: { currentMenuName?: string | null }) {
   const { perDay, history, todayTotal, loading, flash } = useMenuScanLive(30)
 
   const totalAll = perDay.reduce((s, d) => s + d.count, 0)
@@ -84,6 +84,14 @@ export function MenuScanAnalytics() {
             {loading ? '…' : todayTotal}
           </div>
           <p className="text-xs text-white/40 mt-0.5">scans</p>
+          {currentMenuName && (
+            <p className="text-xs text-brand-orange mt-1.5 font-medium truncate max-w-[160px] ml-auto">
+              📋 {currentMenuName}
+            </p>
+          )}
+          {!currentMenuName && !loading && (
+            <p className="text-xs text-white/25 mt-1.5">Δεν υπάρχει μενού ημέρας</p>
+          )}
         </div>
       </div>
 

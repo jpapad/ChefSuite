@@ -765,7 +765,7 @@ export default function Menus() {
           </div>
         }
       >
-        <MenuScanAnalytics />
+        <MenuScanAnalytics currentMenuName={menus.find(m => m.id === dailyMenuId)?.name ?? null} />
       </Drawer>
     </div>
   )
