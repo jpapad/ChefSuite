@@ -1,6 +1,14 @@
 import { cn } from '../../lib/cn'
 import { useMenuScanLive } from '../../hooks/useMenuScanLive'
 
+function formatDate(dateStr: string): string {
+  const today = new Date().toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+  if (dateStr === today) return 'Σήμερα'
+  if (dateStr === yesterday) return 'Χθες'
+  return new Date(dateStr).toLocaleDateString('el-GR', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
 function TimelineChart({ perDay }: { perDay: { date: string; count: number }[] }) {
   const todayKey = new Date().toISOString().slice(0, 10)
   const max = Math.max(...perDay.map((d) => d.count), 1)
@@ -19,7 +27,6 @@ function TimelineChart({ perDay }: { perDay: { date: string; count: number }[] }
       >
         {perDay.map(({ date, count }, i) => {
           const h = Math.max((count / max) * H, count > 0 ? 4 : 1.5)
-          const isToday = date === todayKey
           return (
             <g key={date}>
               <rect
@@ -28,33 +35,26 @@ function TimelineChart({ perDay }: { perDay: { date: string; count: number }[] }
                 width={barW}
                 height={h}
                 rx={3}
-                fill={isToday ? 'rgba(249,115,22,0.85)' : 'rgba(255,255,255,0.14)'}
+                fill={date === todayKey ? 'rgba(249,115,22,0.85)' : 'rgba(255,255,255,0.14)'}
               />
-              {/* Tooltip value on hover — shown as title */}
               <title>{date}: {count} scans</title>
             </g>
           )
         })}
       </svg>
-      {/* Day labels for every 5 days */}
-      <div className="flex justify-between text-[10px] text-white/25 tabular-nums px-0.5">
-        {perDay.map((d, i) => (
-          <span key={d.date} className={cn(
-            'w-[13px] text-center',
-            i % 5 !== 0 && i !== perDay.length - 1 ? 'opacity-0' : '',
-          )}>
-            {i % 5 === 0 || i === perDay.length - 1 ? d.date.slice(5) : ''}
-          </span>
-        ))}
+      <div className="flex justify-between text-[10px] text-white/25 tabular-nums">
+        <span>{perDay[0]?.date?.slice(5)}</span>
+        <span>{perDay[Math.floor(perDay.length / 2)]?.date?.slice(5)}</span>
+        <span>{perDay[perDay.length - 1]?.date?.slice(5)}</span>
       </div>
     </div>
   )
 }
 
 export function MenuScanAnalytics() {
-  const { perMenu, perDay, todayTotal, loading, flash } = useMenuScanLive(30)
+  const { perDay, history, todayTotal, loading, flash } = useMenuScanLive(30)
 
-  const totalAll = perMenu.reduce((s, m) => s + m.totalCount, 0)
+  const totalAll = perDay.reduce((s, d) => s + d.count, 0)
 
   return (
     <div className="flex flex-col gap-5 p-1">
@@ -87,10 +87,10 @@ export function MenuScanAnalytics() {
         </div>
       </div>
 
-      {/* ── Timeline ──────────────────────────────────────── */}
+      {/* ── Timeline chart ────────────────────────────────── */}
       <div className="rounded-2xl border border-white/10 bg-white/4 p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-white/70">Ιστορικό 30 ημερών</p>
+          <p className="text-sm font-semibold text-white/70">Τελευταίες 30 ημέρες</p>
           <p className="text-xs text-white/30 tabular-nums">{totalAll} σύνολο</p>
         </div>
         {loading ? (
@@ -100,45 +100,47 @@ export function MenuScanAnalytics() {
         )}
       </div>
 
-      {/* ── Per-menu table ─────────────────────────────────── */}
+      {/* ── History: per day + per menu ───────────────────── */}
       <div className="rounded-2xl border border-white/10 bg-white/4 overflow-hidden">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-white/30 border-b border-white/8">
-          <span>Μενού</span>
-          <span className="text-right">Σήμερα</span>
-          <span className="text-right">7 μέρες</span>
-          <span className="text-right">Σύνολο</span>
+        <div className="px-4 py-2.5 border-b border-white/8">
+          <p className="text-sm font-semibold text-white/70">Ιστορικό ανά ημέρα</p>
         </div>
 
         {loading ? (
-          <div className="p-4 space-y-2">
+          <div className="p-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-8 bg-white/5 rounded-lg animate-pulse" />
+              <div key={i} className="h-10 bg-white/5 rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : perMenu.length === 0 ? (
+        ) : history.length === 0 ? (
           <div className="py-10 text-center text-white/30 text-sm">
             Δεν υπάρχουν scans ακόμα
           </div>
         ) : (
           <ul className="divide-y divide-white/6">
-            {perMenu.map((m) => (
-              <li
-                key={m.menuId}
-                className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-3 items-center hover:bg-white/4 transition-colors"
-              >
-                <span className="text-sm font-medium text-white/85 truncate">{m.menuName}</span>
-                <span className={cn(
-                  'text-sm font-bold tabular-nums text-right w-10',
-                  m.todayCount > 0 ? 'text-emerald-400' : 'text-white/25',
-                )}>
-                  {m.todayCount}
-                </span>
-                <span className="text-sm tabular-nums text-white/50 text-right w-12">
-                  {m.weekCount}
-                </span>
-                <span className="text-sm font-semibold tabular-nums text-brand-orange text-right w-12">
-                  {m.totalCount}
-                </span>
+            {history.map(({ date, total, menus }) => (
+              <li key={date} className="px-4 py-3 space-y-2">
+                {/* Date header */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white/50 uppercase tracking-wide">
+                    {formatDate(date)}
+                  </span>
+                  <span className="text-xs font-bold tabular-nums text-brand-orange">
+                    {total} scans
+                  </span>
+                </div>
+                {/* Menus that day */}
+                <ul className="space-y-1">
+                  {menus.map((m) => (
+                    <li key={m.menuId} className="flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-white/25 shrink-0" />
+                      <span className="text-sm text-white/80 flex-1 truncate">{m.menuName}</span>
+                      <span className="text-sm font-semibold tabular-nums text-white/50 shrink-0">
+                        {m.count}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>

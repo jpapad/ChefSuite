@@ -14,9 +14,22 @@ export interface DayTotal {
   count: number
 }
 
+export interface DayMenuEntry {
+  menuId: string
+  menuName: string
+  count: number
+}
+
+export interface DayHistory {
+  date: string           // 'YYYY-MM-DD'
+  total: number
+  menus: DayMenuEntry[]  // menus scanned that day, sorted by count desc
+}
+
 export function useMenuScanLive(days = 30) {
   const [perMenu, setPerMenu] = useState<MenuScanRow[]>([])
   const [perDay, setPerDay] = useState<DayTotal[]>([])
+  const [history, setHistory] = useState<DayHistory[]>([])
   const [todayTotal, setTodayTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [flash, setFlash] = useState(false)
@@ -29,7 +42,6 @@ export function useMenuScanLive(days = 30) {
     const todayIso = todayStart.toISOString()
     const weekIso = new Date(Date.now() - 7 * 86_400_000).toISOString()
 
-    // Fetch scans (no join — avoids FK resolution issues)
     const { data: rows, error } = await supabase
       .from('menu_scans')
       .select('scanned_at, menu_id')
@@ -45,6 +57,7 @@ export function useMenuScanLive(days = 30) {
     if (!rows?.length) {
       setPerMenu([])
       setPerDay(buildEmptyDays(days))
+      setHistory([])
       setTodayTotal(0)
       setLoading(false)
       return
@@ -61,24 +74,34 @@ export function useMenuScanLive(days = 30) {
       (menuData ?? []).map((m) => [m.id as string, m.name as string]),
     )
 
-    // Group by menu
+    // Aggregate: per-menu totals + per-day totals + per-day-per-menu breakdown
     const menuMap = new Map<string, { name: string; today: number; week: number; total: number }>()
     const dayCounts: Record<string, number> = {}
+    // key: 'date::menuId'
+    const dayMenuCounts = new Map<string, { menuId: string; menuName: string; count: number }>()
     let todaySum = 0
 
     for (const row of rows) {
       const menuId = row.menu_id as string
-      const menuName = menuNames.get(menuId) ?? menuId.slice(0, 8)
+      const menuName = menuNames.get(menuId) ?? 'Άγνωστο'
       const scannedAt = row.scanned_at as string
       const dateKey = scannedAt.slice(0, 10)
 
+      // per-menu
       const entry = menuMap.get(menuId) ?? { name: menuName, today: 0, week: 0, total: 0 }
       entry.total++
       if (scannedAt >= weekIso) entry.week++
       if (scannedAt >= todayIso) { entry.today++; todaySum++ }
       menuMap.set(menuId, entry)
 
+      // per-day total
       dayCounts[dateKey] = (dayCounts[dateKey] ?? 0) + 1
+
+      // per-day-per-menu
+      const dmKey = `${dateKey}::${menuId}`
+      const dmEntry = dayMenuCounts.get(dmKey) ?? { menuId, menuName, count: 0 }
+      dmEntry.count++
+      dayMenuCounts.set(dmKey, dmEntry)
     }
 
     setPerMenu(
@@ -98,16 +121,27 @@ export function useMenuScanLive(days = 30) {
       const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
       perDayArr.push({ date: d, count: dayCounts[d] ?? 0 })
     }
-
     setPerDay(perDayArr)
+
+    // Build history: one entry per date that had scans, newest first
+    const dateSet = new Set(Array.from(dayMenuCounts.keys()).map((k) => k.split('::')[0]))
+    const historyArr: DayHistory[] = Array.from(dateSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((date) => {
+        const menus = Array.from(dayMenuCounts.entries())
+          .filter(([k]) => k.startsWith(`${date}::`))
+          .map(([, v]) => v)
+          .sort((a, b) => b.count - a.count)
+        return { date, total: dayCounts[date] ?? 0, menus }
+      })
+    setHistory(historyArr)
+
     setTodayTotal(todaySum)
     setLoading(false)
   }, [days])
 
   useEffect(() => { void load() }, [load])
 
-  // Realtime — requires menu_scans added to supabase_realtime publication:
-  // ALTER PUBLICATION supabase_realtime ADD TABLE menu_scans;
   useEffect(() => {
     const channel = supabase
       .channel('menu-scans-live')
@@ -125,7 +159,7 @@ export function useMenuScanLive(days = 30) {
     }
   }, [load])
 
-  return { perMenu, perDay, todayTotal, loading, flash }
+  return { perMenu, perDay, history, todayTotal, loading, flash }
 }
 
 function buildEmptyDays(days: number): DayTotal[] {
