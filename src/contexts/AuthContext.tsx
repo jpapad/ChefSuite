@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'INITIAL_SESSION') {
           clearTimeout(safetyTimer)
-          setLoading(false)
+          if (!nextSession?.user) setLoading(false)
         }
 
         if (nextSession?.user) {
@@ -112,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!active) return
             setRawProfile(p)
             setMyTeams(teams)
+            if (event === 'INITIAL_SESSION') setLoading(false)
             if (p?.preferred_lang) {
               const validLangs = ['en', 'el', 'bg']
               if (validLangs.includes(p.preferred_lang)) {
