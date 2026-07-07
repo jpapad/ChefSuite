@@ -883,6 +883,7 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
       prep_time: typeof p.prep_time === 'number' ? Math.round(p.prep_time) : null,
       cook_time: typeof p.cook_time === 'number' ? Math.round(p.cook_time) : null,
       servings: typeof p.servings === 'number' ? Math.round(p.servings) : null,
+      image_url: null,
     }
   }
 
@@ -890,6 +891,7 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
     name_en: null, name_bg: null,
     description: null, instructions: null, allergens: [],
     category: null, difficulty: null, prep_time: null, cook_time: null, servings: null,
+    image_url: null,
   })
 
   // Split into chunks of 10 to avoid response truncation
