@@ -10,7 +10,7 @@ import { AllergenChips } from './AllergenChips'
 import { IngredientsEditor } from './IngredientsEditor'
 import { useRecipes } from '../../hooks/useRecipes'
 import { useTeamSettings } from '../../hooks/useTeamSettings'
-import { suggestRecipeDetails } from '../../lib/gemini'
+import { suggestRecipeDetails, type ExtractedIngredient } from '../../lib/gemini'
 import type {
   InventoryItem,
   Recipe,
@@ -105,30 +105,67 @@ export function RecipeForm({
   const [error, setError] = useState<string | null>(null)
   const [suggesting, setSuggesting] = useState(false)
   const [suggestDone, setSuggestDone] = useState(false)
+  const [suggestMatchInfo, setSuggestMatchInfo] = useState<{ matched: number; total: number } | null>(null)
   const [langTab, setLangTab] = useState<'en' | 'bg'>('en')
+
+  function matchIngredients(extracted: ExtractedIngredient[]): RecipeIngredientDraft[] {
+    return extracted.flatMap((ing) => {
+      const nameLower = ing.name.toLowerCase().trim()
+      const item =
+        inventory.find((i) => i.name.toLowerCase() === nameLower) ??
+        inventory.find(
+          (i) =>
+            i.name.toLowerCase().includes(nameLower) ||
+            nameLower.includes(i.name.toLowerCase()),
+        )
+      return item ? [{ inventory_item_id: item.id, quantity: ing.quantity }] : []
+    })
+  }
+
+  function calcCostPerPortion(drafts: RecipeIngredientDraft[], servings: number | null): number | null {
+    if (drafts.length === 0 || !servings || servings <= 0) return null
+    const total = drafts.reduce((sum, d) => {
+      const item = inventory.find((i) => i.id === d.inventory_item_id)
+      return sum + d.quantity * (item?.cost_per_unit ?? 0)
+    }, 0)
+    return total > 0 ? Math.round((total / servings) * 100) / 100 : null
+  }
 
   async function handleAISuggest() {
     const title = values.title.trim()
     if (!title) return
     setSuggesting(true)
     setSuggestDone(false)
+    setSuggestMatchInfo(null)
     setError(null)
     try {
       const s = await suggestRecipeDetails(title)
+      const matched = s.suggested_ingredients.length > 0
+        ? matchIngredients(s.suggested_ingredients)
+        : []
+      const newServings = values.servings ?? s.servings
+      const cost = matched.length > 0
+        ? calcCostPerPortion(matched, newServings)
+        : null
+      if (s.suggested_ingredients.length > 0) {
+        setSuggestMatchInfo({ matched: matched.length, total: s.suggested_ingredients.length })
+      }
       setValues((v) => ({
         ...v,
-        description:  !v.description?.trim()  ? (s.description  ?? v.description)  : v.description,
-        instructions: !v.instructions?.trim() ? (s.instructions ?? v.instructions) : v.instructions,
-        allergens:    v.allergens.length === 0  ? s.allergens                        : v.allergens,
-        category:     v.category  == null       ? (s.category as RecipeCategory | null)   : v.category,
-        difficulty:   v.difficulty == null      ? (s.difficulty as RecipeDifficulty | null) : v.difficulty,
-        prep_time:    v.prep_time  == null       ? s.prep_time                       : v.prep_time,
-        cook_time:    v.cook_time  == null       ? s.cook_time                       : v.cook_time,
-        servings:     v.servings   == null       ? s.servings                        : v.servings,
-        image_url:    !v.image_url              ? (s.image_url ?? v.image_url)       : v.image_url,
+        description:      !v.description?.trim()  ? (s.description  ?? v.description)  : v.description,
+        instructions:     !v.instructions?.trim() ? (s.instructions ?? v.instructions) : v.instructions,
+        allergens:        v.allergens.length === 0 ? s.allergens                        : v.allergens,
+        category:         v.category   == null     ? (s.category as RecipeCategory | null)    : v.category,
+        difficulty:       v.difficulty == null     ? (s.difficulty as RecipeDifficulty | null) : v.difficulty,
+        prep_time:        v.prep_time  == null     ? s.prep_time                        : v.prep_time,
+        cook_time:        v.cook_time  == null     ? s.cook_time                        : v.cook_time,
+        servings:         v.servings   == null     ? s.servings                         : v.servings,
+        image_url:        !v.image_url             ? (s.image_url ?? v.image_url)       : v.image_url,
+        ingredients:      v.ingredients.length === 0 && matched.length > 0 ? matched   : v.ingredients,
+        cost_per_portion: v.cost_per_portion == null && cost != null ? cost             : v.cost_per_portion,
       }))
       setSuggestDone(true)
-      setTimeout(() => setSuggestDone(false), 3000)
+      setTimeout(() => { setSuggestDone(false); setSuggestMatchInfo(null) }, 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'AI suggestion failed.')
     } finally {
@@ -194,7 +231,12 @@ export function RecipeForm({
           ) : suggestDone ? (
             <>
               <Sparkles className="h-4 w-4" />
-              Συμπληρώθηκε! Έλεγξε τα πεδία παρακάτω.
+              Συμπληρώθηκε!
+              {suggestMatchInfo && (
+                <span className="text-white/60 font-normal">
+                  · {suggestMatchInfo.matched}/{suggestMatchInfo.total} υλικά αντιστοιχίστηκαν
+                </span>
+              )}
             </>
           ) : (
             <>

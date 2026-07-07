@@ -790,6 +790,7 @@ export interface RecipeSuggestion {
   cook_time: number | null
   servings: number | null
   image_url: string | null
+  suggested_ingredients: ExtractedIngredient[]
 }
 
 export async function suggestRecipeDetails(title: string): Promise<RecipeSuggestion> {
@@ -806,6 +807,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   "prep_time": minutes as integer or null,
   "cook_time": minutes as integer or null,
   "servings": integer (typical portions) or null,
+  "ingredients": [{"name": "ingredient name in English", "quantity": number, "unit": "g|kg|ml|l|tsp|tbsp|cup|pcs"}],
   "image_search_query": "2-4 word English phrase to find a beautiful food photo of this dish (e.g. 'homemade mayonnaise bowl', 'grilled salmon fillet', 'chocolate lava cake')"
 }`
 
@@ -833,6 +835,15 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
       cook_time: typeof parsed.cook_time === 'number' ? Math.round(parsed.cook_time) : null,
       servings: typeof parsed.servings === 'number' ? Math.round(parsed.servings) : null,
       image_url,
+      suggested_ingredients: Array.isArray(parsed.ingredients)
+        ? (parsed.ingredients as unknown[]).filter(
+            (i): i is ExtractedIngredient =>
+              typeof i === 'object' && i !== null &&
+              typeof (i as Record<string, unknown>).name === 'string' &&
+              typeof (i as Record<string, unknown>).quantity === 'number' &&
+              typeof (i as Record<string, unknown>).unit === 'string',
+          )
+        : [],
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -884,6 +895,7 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
       cook_time: typeof p.cook_time === 'number' ? Math.round(p.cook_time) : null,
       servings: typeof p.servings === 'number' ? Math.round(p.servings) : null,
       image_url: null,
+      suggested_ingredients: [],
     }
   }
 
@@ -891,7 +903,7 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
     name_en: null, name_bg: null,
     description: null, instructions: null, allergens: [],
     category: null, difficulty: null, prep_time: null, cook_time: null, servings: null,
-    image_url: null,
+    image_url: null, suggested_ingredients: [],
   })
 
   // Split into chunks of 10 to avoid response truncation
