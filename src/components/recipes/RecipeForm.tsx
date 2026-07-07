@@ -10,7 +10,7 @@ import { AllergenChips } from './AllergenChips'
 import { IngredientsEditor } from './IngredientsEditor'
 import { useRecipes } from '../../hooks/useRecipes'
 import { useTeamSettings } from '../../hooks/useTeamSettings'
-import { suggestRecipeDetails, type ExtractedIngredient } from '../../lib/gemini'
+import { suggestRecipeDetails } from '../../lib/gemini'
 import type {
   InventoryItem,
   Recipe,
@@ -108,20 +108,6 @@ export function RecipeForm({
   const [suggestMatchInfo, setSuggestMatchInfo] = useState<{ matched: number; total: number } | null>(null)
   const [langTab, setLangTab] = useState<'en' | 'bg'>('en')
 
-  function matchIngredients(extracted: ExtractedIngredient[]): RecipeIngredientDraft[] {
-    return extracted.flatMap((ing) => {
-      const nameLower = ing.name.toLowerCase().trim()
-      const item =
-        inventory.find((i) => i.name.toLowerCase() === nameLower) ??
-        inventory.find(
-          (i) =>
-            i.name.toLowerCase().includes(nameLower) ||
-            nameLower.includes(i.name.toLowerCase()),
-        )
-      return item ? [{ inventory_item_id: item.id, quantity: ing.quantity }] : []
-    })
-  }
-
   function calcCostPerPortion(drafts: RecipeIngredientDraft[], servings: number | null): number | null {
     if (drafts.length === 0 || !servings || servings <= 0) return null
     const total = drafts.reduce((sum, d) => {
@@ -139,10 +125,10 @@ export function RecipeForm({
     setSuggestMatchInfo(null)
     setError(null)
     try {
-      const s = await suggestRecipeDetails(title)
-      const matched = s.suggested_ingredients.length > 0
-        ? matchIngredients(s.suggested_ingredients)
-        : []
+      const s = await suggestRecipeDetails(title, inventory.map((i) => ({ id: i.id, name: i.name })))
+      const matched: RecipeIngredientDraft[] = s.suggested_ingredients
+        .filter((i) => i.inventory_item_id !== null)
+        .map((i) => ({ inventory_item_id: i.inventory_item_id!, quantity: i.quantity }))
       const newServings = values.servings ?? s.servings
       const cost = matched.length > 0
         ? calcCostPerPortion(matched, newServings)

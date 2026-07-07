@@ -778,9 +778,16 @@ export async function importRecipeFromUrl(url: string): Promise<ImportedRecipe> 
 
 // ── AI Recipe Autofill ────────────────────────────────────────────────────────
 
+export interface SuggestedIngredient {
+  name: string
+  quantity: number
+  unit: string
+  inventory_item_id: string | null
+}
+
 export interface RecipeSuggestion {
-  name_en: string | null    // English translation of the dish name
-  name_bg: string | null    // Bulgarian translation of the dish name
+  name_en: string | null
+  name_bg: string | null
   description: string | null
   instructions: string | null
   allergens: string[]
@@ -790,13 +797,20 @@ export interface RecipeSuggestion {
   cook_time: number | null
   servings: number | null
   image_url: string | null
-  suggested_ingredients: ExtractedIngredient[]
+  suggested_ingredients: SuggestedIngredient[]
 }
 
-export async function suggestRecipeDetails(title: string): Promise<RecipeSuggestion> {
+export async function suggestRecipeDetails(
+  title: string,
+  inventory: Array<{ id: string; name: string }> = [],
+): Promise<RecipeSuggestion> {
+  const inventoryBlock = inventory.length > 0
+    ? `\nINVENTORY (id → name) — use these ids for ingredient matching:\n${inventory.map((i) => `${i.id} → ${i.name}`).join('\n')}\n`
+    : ''
+
   const prompt = `You are a professional chef assistant. Given a dish name, suggest recipe details.
 Dish name: "${title}"
-
+${inventoryBlock}
 Respond with ONLY a valid JSON object — no markdown, no explanation:
 {
   "description": "1-2 sentence description in the same language as the dish name",
@@ -807,8 +821,8 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   "prep_time": minutes as integer or null,
   "cook_time": minutes as integer or null,
   "servings": integer (typical portions) or null,
-  "ingredients": [{"name": "ingredient name in the SAME language as the dish name", "quantity": number, "unit": "g|kg|ml|l|tsp|tbsp|cup|pcs"}],
-  "image_search_query": "2-4 word English phrase to find a beautiful food photo of this dish (e.g. 'homemade mayonnaise bowl', 'grilled salmon fillet', 'chocolate lava cake')"
+  "ingredients": [{"name": "ingredient name", "quantity": number, "unit": "g|kg|ml|l|tsp|tbsp|cup|pcs", "inventory_item_id": "matching id from INVENTORY or null if not found"}],
+  "image_search_query": "2-4 word English phrase to find a beautiful food photo of this dish"
 }`
 
   const VALID_CATEGORIES = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
@@ -820,6 +834,19 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
     const parsed = JSON.parse(raw) as Record<string, unknown>
     const searchQuery = typeof parsed.image_search_query === 'string' ? parsed.image_search_query : title
     const image_url = await searchUnsplash(searchQuery)
+
+    const validIds = new Set(inventory.map((i) => i.id))
+    const suggested_ingredients: SuggestedIngredient[] = Array.isArray(parsed.ingredients)
+      ? (parsed.ingredients as unknown[]).flatMap((i) => {
+          if (typeof i !== 'object' || i === null) return []
+          const p = i as Record<string, unknown>
+          if (typeof p.name !== 'string' || typeof p.quantity !== 'number' || typeof p.unit !== 'string') return []
+          const inv_id = typeof p.inventory_item_id === 'string' && validIds.has(p.inventory_item_id)
+            ? p.inventory_item_id
+            : null
+          return [{ name: p.name, quantity: p.quantity, unit: p.unit, inventory_item_id: inv_id }]
+        })
+      : []
 
     return {
       name_en: null,
@@ -835,15 +862,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
       cook_time: typeof parsed.cook_time === 'number' ? Math.round(parsed.cook_time) : null,
       servings: typeof parsed.servings === 'number' ? Math.round(parsed.servings) : null,
       image_url,
-      suggested_ingredients: Array.isArray(parsed.ingredients)
-        ? (parsed.ingredients as unknown[]).filter(
-            (i): i is ExtractedIngredient =>
-              typeof i === 'object' && i !== null &&
-              typeof (i as Record<string, unknown>).name === 'string' &&
-              typeof (i as Record<string, unknown>).quantity === 'number' &&
-              typeof (i as Record<string, unknown>).unit === 'string',
-          )
-        : [],
+      suggested_ingredients,
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -895,7 +914,7 @@ ${titles.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
       cook_time: typeof p.cook_time === 'number' ? Math.round(p.cook_time) : null,
       servings: typeof p.servings === 'number' ? Math.round(p.servings) : null,
       image_url: null,
-      suggested_ingredients: [],
+      suggested_ingredients: [] as SuggestedIngredient[],
     }
   }
 
