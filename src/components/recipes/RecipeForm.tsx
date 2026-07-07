@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { cn } from '../../lib/cn'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles, Plus } from 'lucide-react'
 import { Input } from '../ui/Input'
 import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
@@ -10,7 +10,8 @@ import { AllergenChips } from './AllergenChips'
 import { IngredientsEditor } from './IngredientsEditor'
 import { useRecipes } from '../../hooks/useRecipes'
 import { useTeamSettings } from '../../hooks/useTeamSettings'
-import { suggestRecipeDetails } from '../../lib/gemini'
+import { useInventory } from '../../hooks/useInventory'
+import { suggestRecipeDetails, type SuggestedIngredient } from '../../lib/gemini'
 import type {
   InventoryItem,
   Recipe,
@@ -98,6 +99,7 @@ export function RecipeForm({
   const { t } = useTranslation()
   const { recipes: allRecipes } = useRecipes()
   const { targetFoodCostPct } = useTeamSettings()
+  const { create: createInventoryItem } = useInventory()
   const otherRecipes = allRecipes.filter((r) => r.id !== initial?.id)
   const [values, setValues] = useState<RecipeFormValues>(() =>
     blank(initial, initialIngredients, prefill),
@@ -106,7 +108,32 @@ export function RecipeForm({
   const [suggesting, setSuggesting] = useState(false)
   const [suggestDone, setSuggestDone] = useState(false)
   const [suggestMatchInfo, setSuggestMatchInfo] = useState<{ matched: number; total: number } | null>(null)
+  const [pendingIngredients, setPendingIngredients] = useState<SuggestedIngredient[]>([])
+  const [addingToInventory, setAddingToInventory] = useState<string | null>(null)
   const [langTab, setLangTab] = useState<'en' | 'bg'>('en')
+
+  async function handleAddToInventory(ing: SuggestedIngredient) {
+    setAddingToInventory(ing.name)
+    try {
+      const newItem = await createInventoryItem({
+        name: ing.name,
+        quantity: 0,
+        unit: ing.unit,
+        min_stock_level: 0,
+        cost_per_unit: null,
+        location_id: null,
+      })
+      setValues((v) => ({
+        ...v,
+        ingredients: [...v.ingredients, { inventory_item_id: newItem.id, quantity: ing.quantity }],
+      }))
+      setPendingIngredients((prev) => prev.filter((p) => p.name !== ing.name))
+    } catch {
+      // silently ignore — user can add manually
+    } finally {
+      setAddingToInventory(null)
+    }
+  }
 
   function calcCostPerPortion(drafts: RecipeIngredientDraft[], servings: number | null): number | null {
     if (drafts.length === 0 || !servings || servings <= 0) return null
@@ -133,8 +160,10 @@ export function RecipeForm({
       const cost = matched.length > 0
         ? calcCostPerPortion(matched, newServings)
         : null
+      const unmatched = s.suggested_ingredients.filter((i) => i.inventory_item_id === null)
       if (s.suggested_ingredients.length > 0) {
         setSuggestMatchInfo({ matched: matched.length, total: s.suggested_ingredients.length })
+        setPendingIngredients(unmatched)
       }
       setValues((v) => ({
         ...v,
@@ -378,6 +407,35 @@ export function RecipeForm({
         onChange={(next) => setValues((v) => ({ ...v, ingredients: next }))}
         inventory={inventory}
       />
+
+      {pendingIngredients.length > 0 && (
+        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-3 space-y-2">
+          <p className="text-xs font-semibold text-amber-300/80 uppercase tracking-wide">
+            Υλικά που δεν βρέθηκαν στο Inventory ({pendingIngredients.length})
+          </p>
+          <ul className="space-y-1.5">
+            {pendingIngredients.map((ing) => (
+              <li key={ing.name} className="flex items-center gap-2">
+                <span className="flex-1 text-sm text-white/70 truncate">
+                  {ing.name}
+                  <span className="text-white/35 ml-1">{ing.quantity} {ing.unit}</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={addingToInventory === ing.name}
+                  onClick={() => void handleAddToInventory(ing)}
+                  className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-xs font-medium text-amber-300 hover:bg-amber-400/20 transition disabled:opacity-50"
+                >
+                  {addingToInventory === ing.name
+                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    : <Plus className="h-3 w-3" />}
+                  Inventory
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Input
         type="number"
