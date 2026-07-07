@@ -125,6 +125,7 @@ export function RecipeForm({
         prep_time:    v.prep_time  == null       ? s.prep_time                       : v.prep_time,
         cook_time:    v.cook_time  == null       ? s.cook_time                       : v.cook_time,
         servings:     v.servings   == null       ? s.servings                        : v.servings,
+        image_url:    !v.image_url              ? (s.image_url ?? v.image_url)       : v.image_url,
       }))
       setSuggestDone(true)
       setTimeout(() => setSuggestDone(false), 3000)

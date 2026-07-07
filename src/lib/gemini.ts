@@ -789,6 +789,7 @@ export interface RecipeSuggestion {
   prep_time: number | null
   cook_time: number | null
   servings: number | null
+  image_url: string | null
 }
 
 export async function suggestRecipeDetails(title: string): Promise<RecipeSuggestion> {
@@ -812,7 +813,10 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
 
   try {
-    const raw = await callClaude(prompt)
+    const [raw, image_url] = await Promise.all([
+      callClaude(prompt),
+      searchUnsplash(title),
+    ])
     const parsed = JSON.parse(raw) as Record<string, unknown>
 
     return {
@@ -828,6 +832,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
       prep_time: typeof parsed.prep_time === 'number' ? Math.round(parsed.prep_time) : null,
       cook_time: typeof parsed.cook_time === 'number' ? Math.round(parsed.cook_time) : null,
       servings: typeof parsed.servings === 'number' ? Math.round(parsed.servings) : null,
+      image_url,
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
