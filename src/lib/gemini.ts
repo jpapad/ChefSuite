@@ -41,6 +41,7 @@ export type ImportedRecipe = Pick<
   description_el?: string | null
   name_bg?: string | null
   description_bg?: string | null
+  image_url?: string | null
 }
 
 async function callGeminiRaw(body: object): Promise<GeminiResponse> {
@@ -62,6 +63,7 @@ async function callClaude(prompt: string, maxTokens = 8192): Promise<string> {
   })
   if (error) throw new Error(error.message)
   if (!data) throw new Error('No response from AI service — check edge function logs')
+
   const resp = data as ClaudeResponse
   if (resp.error) throw new Error(resp.error.message)
   if (resp.stop_reason === 'max_tokens') {
@@ -72,6 +74,22 @@ async function callClaude(prompt: string, maxTokens = 8192): Promise<string> {
     throw new Error(`AI returned empty content (stop_reason: ${resp.stop_reason ?? 'unknown'})`)
   }
   return text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
+}
+
+async function searchUnsplash(query: string): Promise<string | null> {
+  const key = (import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined) ?? ''
+  if (!key) return null
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' food dish')}&per_page=1&orientation=landscape`,
+      { headers: { Authorization: `Client-ID ${key}` } },
+    )
+    if (!res.ok) return null
+    const data = (await res.json()) as { results?: Array<{ urls?: { regular?: string } }> }
+    return data.results?.[0]?.urls?.regular ?? null
+  } catch {
+    return null
+  }
 }
 
 // Known unit aliases → normalised form
@@ -314,8 +332,11 @@ export async function importRecipeFromText(text: string): Promise<ImportedRecipe
       )
     : []
 
+  const title = typeof obj.title === 'string' ? obj.title : ''
+  const image_url = await searchUnsplash(title)
+
   return {
-    title: typeof obj.title === 'string' ? obj.title : '',
+    title,
     description: typeof obj.description === 'string' ? obj.description : null,
     instructions: typeof obj.instructions === 'string' ? obj.instructions : null,
     allergens: Array.isArray(obj.allergens)
@@ -324,6 +345,7 @@ export async function importRecipeFromText(text: string): Promise<ImportedRecipe
     cost_per_portion: typeof obj.cost_per_portion === 'number' ? obj.cost_per_portion : null,
     ingredients: [],
     extractedIngredients,
+    image_url,
   }
 }
 
@@ -684,6 +706,20 @@ function schemaToImportedRecipe(schema: Record<string, unknown>): ImportedRecipe
     return parsed.length > 0 ? parsed[0] : { name: line, quantity: 0, unit: 'pcs' }
   })
 
+  // Extract image URL from schema.org image field (string | ImageObject | array)
+  let image_url: string | null = null
+  const img = schema.image
+  if (typeof img === 'string') {
+    image_url = img
+  } else if (Array.isArray(img)) {
+    const first = img[0]
+    image_url = typeof first === 'string'
+      ? first
+      : (typeof first === 'object' && first !== null ? (first as Record<string, unknown>).url as string ?? null : null)
+  } else if (typeof img === 'object' && img !== null) {
+    image_url = (img as Record<string, unknown>).url as string ?? null
+  }
+
   return {
     title,
     description,
@@ -692,6 +728,7 @@ function schemaToImportedRecipe(schema: Record<string, unknown>): ImportedRecipe
     cost_per_portion: null,
     ingredients: [],
     extractedIngredients,
+    image_url,
   }
 }
 
@@ -727,9 +764,13 @@ export async function importRecipeFromUrl(url: string): Promise<ImportedRecipe> 
 
   // Prefer structured JSON-LD data (no AI tokens needed)
   const schema = extractSchemaRecipe(html)
-  if (schema) return schemaToImportedRecipe(schema)
+  if (schema) {
+    const recipe = schemaToImportedRecipe(schema)
+    if (!recipe.image_url) recipe.image_url = await searchUnsplash(recipe.title)
+    return recipe
+  }
 
-  // Fall back: strip tags → Gemini
+  // Fall back: strip tags → Claude (which also searches Unsplash)
   const text = htmlToText(html).slice(0, 8000)
   if (!text.trim()) throw new Error('Could not extract readable text from the page.')
   return importRecipeFromText(text)
