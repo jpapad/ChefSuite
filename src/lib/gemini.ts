@@ -807,7 +807,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   "prep_time": minutes as integer or null,
   "cook_time": minutes as integer or null,
   "servings": integer (typical portions) or null,
-  "ingredients": [{"name": "ingredient name in English", "quantity": number, "unit": "g|kg|ml|l|tsp|tbsp|cup|pcs"}],
+  "ingredients": [{"name": "ingredient name in the SAME language as the dish name", "quantity": number, "unit": "g|kg|ml|l|tsp|tbsp|cup|pcs"}],
   "image_search_query": "2-4 word English phrase to find a beautiful food photo of this dish (e.g. 'homemade mayonnaise bowl', 'grilled salmon fillet', 'chocolate lava cake')"
 }`
 
