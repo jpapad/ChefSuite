@@ -805,7 +805,8 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   "difficulty": "easy | medium | hard",
   "prep_time": minutes as integer or null,
   "cook_time": minutes as integer or null,
-  "servings": integer (typical portions) or null
+  "servings": integer (typical portions) or null,
+  "image_search_query": "2-4 word English phrase to find a beautiful food photo of this dish (e.g. 'homemade mayonnaise bowl', 'grilled salmon fillet', 'chocolate lava cake')"
 }`
 
   const VALID_CATEGORIES = new Set(['appetizer','soup','salad','main','side','sauce','bread','dessert','beverage','other'])
@@ -813,11 +814,10 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   const VALID_ALLERGENS = new Set(['gluten','dairy','eggs','fish','shellfish','nuts','peanuts','soy','sesame','celery','mustard','sulphites','lupin','molluscs'])
 
   try {
-    const [raw, image_url] = await Promise.all([
-      callClaude(prompt),
-      searchUnsplash(title),
-    ])
+    const raw = await callClaude(prompt)
     const parsed = JSON.parse(raw) as Record<string, unknown>
+    const searchQuery = typeof parsed.image_search_query === 'string' ? parsed.image_search_query : title
+    const image_url = await searchUnsplash(searchQuery)
 
     return {
       name_en: null,
