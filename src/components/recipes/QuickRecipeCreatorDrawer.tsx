@@ -292,7 +292,6 @@ export function QuickRecipeCreatorDrawer({
   const doneEntries  = entries.filter((e) => e.status === 'done')
   const errorCount   = entries.filter((e) => e.status === 'error').length
   const totalCount   = entries.length
-  const busy         = running || translating
   const selectedCount = selectedForLabels.size
 
   // ── Labels phase: render BuffetLabelsDrawer on top ────────────────────────
