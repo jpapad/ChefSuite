@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Loader2, Sparkles, Tag, AlertCircle, Languages, ChevronLeft, ImageIcon } from 'lucide-react'
+import { Check, Loader2, Sparkles, Tag, AlertCircle, Languages, ChevronLeft, ImageIcon, FolderOpen } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { cn } from '../../lib/cn'
@@ -34,6 +34,7 @@ type RecipeStatus = 'pending' | 'running' | 'done' | 'error'
 interface RecipeEntry {
   name:             string
   status:           RecipeStatus
+  loaded?:          boolean   // true = found in DB, skipped AI
   recipeId?:        string
   description?:     string | null
   allergens?:       string[]
@@ -128,6 +129,16 @@ export function QuickRecipeCreatorDrawer({
     const local: RecipeEntry[] = parsedNames.map((name) => ({ name, status: 'pending' as RecipeStatus }))
     setEntries([...local])
 
+    // ── Step 0: lookup existing recipes by title (case-insensitive, client-side) ──
+    const { data: allTeamRecipes } = await supabase
+      .from('recipes')
+      .select('id, title, description, allergens, image_url, name_el, description_el, name_bg, description_bg')
+      .eq('team_id', teamId)
+    const existingMap = new Map<string, Recipe>()
+    for (const r of (allTeamRecipes ?? [])) {
+      existingMap.set((r as Recipe).title.toLowerCase(), r as Recipe)
+    }
+
     const inventoryForAI = inventory.map((i) => ({ id: i.id, name: i.name }))
 
     // ── Phase 1: create each recipe sequentially ─────────────────────────────
@@ -136,6 +147,25 @@ export function QuickRecipeCreatorDrawer({
       setCurrentIdx(i)
       local[i] = { ...local[i]!, status: 'running' }
       setEntries([...local])
+
+      // check if recipe already exists
+      const existing = existingMap.get(name.toLowerCase())
+      if (existing) {
+        local[i] = {
+          ...local[i]!,
+          status: 'done', loaded: true,
+          recipeId: existing.id,
+          description: existing.description,
+          allergens: (existing.allergens as string[] | null) ?? [],
+          image_url: existing.image_url ?? null,
+          name_el: existing.name_el ?? null,
+          description_el: existing.description_el ?? null,
+          name_bg: existing.name_bg ?? null,
+          description_bg: existing.description_bg ?? null,
+        }
+        setEntries([...local])
+        continue
+      }
 
       try {
         const s = await suggestRecipeDetails(name, fillOptions.ingredients ? inventoryForAI : [])
@@ -223,7 +253,7 @@ export function QuickRecipeCreatorDrawer({
     setCurrentIdx(-1)
 
     // ── Phase 2: batch translation ─────────────────────────────────────────────
-    const toTranslate = local.filter((e) => e.status === 'done' && e.recipeId)
+    const toTranslate = local.filter((e) => e.status === 'done' && e.recipeId && !e.loaded)
 
     if (fillOptions.translation && toTranslate.length > 0) {
       setTranslating(true)
@@ -418,9 +448,10 @@ export function QuickRecipeCreatorDrawer({
                   : 'border-white/8 bg-white/3 opacity-40',
                 )}>
                   <div className="flex items-center gap-2">
-                    {entry.status === 'done'    ? <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                    : entry.status === 'error'   ? <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                    : i === currentIdx           ? <Loader2 className="h-3.5 w-3.5 text-brand-orange animate-spin shrink-0" />
+                    {entry.status === 'done' && entry.loaded  ? <FolderOpen className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                    : entry.status === 'done'                 ? <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    : entry.status === 'error'                ? <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                    : i === currentIdx                        ? <Loader2 className="h-3.5 w-3.5 text-brand-orange animate-spin shrink-0" />
                     : <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/20" />}
                     <span className="flex-1 text-sm text-white truncate">{entry.name}</span>
                     <div className="flex gap-1.5 shrink-0 text-[10px]">
@@ -441,7 +472,15 @@ export function QuickRecipeCreatorDrawer({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-white">
-                  {doneEntries.length} συνταγές δημιουργήθηκαν
+                  {doneEntries.filter((e) => !e.loaded).length > 0 && (
+                    <span className="text-emerald-400">{doneEntries.filter((e) => !e.loaded).length} νέες</span>
+                  )}
+                  {doneEntries.filter((e) => !e.loaded).length > 0 && doneEntries.filter((e) => e.loaded).length > 0 && (
+                    <span className="text-white/30"> · </span>
+                  )}
+                  {doneEntries.filter((e) => e.loaded).length > 0 && (
+                    <span className="text-sky-400">{doneEntries.filter((e) => e.loaded).length} υπάρχουσες</span>
+                  )}
                 </p>
                 <p className="text-xs text-white/40 mt-0.5">
                   Επέλεξε ποιες θες στα ταμπελάκια και πάτα Εκτύπωση
@@ -480,7 +519,14 @@ export function QuickRecipeCreatorDrawer({
                         <div className="flex-1 py-2.5 pr-3 min-w-0">
                           <div className="flex items-start gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-white truncate">{entry.name}</p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-sm font-semibold text-white truncate">{entry.name}</p>
+                                {entry.loaded && (
+                                  <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold bg-sky-400/10 text-sky-400 border border-sky-400/20">
+                                    Υπάρχουσα
+                                  </span>
+                                )}
+                              </div>
                               {entry.name_el && (
                                 <p className="text-xs text-sky-300/70 truncate">{entry.name_el}</p>
                               )}
