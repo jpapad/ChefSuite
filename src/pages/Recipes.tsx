@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers, ShieldAlert, ArrowLeft } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers, ShieldAlert, ArrowLeft, ListPlus } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../components/ui/Input'
@@ -17,6 +17,7 @@ import { ScanRecipeDrawer } from '../components/recipes/ScanRecipeDrawer'
 import { ImportExcelMenuDrawer } from '../components/recipes/ImportExcelMenuDrawer'
 import { BulkAIUpdateDrawer } from '../components/recipes/BulkAIUpdateDrawer'
 import { BatchRecipeProcessorDrawer } from '../components/recipes/BatchRecipeProcessorDrawer'
+import { QuickRecipeCreatorDrawer } from '../components/recipes/QuickRecipeCreatorDrawer'
 import { RecipeVersionHistory } from '../components/recipes/RecipeVersionHistory'
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../hooks/useInventory'
@@ -46,7 +47,7 @@ export default function Recipes() {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const teamId = profile?.team_id ?? ''
-  const { recipes, loading, error, create, update, remove, consumeRecipe } = useRecipes()
+  const { recipes, loading, error, create, update, remove, consumeRecipe, reload } = useRecipes()
   const { create: createMenu } = useMenus()
   const { items: inventory } = useInventory()
   const {
@@ -63,8 +64,10 @@ export default function Recipes() {
   const [allergenScanOpen, setAllergenScanOpen] = useState(false)
   const [batchProcessorOpen, setBatchProcessorOpen] = useState(false)
   const [batchProcessorInitial, setBatchProcessorInitial] = useState<Set<string> | undefined>()
+  const [quickCreatorOpen, setQuickCreatorOpen] = useState(false)
   const [editing, setEditing] = useState<Recipe | null>(null)
-  const [viewing, setViewing] = useState<Recipe | null>(null)
+  const [viewingId, setViewingId] = useState<string | null>(null)
+  const viewing = viewingId ? (recipes.find((r) => r.id === viewingId) ?? null) : null
   const [saving, setSaving] = useState(false)
   const [batchImportError, setBatchImportError] = useState<string | null>(null)
   const [prefill, setPrefill] = useState<Partial<RecipeFormValues> | undefined>()
@@ -422,6 +425,13 @@ export default function Recipes() {
                   </Button>
                   <Button
                     variant="secondary"
+                    leftIcon={<ListPlus className="h-5 w-5" />}
+                    onClick={() => setQuickCreatorOpen(true)}
+                  >
+                    Γρήγορη Λίστα
+                  </Button>
+                  <Button
+                    variant="secondary"
                     leftIcon={<ChefHat className="h-5 w-5" />}
                     onClick={() => { setBatchProcessorInitial(undefined); setBatchProcessorOpen(true) }}
                   >
@@ -658,7 +668,7 @@ export default function Recipes() {
                           </button>
                         )}
                         <div className={selectionMode ? (selectedIds.has(r.id) ? 'ring-2 ring-red-400 rounded-2xl' : 'opacity-60') : ''}>
-                          <RecipeCard recipe={r} ingredients={getIngredients(r.id)} inventory={inventory} onView={selectionMode ? () => {} : setViewing} onEdit={selectionMode ? () => {} : openEdit} onDelete={selectionMode ? () => {} : onDelete} onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)} onHistory={selectionMode ? () => {} : setVersionRecipe} />
+                          <RecipeCard recipe={r} ingredients={getIngredients(r.id)} inventory={inventory} onView={selectionMode ? () => {} : (rec) => setViewingId(rec.id)} onEdit={selectionMode ? () => {} : openEdit} onDelete={selectionMode ? () => {} : onDelete} onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)} onHistory={selectionMode ? () => {} : setVersionRecipe} />
                         </div>
                       </div>
                     ))}
@@ -694,7 +704,7 @@ export default function Recipes() {
                       recipe={r}
                       ingredients={getIngredients(r.id)}
                       inventory={inventory}
-                      onView={selectionMode ? () => {} : setViewing}
+                      onView={selectionMode ? () => {} : (rec) => setViewingId(rec.id)}
                       onEdit={selectionMode ? () => {} : openEdit}
                       onDelete={selectionMode ? () => {} : onDelete}
                       onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)}
@@ -791,6 +801,14 @@ export default function Recipes() {
         initialSelectedIds={batchProcessorInitial}
       />
 
+      <QuickRecipeCreatorDrawer
+        open={quickCreatorOpen}
+        onClose={() => setQuickCreatorOpen(false)}
+        teamId={teamId}
+        inventory={inventory}
+        onRecipesCreated={() => void reload()}
+      />
+
       {batchImportError && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3 text-sm text-red-300 shadow-2xl backdrop-blur max-w-md">
           <span className="shrink-0">⚠️</span>
@@ -812,8 +830,8 @@ export default function Recipes() {
         recipe={viewing}
         ingredients={viewing ? getIngredients(viewing.id) : []}
         inventory={inventory}
-        onClose={() => setViewing(null)}
-        onEdit={(r) => { setViewing(null); openEdit(r) }}
+        onClose={() => setViewingId(null)}
+        onEdit={(r) => { setViewingId(null); openEdit(r) }}
         onConsume={(r, portions) => consumeRecipe(r.id, portions)}
       />
 

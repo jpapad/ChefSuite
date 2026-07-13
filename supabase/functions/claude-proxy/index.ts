@@ -8,32 +8,33 @@ const corsHeaders = {
 const MODEL    = 'claude-haiku-4-5-20251001'
 const ENDPOINT = 'https://api.anthropic.com/v1/messages'
 
+// Service-role client used only to verify the caller's JWT — no RLS bypass elsewhere
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+)
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+  const authHeader = req.headers.get('Authorization') ?? ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  if (!token) {
+    return new Response(JSON.stringify({ error: { type: 'auth', message: 'Missing auth token' } }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } },
-  )
-
-  const { data: { user }, error: authErr } = await supabase.auth.getUser()
+  const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token)
   if (authErr || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    return new Response(JSON.stringify({ error: { type: 'auth', message: 'Invalid or expired session — please reload the page' } }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), {
+    return new Response(JSON.stringify({ error: { type: 'config', message: 'ANTHROPIC_API_KEY not configured' } }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: { type: 'proxy', message: String(err) } }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }

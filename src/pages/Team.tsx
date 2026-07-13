@@ -132,6 +132,7 @@ export default function Team() {
   const [permSaved, setPermSaved] = useState(false)
 
   const isOwner = profile?.role === 'owner'
+  const canManageSettings = profile?.role === 'owner' || profile?.role === 'executive_chef'
   const canInvite = profile?.role === 'owner' || profile?.role === 'head_chef'
 
   function openPermissions(member: Profile) {
@@ -289,7 +290,7 @@ export default function Team() {
         </GlassCard>
       )}
 
-      {isOwner && (
+      {canManageSettings && (
         <GlassCard className="space-y-3">
           <div className="flex items-center gap-2">
             <Percent className="h-4 w-4 text-brand-orange" />

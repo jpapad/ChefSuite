@@ -53,7 +53,7 @@ async function callGeminiRaw(body: object): Promise<GeminiResponse> {
 
 interface ClaudeResponse {
   content?: Array<{ type: string; text?: string }>
-  error?: { type: string; message: string }
+  error?: { type: string; message: string } | string
   stop_reason?: string
 }
 
@@ -61,11 +61,21 @@ async function callClaude(prompt: string, maxTokens = 8192): Promise<string> {
   const { data, error } = await supabase.functions.invoke('claude-proxy', {
     body: { prompt, max_tokens: maxTokens },
   })
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error('No response from AI service — check edge function logs')
+  if (error) {
+    // supabase-js wraps non-2xx edge function responses as errors
+    const msg = (error as { message?: string }).message || 'AI service error — please reload and try again'
+    throw new Error(msg)
+  }
+  if (!data) throw new Error('No response from AI service')
 
   const resp = data as ClaudeResponse
-  if (resp.error) throw new Error(resp.error.message)
+  if (resp.error) {
+    // error from our edge function: { type, message } object or legacy string
+    const msg = typeof resp.error === 'string'
+      ? resp.error
+      : (resp.error.message || 'AI service error')
+    throw new Error(msg)
+  }
   if (resp.stop_reason === 'max_tokens') {
     throw new Error('AI response was cut off (output too long) — try fewer items at once')
   }
@@ -76,7 +86,7 @@ async function callClaude(prompt: string, maxTokens = 8192): Promise<string> {
   return text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
 }
 
-async function searchUnsplash(query: string): Promise<string | null> {
+export async function searchUnsplash(query: string): Promise<string | null> {
   const key = (import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined) ?? ''
   if (!key) return null
   try {
@@ -783,6 +793,7 @@ export interface SuggestedIngredient {
   quantity: number
   unit: string
   inventory_item_id: string | null
+  suggested_cost_per_unit: number | null
 }
 
 export interface RecipeSuggestion {
@@ -821,7 +832,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
   "prep_time": minutes as integer or null,
   "cook_time": minutes as integer or null,
   "servings": integer (typical portions) or null,
-  "ingredients": [{"name": "ingredient name", "quantity": number, "unit": "g|kg|ml|l|tsp|tbsp|cup|pcs", "inventory_item_id": "matching id from INVENTORY or null if not found"}],
+  "ingredients": [{"name": "ingredient name", "quantity": number, "unit": "g|kg|ml|l|tsp|tbsp|cup|pcs", "inventory_item_id": "matching id from INVENTORY or null if not found", "suggested_cost_per_unit": typical purchase price in EUR per unit (e.g. 0.004 for flour per gram) or null if unsure}],
   "image_search_query": "2-4 word English phrase to find a beautiful food photo of this dish"
 }`
 
@@ -844,7 +855,10 @@ Respond with ONLY a valid JSON object — no markdown, no explanation:
           const inv_id = typeof p.inventory_item_id === 'string' && validIds.has(p.inventory_item_id)
             ? p.inventory_item_id
             : null
-          return [{ name: p.name, quantity: p.quantity, unit: p.unit, inventory_item_id: inv_id }]
+          const cost = typeof p.suggested_cost_per_unit === 'number' && p.suggested_cost_per_unit > 0
+            ? Math.round(p.suggested_cost_per_unit * 10000) / 10000
+            : null
+          return [{ name: p.name, quantity: p.quantity, unit: p.unit, inventory_item_id: inv_id, suggested_cost_per_unit: cost }]
         })
       : []
 
@@ -970,20 +984,34 @@ export async function detectAllergensForRecipes(
   }
 
   const block = items.map((r, i) => {
-    const text = [r.description, r.instructions].filter(Boolean).join(' ').slice(0, 800)
+    const text = [r.description, r.instructions].filter(Boolean).join(' ').slice(0, 1200)
     return `${i + 1}. "${r.title}"${text ? `\n   ${text}` : ''}`
   }).join('\n')
 
-  const prompt = `You are a food safety expert. Read each recipe below and list ONLY the EU-regulated allergens that are actually present in the ingredients or instructions.
+  const prompt = `You are a EU food safety expert. For each recipe, check EVERY ingredient and step for the 14 EU-regulated allergens.
 
-Allergens to check: gluten, dairy, eggs, fish, shellfish, nuts, peanuts, soy, sesame, celery, mustard, sulphites, lupin, molluscs
+Think step by step for each recipe:
+- gluten: wheat/flour/bread/pasta/barley/rye/spelt/semolina/breadcrumbs/beer/soy sauce
+- dairy: milk/butter/cream/cheese/yogurt/whey/lactose/ghee
+- eggs: eggs/mayonnaise/meringue/pasta (fresh)/hollandaise
+- fish: any fish species, fish sauce, worcestershire sauce, anchovies
+- shellfish: shrimp/prawn/crab/lobster/crayfish
+- nuts: almond/hazelnut/walnut/cashew/pecan/pistachio/macadamia/brazil nut
+- peanuts: peanut/groundnut/peanut oil/satay
+- soy: soy/tofu/edamame/miso/tempeh/soy sauce/tamari
+- sesame: sesame seed/tahini/sesame oil/halva
+- celery: celery/celeriac/celery salt/celery seed
+- mustard: mustard seed/mustard paste/mustard powder
+- sulphites: wine/vinegar/dried fruit/pickles/preserved vegetables (>10ppm SO2)
+- lupin: lupin flour/lupin seed
+- molluscs: squid/octopus/snail/oyster/mussel/scallop/clam
 
 Recipes:
 ${block}
 
 Return ONLY a valid JSON array of arrays (one per recipe, same order), no markdown:
 [["gluten","dairy"], [], ["eggs","nuts"], ...]
-If a recipe has no allergens return an empty array for it.`
+Include an allergen only if it is genuinely present. If a recipe has no allergens return [].`
 
   try {
     const raw = await callClaude(prompt, 2000)

@@ -99,7 +99,7 @@ export function RecipeForm({
   const { t } = useTranslation()
   const { recipes: allRecipes } = useRecipes()
   const { targetFoodCostPct } = useTeamSettings()
-  const { create: createInventoryItem } = useInventory()
+  const { create: createInventoryItem, update: updateInventoryItem } = useInventory()
   const otherRecipes = allRecipes.filter((r) => r.id !== initial?.id)
   const [values, setValues] = useState<RecipeFormValues>(() =>
     blank(initial, initialIngredients, prefill),
@@ -120,7 +120,7 @@ export function RecipeForm({
         quantity: 0,
         unit: ing.unit,
         min_stock_level: 0,
-        cost_per_unit: null,
+        cost_per_unit: ing.suggested_cost_per_unit ?? null,
         location_id: null,
       })
       setValues((v) => ({
@@ -153,9 +153,18 @@ export function RecipeForm({
     setError(null)
     try {
       const s = await suggestRecipeDetails(title, inventory.map((i) => ({ id: i.id, name: i.name })))
-      const matched: RecipeIngredientDraft[] = s.suggested_ingredients
-        .filter((i) => i.inventory_item_id !== null)
-        .map((i) => ({ inventory_item_id: i.inventory_item_id!, quantity: i.quantity }))
+      const matchedSuggestions = s.suggested_ingredients.filter((i) => i.inventory_item_id !== null)
+      const matched: RecipeIngredientDraft[] = matchedSuggestions.map((i) => ({ inventory_item_id: i.inventory_item_id!, quantity: i.quantity }))
+      // silently fill cost_per_unit for matched inventory items that have none
+      void Promise.all(
+        matchedSuggestions
+          .filter((i) => i.suggested_cost_per_unit != null)
+          .filter((i) => {
+            const item = inventory.find((inv) => inv.id === i.inventory_item_id)
+            return item && item.cost_per_unit == null
+          })
+          .map((i) => updateInventoryItem(i.inventory_item_id!, { cost_per_unit: i.suggested_cost_per_unit }))
+      )
       const newServings = values.servings ?? s.servings
       const cost = matched.length > 0
         ? calcCostPerPortion(matched, newServings)
@@ -419,6 +428,9 @@ export function RecipeForm({
                 <span className="flex-1 text-sm text-white/70 truncate">
                   {ing.name}
                   <span className="text-white/35 ml-1">{ing.quantity} {ing.unit}</span>
+                  {ing.suggested_cost_per_unit != null && (
+                    <span className="text-emerald-400/60 ml-1.5 text-xs">~{ing.suggested_cost_per_unit.toFixed(ing.suggested_cost_per_unit < 0.1 ? 4 : 2)}€/{ing.unit}</span>
+                  )}
                 </span>
                 <button
                   type="button"

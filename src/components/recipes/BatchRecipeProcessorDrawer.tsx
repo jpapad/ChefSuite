@@ -5,6 +5,7 @@ import { Button } from '../ui/Button'
 import { cn } from '../../lib/cn'
 import {
   suggestRecipeDetails,
+  searchUnsplash,
   detectAllergensForRecipes,
   estimateNutrition,
   generatePrepBreakdown,
@@ -34,9 +35,11 @@ interface FillOptions {
   allergens: boolean
   nutrition: boolean
   prepTemplate: boolean
+  ingredients: boolean
+  image: boolean
 }
 
-type PhaseKey = 'details' | 'allergens' | 'nutrition' | 'prep'
+type PhaseKey = 'details' | 'allergens' | 'nutrition' | 'prep' | 'ingredients' | 'image'
 type PhaseStatus = 'pending' | 'running' | 'done' | 'skipped'
 
 interface RecipeStatus {
@@ -44,13 +47,16 @@ interface RecipeStatus {
   title: string
   phases: Record<PhaseKey, PhaseStatus>
   done: boolean
+  ingredientStats?: { matched: number; total: number }
 }
 
 const PHASE_LABELS: Record<PhaseKey, string> = {
-  details:  '📖 Στοιχεία',
-  allergens:'⚠️ Αλλεργιογόνα',
-  nutrition:'🔢 Διατροφικά',
-  prep:     '🔪 Prep Template',
+  details:     '📖 Στοιχεία',
+  allergens:   '⚠️ Αλλεργιογόνα',
+  nutrition:   '🔢 Διατροφικά',
+  prep:        '🔪 Prep Template',
+  ingredients: '🥕 Υλικά',
+  image:       '🖼️ Εικόνα',
 }
 
 export function BatchRecipeProcessorDrawer({
@@ -66,6 +72,8 @@ export function BatchRecipeProcessorDrawer({
     allergens:     true,
     nutrition:     true,
     prepTemplate:  true,
+    ingredients:   true,
+    image:         true,
   })
   const [workstations, setWorkstations] = useState<Workstation[]>([])
 
@@ -135,10 +143,12 @@ export function BatchRecipeProcessorDrawer({
       title: r.title,
       done: false,
       phases: {
-        details:   fillOptions.recipeDetails ? 'pending' : 'skipped',
-        allergens: fillOptions.allergens && !fillOptions.recipeDetails ? 'pending' : 'skipped',
-        nutrition: fillOptions.nutrition  ? 'pending' : 'skipped',
-        prep:      fillOptions.prepTemplate? 'pending' : 'skipped',
+        details:     fillOptions.recipeDetails ? 'pending' : 'skipped',
+        allergens:   fillOptions.allergens && !fillOptions.recipeDetails ? 'pending' : 'skipped',
+        nutrition:   fillOptions.nutrition   ? 'pending' : 'skipped',
+        prep:        fillOptions.prepTemplate ? 'pending' : 'skipped',
+        ingredients: fillOptions.ingredients  ? 'pending' : 'skipped',
+        image:       fillOptions.image        ? 'pending' : 'skipped',
       },
     }))
     setStatuses(initial)
@@ -165,7 +175,8 @@ export function BatchRecipeProcessorDrawer({
           )
           if (needsFill) {
             setPhase(idx, 'details', 'running')
-            const suggestion = await suggestRecipeDetails(recipe.title)
+            const inventoryForAI = inventory.map((i) => ({ id: i.id, name: i.name }))
+            const suggestion = await suggestRecipeDetails(recipe.title, inventoryForAI)
             if (!onlyEmpty || !recipe.description)   patch.description   = suggestion.description   ?? undefined
             if (!onlyEmpty || !recipe.instructions)  patch.instructions  = suggestion.instructions  ?? undefined
             if (!onlyEmpty || !recipe.category)      patch.category      = (suggestion.category as Recipe['category'])  ?? undefined
@@ -179,6 +190,37 @@ export function BatchRecipeProcessorDrawer({
               setPhase(idx, 'allergens', 'done')
             }
             if (suggestion.instructions) updatedInstructions = suggestion.instructions
+            // pick up image and ingredients from the details call if those options are active
+            if (fillOptions.image && suggestion.image_url) {
+              patch.image_url = suggestion.image_url
+              setPhase(idx, 'image', 'done')
+            }
+            if (fillOptions.ingredients && suggestion.suggested_ingredients.length > 0) {
+              const matched = suggestion.suggested_ingredients.filter((i) => i.inventory_item_id)
+              const total   = suggestion.suggested_ingredients.length
+              if (matched.length > 0) {
+                const existingIds = new Set(getIngredients(recipe.id).map((i) => i.inventory_item_id))
+                const toInsert = matched
+                  .filter((i) => !existingIds.has(i.inventory_item_id!))
+                  .map((i) => ({
+                    recipe_id:         recipe.id,
+                    inventory_item_id: i.inventory_item_id!,
+                    quantity:          i.quantity,
+                    unit:              i.unit,
+                    notes:             null,
+                  }))
+                if (toInsert.length > 0) {
+                  const { error: ingErr } = await supabase.from('recipe_ingredients').insert(toInsert)
+                  if (ingErr) throw ingErr
+                }
+              }
+              setStatuses((prev) => {
+                const next = [...prev]
+                if (next[idx]) next[idx] = { ...next[idx]!, ingredientStats: { matched: matched.length, total } }
+                return next
+              })
+              setPhase(idx, 'ingredients', 'done')
+            }
             setPhase(idx, 'details', 'done')
           } else {
             setPhase(idx, 'details', 'skipped')
@@ -275,6 +317,62 @@ export function BatchRecipeProcessorDrawer({
           setPhase(idx, 'prep', 'done')
         }
 
+        // ── Ingredients (standalone — only when recipeDetails is OFF) ────────
+        if (fillOptions.ingredients && !fillOptions.recipeDetails) {
+          const needsFill = !onlyEmpty || getIngredients(recipe.id).length === 0
+          if (needsFill) {
+            setPhase(idx, 'ingredients', 'running')
+            const inventoryForAI = inventory.map((i) => ({ id: i.id, name: i.name }))
+            const suggestion = await suggestRecipeDetails(recipe.title, inventoryForAI)
+            const matched = suggestion.suggested_ingredients.filter((i) => i.inventory_item_id)
+            const total   = suggestion.suggested_ingredients.length
+            if (matched.length > 0) {
+              const existingIds = new Set(getIngredients(recipe.id).map((i) => i.inventory_item_id))
+              const toInsert = matched
+                .filter((i) => !existingIds.has(i.inventory_item_id!))
+                .map((i) => ({
+                  recipe_id:         recipe.id,
+                  inventory_item_id: i.inventory_item_id!,
+                  quantity:          i.quantity,
+                  unit:              i.unit,
+                  notes:             null,
+                }))
+              if (toInsert.length > 0) {
+                const { error: ingErr } = await supabase.from('recipe_ingredients').insert(toInsert)
+                if (ingErr) throw ingErr
+              }
+            }
+            if (fillOptions.image && suggestion.image_url && (!onlyEmpty || !recipe.image_url)) {
+              patch.image_url = suggestion.image_url
+              setPhase(idx, 'image', 'done')
+            }
+            setStatuses((prev) => {
+              const next = [...prev]
+              if (next[idx]) next[idx] = { ...next[idx]!, ingredientStats: { matched: matched.length, total } }
+              return next
+            })
+            setPhase(idx, 'ingredients', 'done')
+            if (Object.keys(patch).length > 0) await onUpdate(recipe.id, patch)
+          } else {
+            setPhase(idx, 'ingredients', 'skipped')
+          }
+        }
+
+        // ── Image (standalone — only when neither details nor ingredients fetched it) ──
+        if (fillOptions.image && !fillOptions.recipeDetails && !fillOptions.ingredients) {
+          const needsFill = !onlyEmpty || !recipe.image_url
+          if (needsFill) {
+            setPhase(idx, 'image', 'running')
+            const url = await searchUnsplash(recipe.title)
+            if (url) {
+              await onUpdate(recipe.id, { image_url: url })
+            }
+            setPhase(idx, 'image', 'done')
+          } else {
+            setPhase(idx, 'image', 'skipped')
+          }
+        }
+
         markDone(idx)
       }
     } catch (err) {
@@ -315,6 +413,8 @@ export function BatchRecipeProcessorDrawer({
                   { key: 'allergens'     as const, label: '⚠️ Αλλεργιογόνα',      sub: 'Αυτόματη ανίχνευση' },
                   { key: 'nutrition'     as const, label: '🔢 Διατροφικά',         sub: 'Θερμίδες, πρωτεΐνες, υδ/κες' },
                   { key: 'prepTemplate'  as const, label: '🔪 Prep Template',       sub: 'Ανά σταθμό εργασίας' },
+                  { key: 'ingredients'   as const, label: '🥕 Υλικά',              sub: 'Αντιστοίχιση με αποθήκη' },
+                  { key: 'image'         as const, label: '🖼️ Εικόνα',             sub: 'Φωτογραφία από Unsplash' },
                 ] as { key: keyof FillOptions; label: string; sub: string }[]).map(({ key, label, sub }) => (
                   <button
                     key={key}
@@ -482,6 +582,11 @@ export function BatchRecipeProcessorDrawer({
                           {status === 'done'    && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
                           {status === 'running' && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
                           {PHASE_LABELS[phase]}
+                          {phase === 'ingredients' && status === 'done' && s.ingredientStats && (
+                            <span className="opacity-70">
+                              {s.ingredientStats.matched}/{s.ingredientStats.total}
+                            </span>
+                          )}
                         </span>
                       ))
                     }

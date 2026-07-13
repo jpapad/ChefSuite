@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { Tag, Printer, Search, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -36,11 +37,15 @@ export default function Labels() {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const teamId = profile?.team_id
+  const location = useLocation()
+  const preSelectedIds: string[] | undefined = (location.state as { selectedIds?: string[] } | null)?.selectedIds
 
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [selected, setSelected] = useState<Set<string>>(
+    preSelectedIds ? new Set(preSelectedIds) : new Set()
+  )
 
   const [width, setWidth] = useState(70)
   const [height, setHeight] = useState(50)
