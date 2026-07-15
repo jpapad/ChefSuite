@@ -1234,3 +1234,27 @@ export async function generateRegionalRecipes(
 
   return recipes
 }
+
+export interface AISub {
+  label:    string
+  labelEl:  string
+  ratio:    string
+  notes?:   string
+  notesEl?: string
+}
+
+export async function getIngredientSubstitutions(ingredient: string): Promise<AISub[]> {
+  const raw = await callClaude(
+    `You are a professional chef. Give practical cooking substitutions for: "${ingredient}".
+Return ONLY a JSON array, max 5 items:
+[{"label":"English name","labelEl":"Ελληνικό όνομα","ratio":"ποσότητα αντικατάστασης","notes":"optional tip in English","notesEl":"optional tip in Greek"}]
+No markdown, no explanation, only the JSON array.`,
+    1000,
+  )
+  try {
+    const match = raw.match(/\[[\s\S]*\]/)
+    return match ? (JSON.parse(match[0]) as AISub[]) : []
+  } catch {
+    return []
+  }
+}

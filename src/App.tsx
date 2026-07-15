@@ -48,6 +48,8 @@ const ChefCopilot        = lazy(() => import('./pages/ChefCopilot'))
 const CulinaryTools      = lazy(() => import('./pages/CulinaryTools'))
 const CulinaryGlossary   = lazy(() => import('./pages/CulinaryGlossary'))
 const TechniqueLibrary   = lazy(() => import('./pages/TechniqueLibrary'))
+const SeasonalCalendar   = lazy(() => import('./pages/SeasonalCalendar'))
+const SpiceGuide         = lazy(() => import('./pages/SpiceGuide'))
 const HelpCenter         = lazy(() => import('./pages/HelpCenter'))
 const IngredientsEncyclopedia = lazy(() => import('./pages/IngredientsEncyclopedia'))
 const PosSettings        = lazy(() => import('./pages/PosSettings'))
@@ -146,6 +148,8 @@ export default function App() {
                 <Route path="culinary-tools" element={<PermissionGuard module="culinary-tools"><CulinaryTools /></PermissionGuard>} />
                 <Route path="glossary" element={<PermissionGuard module="glossary"><CulinaryGlossary /></PermissionGuard>} />
                 <Route path="techniques" element={<PermissionGuard module="techniques"><TechniqueLibrary /></PermissionGuard>} />
+                <Route path="seasonal-calendar" element={<PermissionGuard module="seasonal-calendar"><SeasonalCalendar /></PermissionGuard>} />
+                <Route path="spice-guide" element={<PermissionGuard module="spice-guide"><SpiceGuide /></PermissionGuard>} />
                 <Route path="help" element={<PermissionGuard module="help"><HelpCenter /></PermissionGuard>} />
                 <Route path="ingredients" element={<PermissionGuard module="ingredients"><IngredientsEncyclopedia /></PermissionGuard>} />
                 <Route path="pos-settings" element={<PermissionGuard module="pos-settings"><PosSettings /></PermissionGuard>} />

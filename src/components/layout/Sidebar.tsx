@@ -7,7 +7,7 @@ import {
   BookOpen, Heart, Bot, Search, X, Scale, BookMarked,
   Layers, HelpCircle, FlaskConical, CreditCard, Building2,
   Tag, Calculator, MapPin, Activity, BookLock, Thermometer, Map,
-  ArrowLeftRight,
+  ArrowLeftRight, CalendarRange, Flame,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -147,11 +147,13 @@ export function Sidebar() {
     {
       id: 'library', label: t('nav.groups.library'),
       items: [
-        { to: '/culinary-tools', label: t('nav.culinaryTools'), icon: Scale,       module: 'culinary-tools' },
-        { to: '/glossary',       label: t('nav.glossary'),      icon: BookMarked,  module: 'glossary'       },
-        { to: '/techniques',     label: t('nav.techniques'),    icon: Layers,      module: 'techniques'     },
-        { to: '/ingredients',    label: t('nav.ingredients'),   icon: FlaskConical,module: 'ingredients'    },
-        { to: '/help',           label: t('nav.help'),          icon: HelpCircle,  module: 'help'           },
+        { to: '/culinary-tools',   label: t('nav.culinaryTools'),   icon: Scale,         module: 'culinary-tools'   },
+        { to: '/glossary',         label: t('nav.glossary'),        icon: BookMarked,    module: 'glossary'         },
+        { to: '/techniques',       label: t('nav.techniques'),      icon: Layers,        module: 'techniques'       },
+        { to: '/seasonal-calendar',label: t('nav.seasonalCalendar'),icon: CalendarRange, module: 'seasonal-calendar'},
+        { to: '/spice-guide',      label: t('nav.spiceGuide'),      icon: Flame,         module: 'spice-guide'      },
+        { to: '/ingredients',      label: t('nav.ingredients'),     icon: FlaskConical,  module: 'ingredients'      },
+        { to: '/help',             label: t('nav.help'),            icon: HelpCircle,    module: 'help'             },
       ],
     },
   ]

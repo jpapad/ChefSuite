@@ -33,6 +33,8 @@ export const ALL_MODULES = [
   'culinary-tools',
   'glossary',
   'techniques',
+  'seasonal-calendar',
+  'spice-guide',
   'help',
   'ingredients',
   'pos-settings',
@@ -66,7 +68,7 @@ export const MODULE_GROUPS: { labelKey: string; modules: AppModule[] }[] = [
   },
   {
     labelKey: 'nav.groups.library',
-    modules: ['culinary-tools', 'glossary', 'techniques', 'ingredients', 'help'],
+    modules: ['culinary-tools', 'glossary', 'techniques', 'seasonal-calendar', 'spice-guide', 'ingredients', 'help'],
   },
 ]
 
@@ -99,6 +101,8 @@ export const MODULE_LABEL_KEY: Record<AppModule, string> = {
   'culinary-tools': 'nav.culinaryTools',
   'glossary': 'nav.glossary',
   'techniques': 'nav.techniques',
+  'seasonal-calendar': 'nav.seasonalCalendar',
+  'spice-guide': 'nav.spiceGuide',
   'ingredients': 'nav.ingredients',
   'pos-settings': 'nav.posSettings',
   'help': 'nav.help',

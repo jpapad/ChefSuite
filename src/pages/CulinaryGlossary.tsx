@@ -1,8 +1,61 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { cn } from '../lib/cn'
+import { useLibraryNote } from '../hooks/useLibraryNote'
+
+function GlossaryNote({ termKey }: { termKey: string }) {
+  const { note, setNote, saving, save, isDirty } = useLibraryNote('glossary', termKey)
+  return (
+    <div className="border-t border-white/8 pt-2 mt-2 space-y-1.5">
+      <textarea
+        rows={2}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Σημειώσεις…"
+        className="w-full bg-white/4 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:ring-1 focus:ring-brand-orange/40 resize-none"
+      />
+      {isDirty && (
+        <button type="button" onClick={() => save(note)} disabled={saving}
+          className="text-[11px] text-brand-orange hover:opacity-80 transition disabled:opacity-40">
+          {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function TermCard({ item, isEl, catColors }: { item: GlossaryTerm; isEl: boolean; catColors: Record<GlossaryCategory, string> }) {
+  const [open, setOpen] = useState(false)
+  const { t } = useTranslation()
+  return (
+    <GlassCard className="!p-0 overflow-hidden">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="w-full text-left px-4 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="font-semibold text-white">{item.term}</p>
+            {item.el && <p className="text-xs text-white/40 mt-0.5">{item.el}</p>}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <span className={cn('text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-medium', catColors[item.category])}>
+              {t(`glossary.${item.category}`)}
+            </span>
+            {open ? <ChevronUp className="h-3.5 w-3.5 text-white/30" /> : <ChevronDown className="h-3.5 w-3.5 text-white/30" />}
+          </div>
+        </div>
+        <p className={cn('text-sm text-white/65 leading-relaxed mt-1.5', !open && 'line-clamp-2')}>
+          {isEl ? item.definitionEl : item.definition}
+        </p>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 border-t border-white/6 pt-2">
+          <GlossaryNote termKey={item.term} />
+        </div>
+      )}
+    </GlassCard>
+  )
+}
 
 type GlossaryCategory = 'techniques' | 'equipment' | 'french' | 'italian' | 'baking' | 'sauces'
 
@@ -281,20 +334,7 @@ export default function CulinaryGlossary() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => (
-            <GlassCard key={item.term} className="!p-4 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-white">{item.term}</p>
-                  {item.el && <p className="text-xs text-white/40 mt-0.5">{item.el}</p>}
-                </div>
-                <span className={cn('text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-medium shrink-0', CATEGORY_COLORS[item.category])}>
-                  {t(`glossary.${item.category}`)}
-                </span>
-              </div>
-              <p className="text-sm text-white/65 leading-relaxed">
-                {isEl ? item.definitionEl : item.definition}
-              </p>
-            </GlassCard>
+            <TermCard key={item.term} item={item} isEl={isEl} catColors={CATEGORY_COLORS} />
           ))}
         </div>
       )}

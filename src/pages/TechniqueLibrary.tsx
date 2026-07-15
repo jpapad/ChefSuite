@@ -3,6 +3,29 @@ import { useTranslation } from 'react-i18next'
 import { Search, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { cn } from '../lib/cn'
+import { useLibraryNote } from '../hooks/useLibraryNote'
+
+function TechNote({ techName }: { techName: string }) {
+  const { note, setNote, saving, save, isDirty } = useLibraryNote('technique', techName)
+  return (
+    <div className="border-t border-white/8 pt-3 mt-1 space-y-1.5">
+      <p className="text-[10px] text-white/30 uppercase tracking-wider">Προσωπικές σημειώσεις</p>
+      <textarea
+        rows={2}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Προσθέστε σημειώσεις ή tips σας…"
+        className="w-full bg-white/4 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 placeholder:text-white/20 outline-none focus:ring-1 focus:ring-brand-orange/40 resize-none"
+      />
+      {isDirty && (
+        <button type="button" onClick={() => save(note)} disabled={saving}
+          className="text-[11px] text-brand-orange hover:opacity-80 transition disabled:opacity-40">
+          {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
+        </button>
+      )}
+    </div>
+  )
+}
 
 type TechCategory = 'knifeSkills' | 'heatMethods' | 'sauces' | 'baking' | 'prep'
 type Difficulty   = 'beginner' | 'intermediate' | 'advanced'
@@ -266,6 +289,7 @@ function TechCard({ tech, isEl, tFn }: { tech: Technique; isEl: boolean; tFn: (k
               </li>
             ))}
           </ul>
+          <TechNote techName={tech.name} />
         </div>
       )}
     </GlassCard>

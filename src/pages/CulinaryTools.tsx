@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Scale, Thermometer, Shuffle, Calculator, Plus, Trash2, ArrowRight } from 'lucide-react'
+import { Scale, Thermometer, Shuffle, Calculator, Plus, Trash2, ArrowRight, Sparkles, Loader2 } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { cn } from '../lib/cn'
+import { getIngredientSubstitutions, type AISub } from '../lib/gemini'
 
 type Tab = 'convert' | 'scale' | 'substitute' | 'temps'
 type ConvertType = 'weight' | 'volume' | 'temp'
@@ -157,6 +158,20 @@ export default function CulinaryTools() {
 
   const [subCat, setSubCat]       = useState('all')
   const [subSearch, setSubSearch] = useState('')
+
+  const [aiQuery,   setAiQuery]   = useState('')
+  const [aiResults, setAiResults] = useState<AISub[] | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
+  async function searchAI() {
+    const q = aiQuery.trim()
+    if (!q || aiLoading) return
+    setAiLoading(true)
+    setAiResults(null)
+    const results = await getIngredientSubstitutions(q)
+    setAiResults(results)
+    setAiLoading(false)
+  }
 
   function convert() {
     const n = parseFloat(inputVal)
@@ -377,6 +392,51 @@ export default function CulinaryTools() {
       {/* ── SUBSTITUTE ── */}
       {tab === 'substitute' && (
         <div className="space-y-4">
+          {/* AI search */}
+          <GlassCard className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-violet-400 shrink-0" />
+              <p className="text-sm font-medium text-white/80">
+                {isEl ? 'AI Αντικαταστάσεις' : 'AI Substitutions'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchAI()}
+                placeholder={isEl ? 'π.χ. βούτυρο, κρέμα γάλακτος…' : 'e.g. butter, heavy cream…'}
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:ring-1 focus:ring-violet-400/50"
+              />
+              <button type="button" onClick={searchAI} disabled={!aiQuery.trim() || aiLoading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-500/20 border border-violet-500/30 text-violet-300 text-sm font-medium transition hover:bg-violet-500/30 disabled:opacity-40">
+                {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {isEl ? 'Αναζήτηση' : 'Search'}
+              </button>
+            </div>
+            {aiResults !== null && (
+              aiResults.length === 0 ? (
+                <p className="text-sm text-white/30">{isEl ? 'Δεν βρέθηκαν αντικαταστάσεις.' : 'No substitutions found.'}</p>
+              ) : (
+                <div className="space-y-2">
+                  {aiResults.map((sub, i) => (
+                    <div key={i} className="rounded-xl bg-violet-500/8 border border-violet-500/15 px-3 py-2.5">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs text-white/40 shrink-0">{isEl ? 'Χρήση' : 'Use'}</span>
+                        <span className="text-sm font-medium text-white/90">{isEl ? sub.labelEl : sub.label}</span>
+                      </div>
+                      <p className="text-xs text-violet-300 mt-0.5">{sub.ratio}</p>
+                      {(isEl ? sub.notesEl : sub.notes) && (
+                        <p className="text-xs text-white/40 mt-0.5 italic">{isEl ? sub.notesEl : sub.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+          </GlassCard>
+
           <div className="flex flex-col gap-3">
             <input type="text" placeholder={t('culinaryTools.substitute.search')} value={subSearch}
               onChange={(e) => setSubSearch(e.target.value)}
