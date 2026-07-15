@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Loader2, Sparkles, Tag, AlertCircle, Languages, ChevronLeft, ImageIcon, FolderOpen } from 'lucide-react'
+import { Check, Loader2, Sparkles, Tag, AlertCircle, Languages, ChevronLeft, ChevronDown, ChevronUp, ImageIcon, FolderOpen, ExternalLink } from 'lucide-react'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
 import { cn } from '../../lib/cn'
@@ -19,6 +19,7 @@ interface Props {
   teamId: string
   inventory: InventoryItem[]
   onRecipesCreated: () => void
+  onViewRecipe?: (recipeId: string) => void
 }
 
 interface FillOptions {
@@ -60,6 +61,11 @@ const ALLERGEN_LABEL: Record<string, string> = {
   lupin: 'Λούπινο', molluscs: 'Μαλάκια',
 }
 
+const ALL_ALLERGENS = [
+  'gluten', 'dairy', 'eggs', 'nuts', 'peanuts', 'fish',
+  'shellfish', 'molluscs', 'soy', 'sesame', 'celery', 'mustard', 'sulphites', 'lupin',
+]
+
 function buildVirtualMenu(
   teamId: string,
   entries: RecipeEntry[],
@@ -100,7 +106,7 @@ function buildVirtualMenu(
 type Phase = 'input' | 'processing' | 'preview' | 'labels'
 
 export function QuickRecipeCreatorDrawer({
-  open, onClose, teamId, inventory, onRecipesCreated,
+  open, onClose, teamId, inventory, onRecipesCreated, onViewRecipe,
 }: Props) {
   const [phase, setPhase]           = useState<Phase>('input')
   const [namesText, setNamesText]   = useState('')
@@ -112,6 +118,7 @@ export function QuickRecipeCreatorDrawer({
   const [translating, setTranslating] = useState(false)
   const [entries, setEntries]         = useState<RecipeEntry[]>([])
   const [currentIdx, setCurrentIdx]   = useState(-1)
+  const [expandedId, setExpandedId]   = useState<string | null>(null)
   const [selectedForLabels, setSelectedForLabels] = useState<Set<string>>(new Set())
   const [labelsRecipes, setLabelsRecipes]         = useState<Recipe[]>([])
   const [loadingLabels, setLoadingLabels]         = useState(false)
@@ -310,6 +317,17 @@ export function QuickRecipeCreatorDrawer({
     })
   }
 
+  function toggleAllergen(recipeId: string, allergen: string) {
+    const entry = entries.find((e) => e.recipeId === recipeId)
+    if (!entry) return
+    const current = entry.allergens ?? []
+    const next = current.includes(allergen)
+      ? current.filter((a) => a !== allergen)
+      : [...current, allergen]
+    setEntries((prev) => prev.map((e) => e.recipeId === recipeId ? { ...e, allergens: next } : e))
+    void supabase.from('recipes').update({ allergens: next }).eq('id', recipeId)
+  }
+
   function handleClose() {
     if (running || translating) return
     setNamesText('')
@@ -492,23 +510,113 @@ export function QuickRecipeCreatorDrawer({
               </button>
             </div>
 
-            <ul className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+            <ul className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
               {doneEntries.map((entry) => {
                 if (!entry.recipeId) return null
-                const selected = selectedForLabels.has(entry.recipeId)
+                const recipeId = entry.recipeId
+                const selected  = selectedForLabels.has(recipeId)
+                const expanded  = expandedId === recipeId
+                const allergens = entry.allergens ?? []
+
+                if (expanded) {
+                  return (
+                    <li key={recipeId}>
+                      <div className={cn(
+                        'rounded-2xl border overflow-hidden transition-all',
+                        selected ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-white/15 bg-white/3',
+                      )}>
+                        {/* Top bar */}
+                        <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
+                          <button type="button" onClick={() => setExpandedId(null)}
+                            className="flex items-center gap-1 text-[11px] text-white/30 hover:text-white/60 transition">
+                            <ChevronUp className="h-3.5 w-3.5" />Σύμπτυξη
+                          </button>
+                          <button type="button" onClick={() => toggleLabelSelect(recipeId)}
+                            className={cn(
+                              'flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium border transition',
+                              selected
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                                : 'border-white/15 text-white/40 hover:text-white/60',
+                            )}>
+                            <div className={cn('h-3 w-3 rounded-full border-2 flex items-center justify-center',
+                              selected ? 'border-emerald-400 bg-emerald-400' : 'border-white/30')}>
+                              {selected && <Check className="h-2 w-2 text-white" strokeWidth={3} />}
+                            </div>
+                            {selected ? 'Στα ταμπελάκια' : 'Προσθήκη'}
+                          </button>
+                        </div>
+
+                        {/* Image */}
+                        <div className="mx-3 h-32 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center">
+                          {entry.image_url
+                            ? <img src={entry.image_url} alt={entry.name} className="w-full h-full object-cover" />
+                            : <ImageIcon className="h-8 w-8 text-white/15" />
+                          }
+                        </div>
+
+                        <div className="p-3 space-y-3">
+                          {/* Title */}
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-semibold text-white">{entry.name}</p>
+                              {entry.loaded && (
+                                <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold bg-sky-400/10 text-sky-400 border border-sky-400/20">
+                                  Υπάρχουσα
+                                </span>
+                              )}
+                            </div>
+                            {entry.name_el && <p className="text-xs text-sky-300/60 mt-0.5">{entry.name_el}</p>}
+                          </div>
+
+                          {/* Description */}
+                          {entry.description && (
+                            <p className="text-[11px] text-white/45 leading-relaxed">{entry.description}</p>
+                          )}
+
+                          {/* Allergen toggles */}
+                          <div>
+                            <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Αλλεργιογόνα — πάτα για αλλαγή</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {ALL_ALLERGENS.map((a) => {
+                                const active = allergens.includes(a)
+                                return (
+                                  <button key={a} type="button" onClick={() => toggleAllergen(recipeId, a)}
+                                    className={cn(
+                                      'rounded-lg border px-2 py-1 text-[10px] font-medium transition',
+                                      active
+                                        ? 'bg-amber-400/15 border-amber-400/30 text-amber-300'
+                                        : 'border-white/10 text-white/25 hover:text-white/50 hover:border-white/20',
+                                    )}>
+                                    {ALLERGEN_EMOJI[a]} {ALLERGEN_LABEL[a] ?? a}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Open recipe */}
+                          {onViewRecipe && (
+                            <button type="button" onClick={() => { onViewRecipe(recipeId); setExpandedId(null) }}
+                              className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition">
+                              <ExternalLink className="h-3 w-3" />Άνοιγμα πλήρους συνταγής
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                }
+
+                // ── Collapsed card ──────────────────────────────────────────
                 return (
-                  <li key={entry.recipeId}>
-                    <button type="button" onClick={() => toggleLabelSelect(entry.recipeId!)}
-                      className={cn(
-                        'w-full text-left rounded-2xl border overflow-hidden transition-all',
-                        selected
-                          ? 'border-emerald-500/40 bg-emerald-500/5'
-                          : 'border-white/10 bg-white/3 opacity-50',
-                      )}
-                    >
+                  <li key={recipeId}>
+                    <div className={cn(
+                      'rounded-2xl border overflow-hidden transition-all',
+                      selected ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-white/10 bg-white/3 opacity-60',
+                    )}>
                       <div className="flex gap-3">
                         {/* Image */}
-                        <div className="w-20 h-20 shrink-0 rounded-l-xl overflow-hidden bg-white/5 flex items-center justify-center">
+                        <div className="w-20 h-20 shrink-0 overflow-hidden bg-white/5 flex items-center justify-center">
                           {entry.image_url
                             ? <img src={entry.image_url} alt={entry.name} className="w-full h-full object-cover" />
                             : <ImageIcon className="h-6 w-6 text-white/20" />
@@ -527,36 +635,39 @@ export function QuickRecipeCreatorDrawer({
                                   </span>
                                 )}
                               </div>
-                              {entry.name_el && (
-                                <p className="text-xs text-sky-300/70 truncate">{entry.name_el}</p>
-                              )}
+                              {entry.name_el && <p className="text-xs text-sky-300/60 truncate">{entry.name_el}</p>}
                             </div>
-                            <div className={cn(
-                              'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition',
-                              selected ? 'border-emerald-400 bg-emerald-400' : 'border-white/30',
-                            )}>
+                            {/* Selection checkbox */}
+                            <button type="button" onClick={() => toggleLabelSelect(recipeId)}
+                              className={cn(
+                                'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition',
+                                selected ? 'border-emerald-400 bg-emerald-400' : 'border-white/30',
+                              )}>
                               {selected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                            </div>
+                            </button>
                           </div>
 
-                          {entry.description && (
-                            <p className="text-[11px] text-white/40 mt-1 line-clamp-2 leading-relaxed">
-                              {entry.description}
-                            </p>
-                          )}
-
-                          {entry.allergens && entry.allergens.length > 0 && (
+                          {entry.allergens && allergens.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
-                              {entry.allergens.map((a) => (
+                              {allergens.slice(0, 4).map((a) => (
                                 <span key={a} className="inline-flex items-center gap-0.5 rounded-md bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 text-[9px] text-amber-300/80 font-medium">
                                   {ALLERGEN_EMOJI[a] ?? '⚠️'} {ALLERGEN_LABEL[a] ?? a}
                                 </span>
                               ))}
+                              {allergens.length > 4 && (
+                                <span className="text-[9px] text-white/30 self-center">+{allergens.length - 4}</span>
+                              )}
                             </div>
                           )}
+
+                          {/* Expand button */}
+                          <button type="button" onClick={() => setExpandedId(recipeId)}
+                            className="flex items-center gap-1 mt-1.5 text-[10px] text-white/25 hover:text-white/50 transition">
+                            <ChevronDown className="h-3 w-3" />Προεπισκόπηση & επεξεργασία
+                          </button>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   </li>
                 )
               })}

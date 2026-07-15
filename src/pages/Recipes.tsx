@@ -807,6 +807,7 @@ export default function Recipes() {
         teamId={teamId}
         inventory={inventory}
         onRecipesCreated={() => void reload()}
+        onViewRecipe={(id) => { setQuickCreatorOpen(false); setViewingId(id) }}
       />
 
       {batchImportError && (
