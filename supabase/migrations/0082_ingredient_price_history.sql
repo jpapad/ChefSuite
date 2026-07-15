@@ -13,7 +13,7 @@ create policy "team members can view price history"
   using (
     exists (
       select 1 from inventory i
-      join team_members tm on tm.team_id = i.team_id
+      join team_memberships tm on tm.team_id = i.team_id
       where i.id = ingredient_price_history.inventory_item_id
         and tm.user_id = auth.uid()
     )
@@ -24,7 +24,7 @@ create policy "team members can insert price history"
   with check (
     exists (
       select 1 from inventory i
-      join team_members tm on tm.team_id = i.team_id
+      join team_memberships tm on tm.team_id = i.team_id
       where i.id = ingredient_price_history.inventory_item_id
         and tm.user_id = auth.uid()
     )
