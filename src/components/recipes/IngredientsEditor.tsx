@@ -192,9 +192,9 @@ export function IngredientsEditor({ value, onChange, inventory }: IngredientsEdi
               onChange={(e) => setItemId(e.target.value)}
               className="flex-1 bg-transparent outline-none text-base text-white"
             >
-              <option value="" className="bg-[#f5ede0]">Select ingredient…</option>
+              <option value="" className="bg-bg-card">Select ingredient…</option>
               {available.map((i) => (
-                <option key={i.id} value={i.id} className="bg-[#f5ede0]">
+                <option key={i.id} value={i.id} className="bg-bg-card">
                   {i.name} ({i.unit})
                 </option>
               ))}

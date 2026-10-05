@@ -18,14 +18,6 @@ import { useOnlineOrders } from '../hooks/useOnlineOrders'
 import { cn } from '../lib/cn'
 import type { OnlineOrderStatus, OnlineOrderWithItems, PrepTask } from '../types/database.types'
 
-const ORDER_STATUS_STYLES: Record<OnlineOrderStatus, string> = {
-  pending:   'bg-amber-500/20 border-amber-500/40 text-amber-300',
-  preparing: 'bg-blue-500/20 border-blue-500/40 text-blue-300',
-  ready:     'bg-emerald-500/20 border-emerald-500/40 text-emerald-300',
-  completed: 'bg-white/5 border-white/10 text-white/40',
-  cancelled: 'bg-red-500/10 border-red-500/20 text-red-300',
-}
-
 const NEXT_STATUS: Partial<Record<OnlineOrderStatus, OnlineOrderStatus>> = {
   pending:   'preparing',
   preparing: 'ready',
@@ -121,108 +113,91 @@ export default function KDS() {
     return result
   }, [tasks, membersById, t])
 
-  const totalPending = tasks.filter((t) => !t.done_at).length
   const totalDone = tasks.filter((t) => !!t.done_at).length
+
+  const lanes: { status: OnlineOrderStatus; label: string; tone: string }[] = [
+    { status: 'pending', label: t('kds.v2.new'), tone: 'bg-amber-500/15 text-amber-500' },
+    { status: 'preparing', label: t('kds.v2.preparing'), tone: 'bg-sky-500/15 text-sky-500' },
+    { status: 'ready', label: t('kds.v2.ready'), tone: 'bg-lime text-ink' },
+  ]
+  const pct = tasks.length > 0 ? Math.round((totalDone / tasks.length) * 100) : 0
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        'flex flex-col min-h-0',
-        fullscreen
-          ? 'fixed inset-0 z-50 bg-[#0f1117] overflow-hidden'
-          : 'h-[calc(100vh-2rem)]',
+        // Kitchen-floor screen: always dark, whatever the app theme
+        'theme-dark flex flex-col min-h-0 gap-4',
+        fullscreen ? 'fixed inset-0 z-50 overflow-hidden p-5' : 'h-[calc(100vh-2rem)] rounded-3xl p-4',
       )}
     >
-      <div className={cn(
-        'flex-none flex items-center justify-between gap-4 px-4 py-3',
-        'border-b border-glass-border glass-strong',
-        fullscreen && 'px-6 py-4',
-      )}>
-        <div className="flex items-center gap-3">
-          <Monitor className="h-6 w-6 text-brand-orange shrink-0" />
-          <span className={cn('font-semibold', fullscreen ? 'text-2xl' : 'text-lg')}>
-            {t('kds.title')}
-          </span>
-          {/* Tab switcher */}
-          <div className="flex rounded-lg border border-white/10 overflow-hidden ml-2">
-            <button type="button" onClick={() => setTab('prep')}
-              className={cn('px-3 py-1 text-xs font-medium transition', tab === 'prep' ? 'bg-brand-orange text-white-fixed' : 'text-white/50 hover:text-white')}>
-              {t('kds.tabPrep')}
-            </button>
-            <button type="button" onClick={() => setTab('orders')}
-              className={cn('px-3 py-1 text-xs font-medium transition relative', tab === 'orders' ? 'bg-brand-orange text-white-fixed' : 'text-white/50 hover:text-white')}>
-              {t('kds.tabOrders')}
-              {orders.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-neutral-900">
+      {/* ── Top bar ── */}
+      <div className="flex flex-none flex-wrap items-center gap-3">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-lime text-ink"><Monitor className="h-5 w-5" /></span>
+        <span className={cn('font-medium tracking-[-0.02em]', fullscreen ? 'text-3xl' : 'text-2xl')}>{t('kds.title')}</span>
+
+        <div className="ml-2 inline-flex rounded-full bg-white/[0.06] p-1">
+          {(['prep', 'orders'] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={tab === key}
+              onClick={() => setTab(key)}
+              className={cn('relative inline-flex h-11 items-center gap-2 rounded-full px-5 text-base font-medium transition', tab === key ? 'bg-lime text-ink' : 'text-white/70 hover:text-white')}
+            >
+              {key === 'prep' ? t('kds.tabPrep') : t('kds.tabOrders')}
+              {key === 'orders' && orders.length > 0 && (
+                <span className={cn('flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums', tab === key ? 'bg-ink text-lime' : 'bg-amber-500 text-ink')}>
                   {orders.length}
                 </span>
               )}
             </button>
-          </div>
+          ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setDate((d) => shiftDate(d, -1))}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/5"
-          >
+        <div className="ml-auto flex items-center gap-1 rounded-full bg-white/[0.06] p-1">
+          <button type="button" aria-label={t('kds.v2.prevDay')} onClick={() => setDate((d) => shiftDate(d, -1))} className="flex h-11 w-11 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <span className={cn('font-medium min-w-[80px] text-center', fullscreen ? 'text-xl' : 'text-base')}>
-            {formatLabel(date)}
-          </span>
-          <button
-            type="button"
-            onClick={() => setDate((d) => shiftDate(d, 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/5"
-          >
+          <span className={cn('min-w-[96px] text-center font-medium', fullscreen ? 'text-xl' : 'text-base')}>{formatLabel(date)}</span>
+          <button type="button" aria-label={t('kds.v2.nextDay')} onClick={() => setDate((d) => shiftDate(d, 1))} className="flex h-11 w-11 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className={cn('flex items-center gap-2', fullscreen ? 'text-base' : 'text-sm')}>
-            <span className="text-white/50">{t('kds.pending', { count: totalPending })}</span>
-            <span className="text-white/25">·</span>
-            <span className="text-emerald-400">{t('kds.done', { count: totalDone })}</span>
-          </div>
-
-          {tasks.length > 0 && (
-            <div className="hidden sm:block w-24 h-2 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-2 rounded-full bg-emerald-400 transition-all"
-                style={{ width: `${(totalDone / tasks.length) * 100}%` }}
-              />
+        {tasks.length > 0 && (
+          <div className="flex items-center gap-3 rounded-full bg-white/[0.06] px-4 py-2">
+            <span className="text-sm text-white/60 tabular-nums">{totalDone}/{tasks.length}</span>
+            <div className="h-2 w-24 overflow-hidden rounded-full bg-white/10">
+              <div className="h-2 rounded-full bg-lime transition-all" style={{ width: `${pct}%` }} />
             </div>
-          )}
+            <span className="text-sm font-medium tabular-nums text-lime">{pct}%</span>
+          </div>
+        )}
 
-          <button
-            type="button"
-            onClick={fullscreen ? exitFullscreen : enterFullscreen}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/5"
-            aria-label={fullscreen ? t('kds.exitFullscreen') : t('kds.enterFullscreen')}
-          >
-            {fullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={fullscreen ? exitFullscreen : enterFullscreen}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.06] text-white/70 hover:bg-white/10 hover:text-white"
+          aria-label={fullscreen ? t('kds.exitFullscreen') : t('kds.enterFullscreen')}
+        >
+          {fullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+        </button>
       </div>
 
-      <div className={cn('flex-1 overflow-auto min-h-0', fullscreen ? 'p-4' : 'p-3')}>
+      {/* ── Content ── */}
+      <div className="min-h-0 flex-1 overflow-auto">
         {tab === 'prep' ? (
           loading ? (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-white/40 text-lg">{t('common.loading')}</p>
-            </div>
+            <div className="flex h-full items-center justify-center"><p className="text-lg text-white/50">{t('common.loading')}</p></div>
           ) : tasks.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <Monitor className="h-16 w-16 text-white/15" />
-              <p className="text-white/40 text-xl font-medium">{t('kds.noTasks', { date: formatLabel(date) })}</p>
-              <p className="text-white/25 text-sm">{t('kds.addTasksHint')}</p>
+              <p className="text-xl font-medium text-white/60">{t('kds.noTasks', { date: formatLabel(date) })}</p>
+              <p className="text-sm text-white/40">{t('kds.addTasksHint')}</p>
             </div>
           ) : (
-            <div className="flex gap-4 h-full overflow-x-auto" style={{ minWidth: `${stations.length * 280}px` }}>
+            <div className="flex h-full gap-4 overflow-x-auto" style={{ minWidth: `${stations.length * 300}px` }}>
               {stations.map((station) => (
                 <StationColumn
                   key={station.id ?? '__general__'}
@@ -235,23 +210,38 @@ export default function KDS() {
               ))}
             </div>
           )
+        ) : orders.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+            <ShoppingBag className="h-16 w-16 text-white/15" />
+            <p className="text-xl font-medium text-white/60">{t('kds.noOrders')}</p>
+          </div>
         ) : (
-          /* ── Orders tab ── */
-          orders.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <ShoppingBag className="h-16 w-16 text-white/15" />
-              <p className="text-white/40 text-xl font-medium">{t('kds.noOrders')}</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 content-start">
-              {orders.map((order) => (
-                <OrderCard key={order.id} order={order} onAdvance={(o) => {
-                  const next = NEXT_STATUS[o.status]
-                  if (next) void updateStatus(o.id, { status: next })
-                }} fullscreen={fullscreen} />
-              ))}
-            </div>
-          )
+          <div className="grid h-full gap-4 lg:grid-cols-3">
+            {lanes.map((lane) => {
+              const list = orders.filter((o) => o.status === lane.status)
+              return (
+                <section key={lane.status} className="flex min-h-0 flex-col gap-3 rounded-3xl bg-white/[0.03] p-3">
+                  <div className="flex items-center justify-between px-1">
+                    <span className={cn('rounded-full px-4 py-1.5 text-base font-medium', lane.tone)}>{lane.label}</span>
+                    <span className="text-lg font-medium tabular-nums text-white/60">{list.length}</span>
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+                    {list.map((order) => (
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        onAdvance={(o) => {
+                          const next = NEXT_STATUS[o.status]
+                          if (next) void updateStatus(o.id, { status: next })
+                        }}
+                        fullscreen={fullscreen}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
         )}
       </div>
     </div>
@@ -272,60 +262,30 @@ function StationColumn({ station, recipesById, onToggle, fullscreen, allDoneLabe
   const allDone = pending.length === 0 && done.length > 0
 
   return (
-    <div className={cn(
-      'flex flex-col rounded-2xl border border-glass-border overflow-hidden shrink-0',
-      fullscreen ? 'w-80' : 'w-72',
-      allDone ? 'border-emerald-500/30 bg-emerald-500/5' : 'glass',
-    )}>
-      <div className={cn(
-        'flex-none flex items-center justify-between px-4 py-3 border-b border-glass-border',
-        allDone ? 'bg-emerald-500/10' : 'bg-white/5',
-      )}>
-        <span className={cn('font-semibold truncate', fullscreen ? 'text-xl' : 'text-base')}>
-          {station.name}
-        </span>
-        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-          {allDone ? (
-            <span className="flex items-center gap-1 text-emerald-400 text-sm font-medium">
-              <Check className="h-4 w-4" /> {allDoneLabel}
-            </span>
-          ) : (
-            <>
-              <span className="text-sm text-white/40">{done.length}/{station.tasks.length}</span>
-              <div className="w-10 h-1.5 rounded-full bg-white/10">
-                <div
-                  className="h-1.5 rounded-full bg-emerald-400 transition-all"
-                  style={{ width: station.tasks.length > 0 ? `${(done.length / station.tasks.length) * 100}%` : '0%' }}
-                />
-              </div>
-            </>
-          )}
-        </div>
+    <div className={cn('flex shrink-0 flex-col overflow-hidden rounded-3xl bg-white/[0.03]', fullscreen ? 'w-96' : 'w-80')}>
+      <div className="flex flex-none items-center justify-between gap-2 px-4 pb-2 pt-4">
+        <span className={cn('truncate font-medium', fullscreen ? 'text-2xl' : 'text-lg')}>{station.name}</span>
+        {allDone ? (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-lime px-3 py-1 text-sm font-medium text-ink">
+            <Check className="h-4 w-4" /> {allDoneLabel}
+          </span>
+        ) : (
+          <span className="shrink-0 rounded-full bg-white/[0.08] px-3 py-1 text-sm font-medium tabular-nums">{done.length}/{station.tasks.length}</span>
+        )}
+      </div>
+      <div className="mx-4 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-1.5 rounded-full bg-lime transition-all" style={{ width: station.tasks.length > 0 ? `${(done.length / station.tasks.length) * 100}%` : '0%' }} />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="flex-1 space-y-2 overflow-y-auto p-3">
         {pending.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            recipe={task.recipe_id ? recipesById.get(task.recipe_id) : undefined}
-            onToggle={onToggle}
-            fullscreen={fullscreen}
-          />
+          <TaskCard key={task.id} task={task} recipe={task.recipe_id ? recipesById.get(task.recipe_id) : undefined} onToggle={onToggle} fullscreen={fullscreen} />
         ))}
-
         {done.length > 0 && (
           <>
-            {pending.length > 0 && <div className="border-t border-glass-border my-2" />}
+            {pending.length > 0 && <div className="my-2 border-t border-white/10" />}
             {done.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                recipe={task.recipe_id ? recipesById.get(task.recipe_id) : undefined}
-                onToggle={onToggle}
-                fullscreen={fullscreen}
-                isDone
-              />
+              <TaskCard key={task.id} task={task} recipe={task.recipe_id ? recipesById.get(task.recipe_id) : undefined} onToggle={onToggle} fullscreen={fullscreen} isDone />
             ))}
           </>
         )}
@@ -342,42 +302,38 @@ interface OrderCardProps {
 }
 
 function OrderCard({ order, onAdvance, fullscreen }: OrderCardProps) {
+  const { t } = useTranslation()
   const nextStatus = NEXT_STATUS[order.status]
   const timeAgo = Math.round((Date.now() - new Date(order.created_at).getTime()) / 60000)
+  // Age drives the colour: green on time, amber slow, red late
+  const age = timeAgo >= 15 ? 'bg-red-500/15 text-red-400' : timeAgo >= 8 ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'
 
   return (
-    <div className={cn(
-      'flex flex-col rounded-2xl border overflow-hidden',
-      ORDER_STATUS_STYLES[order.status],
-      fullscreen ? 'text-base' : 'text-sm',
-    )}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">
-        <div className="flex items-center gap-2">
-          <ShoppingBag className="h-4 w-4 shrink-0" />
-          <span className="font-semibold">{order.table_ref ? `Table ${order.table_ref}` : 'Takeaway'}</span>
-        </div>
-        <span className="flex items-center gap-1 text-xs opacity-70">
-          <Clock className="h-3.5 w-3.5" />{timeAgo}m
-        </span>
+    <div className={cn('flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-bg-card', fullscreen ? 'text-lg' : 'text-base')}>
+      <div className={cn('flex items-center justify-between px-4 py-3', age)}>
+        <span className="font-semibold">{order.table_ref ? t('kds.v2.table', { table: order.table_ref }) : t('kds.v2.takeaway')}</span>
+        <span className="flex items-center gap-1 font-medium tabular-nums"><Clock className="h-4 w-4" />{timeAgo}′</span>
       </div>
-      <div className="flex-1 p-3 space-y-1.5">
+      <div className="flex-1 space-y-1.5 p-4">
         {order.items.map((item) => (
           <div key={item.id} className="flex items-baseline gap-2">
-            <span className="font-bold">{item.quantity}×</span>
+            <span className="font-semibold tabular-nums">{item.quantity}×</span>
             <span className="truncate">{item.name}</span>
           </div>
         ))}
-        {order.customer_name && (
-          <p className="text-xs opacity-60 pt-1">{order.customer_name}</p>
-        )}
-        {order.customer_notes && (
-          <p className="text-xs opacity-60 italic">"{order.customer_notes}"</p>
-        )}
+        {order.customer_name && <p className="pt-1 text-sm text-white/55">{order.customer_name}</p>}
+        {order.customer_notes && <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-400">“{order.customer_notes}”</p>}
       </div>
       {nextStatus && (
-        <button type="button" onClick={() => onAdvance(order)}
-          className="px-4 py-2.5 font-semibold text-sm border-t border-inherit hover:brightness-125 transition text-center">
-          {nextStatus === 'preparing' ? '→ Preparing' : nextStatus === 'ready' ? '→ Ready' : '✓ Done'}
+        <button
+          type="button"
+          onClick={() => onAdvance(order)}
+          className={cn(
+            'm-3 mt-0 h-14 rounded-full text-base font-semibold transition active:scale-[0.98]',
+            nextStatus === 'completed' ? 'bg-lime text-ink' : 'bg-white/[0.08] text-white hover:bg-white/[0.12]',
+          )}
+        >
+          {nextStatus === 'preparing' ? t('kds.v2.start') : nextStatus === 'ready' ? t('kds.v2.markReady') : t('kds.v2.served')}
         </button>
       )}
     </div>
@@ -398,57 +354,28 @@ function TaskCard({ task, recipe, onToggle, fullscreen, isDone }: TaskCardProps)
       type="button"
       onClick={() => onToggle(task)}
       className={cn(
-        'w-full text-left rounded-xl border transition-all',
-        fullscreen ? 'px-4 py-3' : 'px-3 py-2.5',
-        isDone
-          ? 'border-white/5 bg-white/3 opacity-50'
-          : 'border-glass-border bg-white/5 hover:bg-white/10 active:scale-[0.98]',
+        'w-full rounded-2xl text-left transition-all',
+        fullscreen ? 'px-4 py-4' : 'px-4 py-3',
+        isDone ? 'bg-transparent opacity-45' : 'bg-bg-card hover:bg-bg-card-2 active:scale-[0.98]',
       )}
     >
       <div className="flex items-start gap-3">
-        <div className={cn(
-          'mt-0.5 flex shrink-0 items-center justify-center rounded-lg border transition',
-          fullscreen ? 'h-8 w-8' : 'h-6 w-6',
-          isDone
-            ? 'bg-emerald-500 border-emerald-500 text-white'
-            : 'border-white/30 text-transparent',
+        <span className={cn(
+          'mt-0.5 flex shrink-0 items-center justify-center rounded-full border-2 transition',
+          fullscreen ? 'h-8 w-8' : 'h-7 w-7',
+          isDone ? 'border-lime bg-lime text-ink' : 'border-white/30 text-transparent',
         )}>
-          <Check className={fullscreen ? 'h-5 w-5' : 'h-3.5 w-3.5'} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className={cn(
-            'font-semibold leading-snug',
-            fullscreen ? 'text-xl' : 'text-base',
-            isDone && 'line-through text-white/40',
-          )}>
+          <Check className={fullscreen ? 'h-5 w-5' : 'h-4 w-4'} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className={cn('font-medium leading-snug', fullscreen ? 'text-xl' : 'text-base', isDone && 'line-through')}>
             {task.title}
-            {task.quantity != null && (
-              <span className={cn(
-                'ml-2 font-normal',
-                fullscreen ? 'text-base text-white/60' : 'text-sm text-white/50',
-              )}>
-                × {task.quantity}
-              </span>
-            )}
+            {task.quantity != null && <span className="ml-2 font-normal text-white/55 tabular-nums">× {task.quantity}</span>}
           </div>
-
-          {task.description && !isDone && (
-            <p className={cn(
-              'text-white/50 mt-0.5 leading-snug',
-              fullscreen ? 'text-base' : 'text-sm',
-            )}>
-              {task.description}
-            </p>
-          )}
-
+          {task.description && !isDone && <p className={cn('mt-0.5 leading-snug text-white/55', fullscreen ? 'text-base' : 'text-sm')}>{task.description}</p>}
           {recipe && (
-            <span className={cn(
-              'inline-flex items-center gap-1 mt-1 text-brand-orange/80',
-              fullscreen ? 'text-sm' : 'text-xs',
-            )}>
-              <Utensils className={fullscreen ? 'h-4 w-4' : 'h-3 w-3'} />
-              {recipe.title}
+            <span className={cn('mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-0.5 text-white/70', fullscreen ? 'text-sm' : 'text-xs')}>
+              <Utensils className={fullscreen ? 'h-4 w-4' : 'h-3 w-3'} />{recipe.title}
             </span>
           )}
         </div>

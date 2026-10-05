@@ -68,7 +68,7 @@ export function NotificationsBell() {
       >
         <Bell className="h-6 w-6" />
         {totalBadge > 0 && (
-          <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-orange text-[10px] font-bold text-white leading-none">
+          <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-orange text-[10px] font-bold text-on-accent leading-none">
             {totalBadge > 9 ? '9+' : totalBadge}
           </span>
         )}
@@ -102,7 +102,7 @@ export function NotificationsBell() {
             >
               {t('notifications.tabActivity')}
               {unreadCount > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-orange px-1.5 py-0.5 text-[10px] text-white">
+                <span className="ml-1.5 rounded-full bg-brand-orange px-1.5 py-0.5 text-[10px] text-on-accent">
                   {unreadCount}
                 </span>
               )}

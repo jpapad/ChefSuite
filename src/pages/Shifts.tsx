@@ -4,7 +4,7 @@ import {
 } from 'lucide-react'
 import { exportE4 } from '../lib/erganiExport'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, ActionMenu, StatRow, StatTile, Panel, Notice } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -16,12 +16,12 @@ import type { Shift } from '../types/database.types'
 
 // ── Colour palette per member index ───────────────────────────────────────────
 const MEMBER_COLORS = [
-  'bg-brand-orange/20 border-brand-orange/50 text-brand-orange',
-  'bg-blue-500/20 border-blue-500/50 text-blue-400',
-  'bg-emerald-500/20 border-emerald-500/50 text-emerald-400',
-  'bg-rose-500/20 border-rose-500/50 text-rose-400',
-  'bg-amber-500/20 border-amber-500/50 text-amber-400',
-  'bg-pink-500/20 border-pink-500/50 text-pink-400',
+  'bg-white/[0.06] border-white/15 text-white',
+  'bg-sky-500/10 border-sky-500/30 text-sky-500',
+  'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
+  'bg-rose-500/10 border-rose-500/30 text-rose-500',
+  'bg-amber-500/12 border-amber-500/30 text-amber-500',
+  'bg-violet-500/10 border-violet-500/30 text-violet-500',
 ]
 
 const PRINT_COLORS = ['#ea580c', '#3b82f6', '#10b981', '#f43f5e', '#f59e0b', '#ec4899']
@@ -153,131 +153,129 @@ export default function Shifts() {
     await remove(sh.id)
   }
 
+  const hoursOf = (sh: Shift) => {
+    const [sh1, sm1] = sh.start_time.split(':').map(Number)
+    const [eh, em] = sh.end_time.split(':').map(Number)
+    let mins = eh * 60 + em - (sh1 * 60 + sm1)
+    if (mins < 0) mins += 24 * 60
+    return mins / 60
+  }
+  const totalHours = shifts.reduce((sum, sh) => sum + hoursOf(sh), 0)
+  const scheduledIds = new Set(shifts.map((sh) => sh.member_id))
+  const rows = members.filter((m) => scheduledIds.has(m.id)).concat(members.filter((m) => !scheduledIds.has(m.id)))
+  const todayShifts = shifts.filter((sh) => dayLabel(sh.shift_date).isToday).length
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('shifts.title')}</h1>
-          <p className="text-white/60 mt-1">{t('shifts.subtitle')}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant="secondary"
-            leftIcon={<FileDown className="h-4 w-4" />}
-            onClick={() => exportE4(
-              shifts.map((s) => ({
-                memberName: membersById.get(s.member_id)?.full_name ?? '—',
-                shiftDate: s.shift_date,
-                startTime: s.start_time,
-                endTime: s.end_time,
-                role: s.role,
-              })),
-              weekLabel(weekStart),
-            )}
-          >
-            {t('shifts.erganiExport')}
-          </Button>
-          <Button variant="secondary" leftIcon={<Printer className="h-4 w-4" />} onClick={() => setPrintOpen(true)}>
-            {t('shifts.print.button')}
-          </Button>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={() => openCreate()}>
-            {t('shifts.addShift')}
-          </Button>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        title={t('shifts.title')}
+        subtitle={t('shifts.subtitle')}
+        actions={
+          <>
+            <div className="flex items-center gap-1 rounded-full bg-bg-card p-1 shadow-card">
+              <button type="button" aria-label="−7" onClick={() => setWeekStart((w) => addDays(w, -7))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white"><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setWeekStart(getWeekStart())} className="min-w-[150px] px-2 text-sm font-medium" title={t('common.today')}>
+                {weekLabel(weekStart)}
+              </button>
+              <button type="button" aria-label="+7" onClick={() => setWeekStart((w) => addDays(w, 7))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white"><ChevronRight className="h-4 w-4" /></button>
+            </div>
+            <ActionMenu
+              label={t('shifts.v2.export')}
+              icon={FileDown}
+              actions={[
+                {
+                  label: t('shifts.erganiExport'), icon: FileDown,
+                  onClick: () => exportE4(
+                    shifts.map((sh) => ({
+                      memberName: membersById.get(sh.member_id)?.full_name ?? '—',
+                      shiftDate: sh.shift_date, startTime: sh.start_time, endTime: sh.end_time, role: sh.role,
+                    })),
+                    weekLabel(weekStart),
+                  ),
+                },
+                { label: t('shifts.print.button'), icon: Printer, onClick: () => setPrintOpen(true) },
+              ]}
+            />
+            <PillButton icon={Plus} variant="primary" onClick={() => openCreate()}>{t('shifts.addShift')}</PillButton>
+          </>
+        }
+      />
 
-      {error && <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>}
+      {error && <Notice>{error}</Notice>}
 
-      {/* Week navigator */}
-      <GlassCard className="flex items-center justify-between gap-3">
-        <button type="button"
-          onClick={() => setWeekStart((w) => addDays(w, -7))}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <div className="text-center">
-          <p className="font-semibold">{weekLabel(weekStart)}</p>
-          <button type="button"
-            onClick={() => setWeekStart(getWeekStart())}
-            className="text-xs text-white/40 hover:text-white/70 transition mt-0.5">
-            {t('common.today')}
-          </button>
-        </div>
-        <button type="button"
-          onClick={() => setWeekStart((w) => addDays(w, 7))}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </GlassCard>
-
-      {/* Member legend */}
-      {members.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {members.map((m) => (
-            <span key={m.id} className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium', memberColorMap.get(m.id))}>
-              {m.full_name ?? t('common.unnamed')}
-            </span>
-          ))}
-        </div>
-      )}
+      <StatRow>
+        <StatTile tone="ink" label={t('shifts.v2.hours')} value={totalHours.toFixed(0)} hint={weekLabel(weekStart)} />
+        <StatTile label={t('shifts.v2.shifts')} value={shifts.length} />
+        <StatTile label={t('shifts.v2.people')} value={`${scheduledIds.size}/${members.length}`} hint={t('shifts.v2.peopleHint')} />
+        <StatTile tone="lime" label={t('shifts.v2.today')} value={todayShifts} hint={t('shifts.v2.todayHint')} />
+      </StatRow>
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : (
-        /* ── Weekly calendar grid ── */
-        <div className="grid grid-cols-7 gap-2">
-          {weekDays.map((day) => {
-            const { weekday, date, isToday } = dayLabel(day)
-            const dayShifts = shifts.filter((sh) => sh.shift_date === day)
-            return (
-              <div key={day} className="flex flex-col gap-1.5 min-w-0">
-                {/* Day header */}
-                <div className={cn(
-                  'rounded-xl px-2 py-2 text-center text-xs',
-                  isToday ? 'bg-brand-orange text-white-fixed font-bold' : 'bg-white/5 text-white/60',
-                )}>
-                  <div className="font-semibold">{weekday}</div>
-                  <div className="text-[10px] opacity-75">{date}</div>
-                </div>
+        /* ── Roster: people × days ── */
+        <Panel padded={false}>
+          <div className="overflow-x-auto p-3">
+            <div className="grid min-w-[900px] gap-2" style={{ gridTemplateColumns: '200px repeat(7, minmax(0, 1fr)) 64px' }}>
+              <span />
+              {weekDays.map((day) => {
+                const { weekday, date, isToday } = dayLabel(day)
+                return (
+                  <div key={day} className={cn('rounded-2xl px-2 py-2 text-center text-xs', isToday ? 'bg-ink text-white-fixed' : 'text-white/55')}>
+                    <div className={cn('font-medium', isToday && 'text-lime')}>{weekday}</div>
+                    <div className="opacity-75">{date}</div>
+                  </div>
+                )
+              })}
+              <span className="self-end pb-2 text-center text-xs text-white/45">{t('shifts.v2.hoursShort')}</span>
 
-                {/* Shift cards */}
-                {dayShifts.map((sh) => {
-                  const member = membersById.get(sh.member_id)
-                  const color = memberColorMap.get(sh.member_id) ?? MEMBER_COLORS[0]
-                  return (
-                    <div key={sh.id}
-                      className={cn('group rounded-lg border px-2 py-1.5 text-xs space-y-0.5 cursor-pointer hover:brightness-110 transition', color)}>
-                      <div className="font-semibold truncate leading-tight">
-                        {member?.full_name ?? t('common.unnamed')}
-                      </div>
-                      <div className="flex items-center gap-0.5 opacity-70">
-                        <Clock className="h-2.5 w-2.5 shrink-0" />
-                        {sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
-                      </div>
-                      {sh.role && <div className="truncate opacity-60">{sh.role}</div>}
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition pt-0.5">
-                        <button type="button" onClick={() => openEdit(sh)}
-                          className="flex h-5 w-5 items-center justify-center rounded hover:bg-white/20">
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button type="button" onClick={() => handleDelete(sh)}
-                          className="flex h-5 w-5 items-center justify-center rounded hover:bg-red-500/30 text-red-300">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
+              {rows.map((m) => {
+                const mine = shifts.filter((sh) => sh.member_id === m.id)
+                const hrs = mine.reduce((sum, sh) => sum + hoursOf(sh), 0)
+                return (
+                  <div key={m.id} className="contents">
+                    <div className="flex items-center gap-2 border-t border-white/[0.06] py-2 pr-2">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs font-semibold">
+                        {(m.full_name ?? '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+                      </span>
+                      <span className="truncate text-sm font-medium">{m.full_name ?? t('common.unnamed')}</span>
                     </div>
-                  )
-                })}
-
-                {/* Add button */}
-                <button type="button" onClick={() => openCreate(day)}
-                  className="flex items-center justify-center rounded-lg border border-dashed border-white/10 py-1.5 text-white/20 hover:text-white/50 hover:border-white/30 transition text-xs">
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )
-          })}
-        </div>
+                    {weekDays.map((day) => {
+                      const cell = mine.filter((sh) => sh.shift_date === day)
+                      return (
+                        <div key={day} className="flex flex-col gap-1 border-t border-white/[0.06] py-2">
+                          {cell.map((sh) => (
+                            <div key={sh.id} className={cn('group relative rounded-xl border px-2 py-1.5 text-xs', memberColorMap.get(sh.member_id) ?? MEMBER_COLORS[0])}>
+                              <div className="flex items-center gap-1 font-medium tabular-nums">
+                                <Clock className="h-3 w-3 shrink-0 opacity-70" />{sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
+                              </div>
+                              {sh.role && <div className="truncate opacity-70">{sh.role}</div>}
+                              <div className="absolute right-1 top-1 flex gap-0.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                                <button type="button" onClick={() => openEdit(sh)} aria-label={t('common.edit')} className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-card text-white shadow-card"><Pencil className="h-3 w-3" /></button>
+                                <button type="button" onClick={() => handleDelete(sh)} aria-label={t('common.delete')} className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-card text-red-500 shadow-card"><Trash2 className="h-3 w-3" /></button>
+                              </div>
+                            </div>
+                          ))}
+                          {cell.length === 0 && (
+                            <button type="button" onClick={() => openCreate(day)} aria-label={`${t('shifts.addShift')} ${day}`}
+                              className="flex h-full min-h-[40px] items-center justify-center rounded-xl text-white/20 transition hover:bg-white/[0.04] hover:text-white/60">
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                    <div className="flex items-center justify-center border-t border-white/[0.06] py-2 text-sm font-medium tabular-nums">
+                      {hrs ? hrs.toFixed(0) : <span className="text-white/30">—</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </Panel>
       )}
 
       {/* ── Print overlay ── */}
@@ -433,9 +431,9 @@ export default function Shifts() {
                 onChange={(e) => setValues((v) => ({ ...v, member_id: e.target.value }))}
                 className="flex-1 bg-transparent outline-none text-base text-white"
               >
-                <option value="" className="bg-[#f5ede0]">{t('shifts.form.selectMember')}</option>
+                <option value="" className="bg-bg-card">{t('shifts.form.selectMember')}</option>
                 {members.map((m) => (
-                  <option key={m.id} value={m.id} className="bg-[#f5ede0]">
+                  <option key={m.id} value={m.id} className="bg-bg-card">
                     {m.full_name ?? t('common.unnamed')}
                   </option>
                 ))}
@@ -501,6 +499,6 @@ export default function Shifts() {
           </div>
         </form>
       </Drawer>
-    </div>
+    </Page>
   )
 }

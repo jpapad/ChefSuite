@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { QrCode } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 // ── Payload shape ─────────────────────────────────────────────────────────────
@@ -25,15 +26,15 @@ interface DishPayload {
 
 type Lang = 'el' | 'bg' | 'uk' | 'ro' | 'sr' | 'sk' | 'pl' | 'cs'
 
-const LANG_META: Record<Lang, { flag: string; label: string; native: string }> = {
-  el:  { flag: '🇬🇷', label: 'Greek',      native: 'Ελληνικά'   },
-  bg:  { flag: '🇧🇬', label: 'Bulgarian',  native: 'Български'  },
-  uk:  { flag: '🇺🇦', label: 'Ukrainian',  native: 'Українська' },
-  ro:  { flag: '🇷🇴', label: 'Romanian',   native: 'Română'     },
-  sr:  { flag: '🇷🇸', label: 'Serbian',    native: 'Српски'     },
-  sk:  { flag: '🇸🇰', label: 'Slovak',     native: 'Slovenčina' },
-  pl:  { flag: '🇵🇱', label: 'Polish',     native: 'Polski'     },
-  cs:  { flag: '🇨🇿', label: 'Czech',      native: 'Čeština'    },
+const LANG_META: Record<Lang, { label: string; native: string }> = {
+  el:  { label: 'Greek',      native: 'Ελληνικά'   },
+  bg:  { label: 'Bulgarian',  native: 'Български'  },
+  uk:  { label: 'Ukrainian',  native: 'Українська' },
+  ro:  { label: 'Romanian',   native: 'Română'     },
+  sr:  { label: 'Serbian',    native: 'Српски'     },
+  sk:  { label: 'Slovak',     native: 'Slovenčina' },
+  pl:  { label: 'Polish',     native: 'Polski'     },
+  cs:  { label: 'Czech',      native: 'Čeština'    },
 }
 
 // ── Legacy: decode names from URL (?d=BASE64) ─────────────────────────────────
@@ -129,55 +130,36 @@ function DishCard({ payload }: { payload: DishPayload }) {
     lang === 'cs' ? (payload.dcs ?? payload.de ?? null) :
     (payload.de ?? null)
 
+  const langs: Lang[] = available.length > 0 ? ['el', ...available] : []
+
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
-      {available.length > 0 && (
-        <div className="overflow-hidden rounded-t-2xl border-b border-white/10">
-          <div className="flex overflow-x-scroll scrollbar-none">
-            {/* Always show Greek first */}
-            <button
-              type="button"
-              onClick={() => setLang('el')}
-              className={[
-                'flex-shrink-0 flex flex-col items-center gap-0.5 py-3 px-4 text-xs font-medium transition',
-                currentLang === 'el'
-                  ? 'bg-emerald-500/15 text-emerald-300 border-b-2 border-emerald-400'
-                  : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-              ].join(' ')}
-            >
-              <span className="text-lg leading-none">{LANG_META.el.flag}</span>
-              <span>{LANG_META.el.native}</span>
-            </button>
-            {available.map((l) => {
-              const meta = LANG_META[l]
-              return (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLang(l)}
-                  className={[
-                    'flex-shrink-0 flex flex-col items-center gap-0.5 py-3 px-4 text-xs font-medium transition',
-                    currentLang === l
-                      ? 'bg-emerald-500/15 text-emerald-300 border-b-2 border-emerald-400'
-                      : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-                  ].join(' ')}
-                >
-                  <span className="text-lg leading-none">{meta.flag}</span>
-                  <span>{meta.native}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-      <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-white leading-tight">{name}</h1>
+    <div className="flex w-full max-w-md flex-col gap-3">
+      <div className="rounded-[2rem] bg-ink px-6 pb-8 pt-6 text-white-fixed">
+        <span className="inline-flex rounded-full bg-lime px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink">
+          {LANG_META[currentLang].native}
+        </span>
+        <h1 className="mt-6 text-4xl font-medium leading-[1.05] tracking-[-0.03em]">{name}</h1>
+      </div>
+
+      <div className="rounded-3xl bg-white-fixed p-6 shadow-[0_1px_2px_rgba(15,18,16,0.05),0_10px_30px_-18px_rgba(15,18,16,0.25)]">
         {desc ? (
-          <p className="text-white/70 text-base leading-relaxed">{desc}</p>
+          <p className="text-[17px] leading-relaxed text-ink/80">{desc}</p>
         ) : (
-          <p className="text-white/25 text-sm italic">No description available.</p>
+          <p className="text-sm text-ink/40">No description available.</p>
         )}
       </div>
+
+      {langs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 rounded-3xl bg-white-fixed p-2 shadow-[0_10px_30px_-18px_rgba(15,18,16,0.25)]">
+          {langs.map((l) => (
+            <button key={l} type="button" onClick={() => setLang(l)}
+              className={`flex h-10 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition ${currentLang === l ? 'bg-ink text-white-fixed' : 'text-ink/60 hover:bg-[#EAEBE6] hover:text-ink'}`}>
+              <span className={`text-[11px] font-semibold uppercase ${currentLang === l ? 'text-lime' : 'text-ink/40'}`}>{l}</span>
+              {LANG_META[l].native}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -213,24 +195,20 @@ export default function DishInfo() {
   const payload = id ? livePayload : legacyPayload
 
   const shell = (children: React.ReactNode) => (
-    <div
-      style={{ '--app-white': '255 255 255' } as React.CSSProperties}
-      className="min-h-screen bg-[#0f1117] flex flex-col items-center px-4 py-10"
-    >
-      <div className="mb-8 text-center">
-        <div className="inline-flex items-center gap-2 text-white/30 text-xs tracking-widest uppercase">
-          <span>🍽️</span><span>ChefSuite</span>
-        </div>
+    <div className="flex min-h-screen flex-col items-center bg-[#F1F2EE] px-3 py-6 text-ink">
+      <div className="mb-6 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-lime text-[10px] font-bold">CS</span>
+        <span className="text-sm font-medium">ChefSuite</span>
       </div>
       {children}
-      <p className="mt-8 text-white/15 text-xs">Powered by ChefSuite</p>
+      <p className="mt-8 text-xs text-ink/35">Powered by ChefSuite</p>
     </div>
   )
 
   if (loading) {
     return shell(
-      <div className="flex flex-col items-center gap-3 text-white/40">
-        <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+      <div className="flex flex-col items-center gap-3 text-ink/50">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-ink/15 border-t-ink/60" />
         <p className="text-sm">Φόρτωση…</p>
       </div>
     )
@@ -238,10 +216,12 @@ export default function DishInfo() {
 
   if (notFound || (!payload && !loading)) {
     return shell(
-      <div className="text-center space-y-3">
-        <p className="text-4xl">🍽️</p>
-        <p className="text-white text-base font-medium">Μη έγκυρο QR code</p>
-        <p className="text-white/50 text-sm">Invalid or expired QR code.</p>
+      <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-[2rem] bg-white-fixed p-8 text-center shadow-[0_10px_30px_-18px_rgba(15,18,16,0.25)]">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lime">
+          <QrCode className="h-6 w-6" />
+        </span>
+        <p className="text-xl font-medium">Μη έγκυρο QR code</p>
+        <p className="text-sm text-ink/50">Invalid or expired QR code.</p>
       </div>
     )
   }

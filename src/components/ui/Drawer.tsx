@@ -40,7 +40,7 @@ export function Drawer({ open, onClose, title, children, footer }: DrawerProps) 
       <div
         onClick={onClose}
         className={cn(
-          'absolute inset-0 bg-black/65 transition-opacity duration-300',
+          'absolute inset-0 bg-black/40 transition-opacity duration-300',
           open ? 'opacity-100' : 'opacity-0',
         )}
       />
@@ -50,14 +50,9 @@ export function Drawer({ open, onClose, title, children, footer }: DrawerProps) 
         aria-label={typeof title === 'string' ? title : undefined}
         className={cn(
           'absolute right-0 top-0 h-full w-full max-w-lg',
-          'flex flex-col transition-transform duration-300 ease-out border-l',
+          'flex flex-col transition-transform duration-300 ease-out border-l border-glass-border bg-bg-card shadow-2xl',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
-        style={{
-          background: 'rgba(10, 18, 30, 0.96)',
-          borderColor: 'rgba(255,255,255,0.09)',
-          backdropFilter: 'blur(28px)',
-        }}
       >
         <header className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
           <h2 className="text-xl font-semibold">{title}</h2>

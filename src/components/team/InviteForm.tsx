@@ -60,7 +60,7 @@ export function InviteForm({ submitting, onSubmit, onCancel }: InviteFormProps) 
               className={
                 'min-h-touch-target rounded-xl px-4 text-left transition ' +
                 (role === r.value
-                  ? 'bg-brand-orange text-white-fixed'
+                  ? 'bg-brand-orange text-on-accent'
                   : 'glass text-white/80 hover:bg-white/5')
               }
             >

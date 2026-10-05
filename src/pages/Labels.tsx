@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
-import { Tag, Printer, Search, Check } from 'lucide-react'
+import { Tag, Printer, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
-import { Button } from '../components/ui/Button'
+import { Page, PageHeader, PillButton, Panel, Chip, Segmented, SearchField } from '../components/ui/page'
 import type { Recipe } from '../types/database.types'
 
 type LabelLang = 'el' | 'en' | 'both'
@@ -137,13 +137,13 @@ export default function Labels() {
       <div
         key={recipe.id}
         style={{ width: `${Math.min(width * 3.78, 280)}px`, height: `${Math.min(height * 3.78, 200)}px` }}
-        className="border border-white/20 rounded-xl p-3 flex flex-col justify-between glass"
+        className="rounded-2xl bg-white-fixed p-3 text-ink shadow-card flex flex-col justify-between"
       >
         {logoUrl && <img src={logoUrl} alt="logo" className="h-5 object-contain self-start mb-1" />}
         <div>
-          <p className="font-bold text-sm leading-tight text-white line-clamp-2">{name}</p>
+          <p className="font-semibold text-sm leading-tight line-clamp-2">{name}</p>
           {showDesc && recipe.description && (
-            <p className="text-[10px] text-white/50 mt-0.5 line-clamp-2">{recipe.description}</p>
+            <p className="text-[10px] text-ink/60 mt-0.5 line-clamp-2">{recipe.description}</p>
           )}
         </div>
         {showAllergens && allergens.length > 0 && (
@@ -151,7 +151,7 @@ export default function Labels() {
             {allergens.slice(0, 6).map((a) => {
               const al = ALLERGEN_LABELS[a]
               return (
-                <span key={a} className="text-[9px] bg-red-500/20 text-red-300 rounded px-1 py-0.5">
+                <span key={a} className="text-[9px] bg-red-50 text-red-700 rounded-full px-1.5 py-0.5">
                   {al?.emoji} {lang === 'el' ? al?.el : lang === 'en' ? al?.en : `${al?.el}/${al?.en}`}
                 </span>
               )
@@ -179,213 +179,142 @@ export default function Labels() {
     return `<div class="label">${logoHtml}<div class="label-title">${recipe.title}</div>${descHtml}${allergensHtml}</div>`
   }
 
-  return (
-    <div className="p-6 h-full flex gap-5">
-      {/* Settings panel */}
-      <div className="w-60 shrink-0 flex flex-col gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange/15">
-            <Tag className="h-4.5 w-4.5 text-brand-orange" />
-          </div>
-          <div>
-            <h1 className="text-base font-semibold leading-none">{t('kitchenLabels.title')}</h1>
-            <p className="text-[11px] text-white/40 mt-0.5">{t('kitchenLabels.subtitle')}</p>
-          </div>
-        </div>
+  const field = 'w-full rounded-xl bg-bg-input border border-inv-border text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-brand-orange/30'
+  const allSelected = filteredRecipes.length > 0 && filteredRecipes.every((r) => selected.has(r.id))
 
-        <div className="glass gradient-border rounded-2xl p-4 space-y-4 flex-1 overflow-y-auto">
-          {/* Presets */}
-          <div>
-            <label className="block text-xs text-white/50 mb-2">{t('kitchenLabels.presets')}</label>
-            <div className="grid grid-cols-2 gap-1.5">
+  return (
+    <Page>
+      <PageHeader
+        title={t('kitchenLabels.title')}
+        subtitle={t('kitchenLabels.subtitle')}
+        actions={
+          <PillButton icon={Printer} variant="primary" onClick={handlePrint} disabled={selected.size === 0}>
+            {t('kitchenLabels.print', { count: selected.size })}
+          </PillButton>
+        }
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)_300px] items-start">
+        {/* ── Settings ── */}
+        <Panel title={t('kitchenLabels.v2.settings')}>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-white/55">{t('kitchenLabels.presets')}</span>
+            <div className="flex flex-wrap gap-1.5">
               {PRESETS.map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => applyPreset(p)}
-                  className={cn(
-                    'rounded-lg px-2 py-1.5 text-xs font-medium transition-all',
-                    width === p.width && height === p.height && cols === p.cols
-                      ? 'bg-brand-orange/20 text-brand-orange'
-                      : 'glass text-white/60 hover:text-white',
-                  )}
-                >
+                <Chip key={p.key} active={width === p.width && height === p.height && cols === p.cols} onClick={() => applyPreset(p)}>
                   {t(`kitchenLabels.size${p.key.charAt(0).toUpperCase() + p.key.slice(1)}`)}
-                </button>
+                </Chip>
               ))}
             </div>
           </div>
 
-          {/* Size */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] text-white/40 mb-1">{t('kitchenLabels.width')}</label>
-              <input
-                type="number"
-                value={width}
-                onChange={(e) => setWidth(Number(e.target.value))}
-                className="w-full rounded-lg bg-white-fixed/55 border border-white/40 text-white text-xs px-2 py-1.5 outline-none focus:ring-1 focus:ring-brand-orange/40"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-white/40 mb-1">{t('kitchenLabels.height')}</label>
-              <input
-                type="number"
-                value={height}
-                onChange={(e) => setHeight(Number(e.target.value))}
-                className="w-full rounded-lg bg-white-fixed/55 border border-white/40 text-white text-xs px-2 py-1.5 outline-none focus:ring-1 focus:ring-brand-orange/40"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] text-white/40 mb-1">{t('kitchenLabels.columns')}</label>
-            <input
-              type="number"
-              min={1} max={6}
-              value={cols}
-              onChange={(e) => setCols(Number(e.target.value))}
-              className="w-full rounded-lg bg-white-fixed/55 border border-white/40 text-white text-xs px-2 py-1.5 outline-none focus:ring-1 focus:ring-brand-orange/40"
-            />
+          <div className="grid grid-cols-3 gap-2">
+            <label className="flex flex-col gap-1 text-xs text-white/55">{t('kitchenLabels.width')}
+              <input type="number" value={width} onChange={(e) => setWidth(Number(e.target.value))} className={field} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-white/55">{t('kitchenLabels.height')}
+              <input type="number" value={height} onChange={(e) => setHeight(Number(e.target.value))} className={field} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-white/55">{t('kitchenLabels.columns')}
+              <input type="number" min={1} max={6} value={cols} onChange={(e) => setCols(Number(e.target.value))} className={field} />
+            </label>
           </div>
 
-          {/* Content */}
-          <div className="space-y-2">
-            <label className="block text-xs text-white/50">{t('kitchenLabels.content')}</label>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-white/55">{t('kitchenLabels.content')}</span>
             {[
               { key: 'showAllergens', val: showAllergens, set: setShowAllergens },
               { key: 'showDescription', val: showDesc, set: setShowDesc },
             ].map(({ key, val, set }) => (
-              <label key={key} className="flex items-center gap-2 cursor-pointer">
-                <div
-                  onClick={() => set(!val)}
-                  className={cn(
-                    'h-4 w-4 rounded flex items-center justify-center border transition-all cursor-pointer',
-                    val ? 'bg-brand-orange border-brand-orange' : 'border-white/30',
-                  )}
-                >
-                  {val && <Check className="h-2.5 w-2.5 text-white-fixed" />}
-                </div>
-                <span className="text-xs text-white/70">{t(`kitchenLabels.${key}`)}</span>
-              </label>
+              <button
+                key={key}
+                type="button"
+                aria-pressed={val}
+                onClick={() => set(!val)}
+                className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.04] px-3 py-2.5 text-sm"
+              >
+                {t(`kitchenLabels.${key}`)}
+                <span className={cn('relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors', val ? 'bg-brand-orange' : 'bg-white/20')}>
+                  <span className={cn('inline-block h-4 w-4 rounded-full bg-white-fixed transition-transform', val ? 'translate-x-6' : 'translate-x-1')} />
+                </span>
+              </button>
             ))}
           </div>
 
-          {/* Language */}
-          <div>
-            <label className="block text-[11px] text-white/40 mb-1.5">{t('kitchenLabels.language')}</label>
-            <div className="flex gap-1.5">
-              {(['el', 'en', 'both'] as LabelLang[]).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLang(l)}
-                  className={cn(
-                    'flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-all',
-                    lang === l ? 'bg-brand-orange text-white-fixed' : 'glass text-white/55 hover:text-white',
-                  )}
-                >
-                  {t(`kitchenLabels.lang${l.charAt(0).toUpperCase() + l.slice(1)}`)}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-white/55">{t('kitchenLabels.language')}</span>
+            <Segmented
+              value={lang}
+              onChange={setLang}
+              options={(['el', 'en', 'both'] as LabelLang[]).map((l) => ({ value: l, label: t(`kitchenLabels.lang${l.charAt(0).toUpperCase() + l.slice(1)}`) }))}
+            />
           </div>
 
-          {/* Logo */}
-          <div>
-            <label className="block text-xs text-white/50 mb-1.5">{t('kitchenLabels.logo')}</label>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-white/55">{t('kitchenLabels.logo')}</span>
             <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             {logoUrl ? (
-              <div className="flex items-center gap-2">
-                <img src={logoUrl} alt="logo" className="h-8 object-contain rounded" />
-                <button type="button" onClick={() => setLogoUrl(null)} className="text-xs text-white/40 hover:text-white/70">
-                  ✕
-                </button>
+              <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] p-2">
+                <img src={logoUrl} alt="logo" className="h-8 object-contain" />
+                <button type="button" onClick={() => setLogoUrl(null)} className="ml-auto text-xs text-white/50 hover:text-red-500">✕</button>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
-                className="w-full glass rounded-lg px-3 py-2 text-xs text-white/50 hover:text-white/80 transition border border-dashed border-white/20 hover:border-white/40"
+                className="w-full rounded-2xl border border-dashed border-white/20 px-3 py-3 text-xs text-white/55 hover:border-white/40 hover:text-white"
               >
                 {t('kitchenLabels.logoHint')}
               </button>
             )}
           </div>
-        </div>
+        </Panel>
 
-        {/* Print button */}
-        <Button
-          onClick={handlePrint}
-          disabled={selected.size === 0}
-          className="w-full gap-2"
-        >
-          <Printer className="h-4 w-4" />
-          {selected.size > 0
-            ? t('kitchenLabels.print', { count: selected.size })
-            : t('kitchenLabels.print', { count: 0 })}
-        </Button>
-      </div>
-
-      {/* Recipe selection + preview */}
-      <div className="flex-1 flex gap-4 min-w-0">
-        {/* Recipe list */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold">
-              {t('kitchenLabels.selectRecipes')}
-              {selected.size > 0 && (
-                <span className="ml-2 text-xs text-brand-orange">
-                  {t('kitchenLabels.selected_other', { count: selected.size })}
-                </span>
-              )}
-            </span>
-            {selected.size > 0 && (
-              <button type="button" onClick={() => setSelected(new Set())} className="text-xs text-white/40 hover:text-white/70">
-                ✕ Clear
+        {/* ── Recipes ── */}
+        <Panel
+          title={t('kitchenLabels.selectRecipes')}
+          actions={
+            <>
+              {selected.size > 0 && <span className="rounded-full bg-lime px-3 py-1 text-xs font-medium text-ink">{t('kitchenLabels.selected_other', { count: selected.size })}</span>}
+              <button
+                type="button"
+                onClick={() => setSelected(allSelected ? new Set() : new Set(filteredRecipes.map((r) => r.id)))}
+                className="text-sm text-white/60 hover:text-white"
+              >
+                {allSelected ? t('common.deselectAll') : t('common.selectAll', { count: filteredRecipes.length })}
               </button>
-            )}
-          </div>
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`${t('nav.search')}`}
-              className="w-full rounded-xl bg-white-fixed/55 border border-white/50 text-white text-sm pl-9 pr-3 py-2 placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/40"
-            />
-          </div>
+            </>
+          }
+        >
+          <SearchField value={search} onChange={setSearch} placeholder={t('nav.search')} />
           {loading ? (
-            <div className="space-y-2">
-              {[...Array(6)].map((_, i) => <div key={i} className="glass rounded-xl h-12 animate-pulse" />)}
+            <div className="flex flex-col gap-2">
+              {[...Array(6)].map((_, i) => <div key={i} className="h-12 rounded-2xl bg-white/[0.05] animate-pulse" />)}
             </div>
           ) : filteredRecipes.length === 0 ? (
-            <div className="glass rounded-2xl p-8 text-center text-white/40 text-sm">{t('kitchenLabels.noRecipes')}</div>
+            <p className="py-10 text-center text-sm text-white/50">{t('kitchenLabels.noRecipes')}</p>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-1.5">
+            <div className="grid gap-2 sm:grid-cols-2 max-h-[60vh] overflow-y-auto pr-1">
               {filteredRecipes.map((r) => {
                 const isSelected = selected.has(r.id)
                 return (
                   <button
                     key={r.id}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => toggleRecipe(r.id)}
                     className={cn(
-                      'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all',
-                      isSelected
-                        ? 'bg-brand-orange/15 border border-brand-orange/40 text-white'
-                        : 'glass text-white/70 hover:text-white',
+                      'flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition',
+                      isSelected ? 'bg-ink text-white-fixed' : 'bg-white/[0.04] hover:bg-white/[0.07]',
                     )}
                   >
-                    <div className={cn(
-                      'h-4 w-4 rounded flex items-center justify-center border shrink-0 transition-all',
-                      isSelected ? 'bg-brand-orange border-brand-orange' : 'border-white/30',
-                    )}>
-                      {isSelected && <Check className="h-2.5 w-2.5 text-white-fixed" />}
-                    </div>
-                    <span className="text-sm font-medium truncate">{r.title}</span>
+                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition', isSelected ? 'border-lime bg-lime text-ink' : 'border-white/30')}>
+                      {isSelected && <Check className="h-3 w-3" />}
+                    </span>
+                    <span className="truncate text-sm font-medium">{r.title}</span>
                     {(r.allergens ?? []).length > 0 && (
-                      <span className="ml-auto text-[10px] text-white/30 shrink-0">
-                        {(r.allergens ?? []).length} allergens
+                      <span className={cn('ml-auto shrink-0 text-[11px] tabular-nums', isSelected ? 'text-white-fixed/60' : 'text-white/40')}>
+                        {(r.allergens ?? []).length}
                       </span>
                     )}
                   </button>
@@ -393,27 +322,23 @@ export default function Labels() {
               })}
             </div>
           )}
-        </div>
+        </Panel>
 
-        {/* Live preview */}
-        <div className="w-64 shrink-0 flex flex-col">
-          <div className="text-sm font-semibold mb-3">
-            {t('kitchenLabels.preview')}
-            {selectedRecipes.length > 3 && (
-              <span className="ml-2 text-xs text-white/40">{t('kitchenLabels.previewHint')}</span>
-            )}
-          </div>
-          <div className="glass gradient-border rounded-2xl p-4 flex-1 flex flex-col gap-3 overflow-y-auto">
-            {selectedRecipes.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center gap-2">
-                <Tag className="h-10 w-10 text-white/15" />
-                <p className="text-xs text-white/30">{t('kitchenLabels.previewEmpty')}</p>
-              </div>
-            ) : (
-              selectedRecipes.slice(0, 3).map((r) => renderLabel(r))
-            )}
-          </div>
-        </div>
+        {/* ── Preview ── */}
+        <Panel
+          title={t('kitchenLabels.preview')}
+          actions={selectedRecipes.length > 3 ? <span className="text-xs text-white/50">{t('kitchenLabels.previewHint')}</span> : undefined}
+          className="bg-white/[0.04] shadow-none"
+        >
+          {selectedRecipes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+              <Tag className="h-10 w-10 text-white/20" />
+              <p className="text-xs text-white/50">{t('kitchenLabels.previewEmpty')}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3">{selectedRecipes.slice(0, 3).map((r) => renderLabel(r))}</div>
+          )}
+        </Panel>
       </div>
 
       {/* Hidden print content */}
@@ -424,6 +349,6 @@ export default function Labels() {
           ))}
         </div>
       </div>
-    </div>
+    </Page>
   )
 }

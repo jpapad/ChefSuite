@@ -249,8 +249,7 @@ export default function KitchenBuffetKDS() {
     return (
       <div
         key={item.menu_item_id}
-        className="rounded-2xl overflow-hidden flex flex-col shadow-xl"
-        style={{ border: `1px solid ${item.is_urgent ? 'rgba(239,68,68,0.9)' : cfg.border}`, backgroundColor: '#111827' }}
+        className={cn('flex flex-col overflow-hidden rounded-3xl bg-bg-card', item.is_urgent && 'ring-2 ring-red-500')}
       >
         {/* Header */}
         <div className="px-5 py-4 relative" style={{ backgroundColor: item.is_urgent ? '#7f1d1d' : cfg.headerBg }}>
@@ -260,13 +259,13 @@ export default function KitchenBuffetKDS() {
               <span className="text-[10px] font-black text-red-300 uppercase tracking-wider">ΕΠΕΙΓΟΝ</span>
             </div>
           )}
-          <p className="text-2xl font-black leading-snug text-white pr-20">{item.item_name}</p>
+          <p className="pr-20 text-2xl font-semibold leading-snug text-white-fixed">{item.item_name}</p>
           <div className="flex items-center gap-2 mt-1">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-white/80">
               <span className="inline-block w-2 h-2 rounded-full" style={{ background: cfg.dot }} />
               {cfg.label}
             </span>
-            {item.vessel_request && <span className="text-xs text-white/70">· 🥘 Αλλαγή Σκεύους</span>}
+            {item.vessel_request && <span className="text-xs text-white-fixed/75">· Αλλαγή σκεύους</span>}
             {item.status_changed_at && (
               <span className="ml-auto font-mono text-xs tabular-nums text-white/50">
                 {formatElapsed(item.status_changed_at, nowMs)}
@@ -288,7 +287,7 @@ export default function KitchenBuffetKDS() {
           )}
           {/* Kitchen note */}
           {item.note && (
-            <p className="mt-2 text-xs text-white/60 italic">💬 {item.note}</p>
+            <p className="mt-2 rounded-xl bg-black/20 px-3 py-2 text-sm text-white-fixed/85">{item.note}</p>
           )}
           {/* Photo from buffet person */}
           {item.photo_url && (
@@ -313,9 +312,9 @@ export default function KitchenBuffetKDS() {
                       <button key={min}
                         onClick={() => setWorkflow((w) => ({ ...w, eta: w.eta === min ? null : min }))}
                         className={cn(
-                          'rounded-lg py-2 text-sm font-bold transition-all',
+                          'rounded-full py-2.5 text-sm font-semibold tabular-nums transition-all',
                           workflow.eta === min
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-lime text-ink'
                             : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white',
                         )}>
                         {min}λ
@@ -329,10 +328,10 @@ export default function KitchenBuffetKDS() {
                       <button key={n}
                         onClick={() => setWorkflow((w) => ({ ...w, note: w.note === n ? '' : n }))}
                         className={cn(
-                          'rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                          'rounded-full px-3 py-2 text-xs font-medium transition-all',
                           workflow.note === n
-                            ? 'bg-blue-500/30 border border-blue-400/60 text-blue-300'
-                            : 'bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10',
+                            ? 'bg-white-fixed text-ink'
+                            : 'bg-white/[0.06] text-white/60 hover:text-white hover:bg-white/10',
                         )}>
                         {n}
                       </button>
@@ -342,12 +341,12 @@ export default function KitchenBuffetKDS() {
                   <button
                     disabled={isActing}
                     onClick={() => void setStatus(item, 'preparing', { eta_minutes: workflow.eta, note: workflow.note || undefined })}
-                    className="w-full rounded-xl py-3.5 text-sm font-black bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                    className="flex w-full items-center justify-center gap-2 rounded-full bg-sky-600 py-4 text-sm font-semibold text-white-fixed transition-all hover:bg-sky-500 disabled:opacity-40"
                   >
-                    {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : '🔥 Ετοιμάζεται'}
+                    {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ετοιμάζεται'}
                   </button>
                   <button onClick={() => setWorkflowOpen(null)}
-                    className="w-full rounded-xl py-2 text-xs text-white/30 hover:text-white/60 transition-all">
+                    className="w-full rounded-full py-2.5 text-sm text-white/50 transition-all hover:text-white">
                     Ακύρωση
                   </button>
                 </div>
@@ -355,13 +354,13 @@ export default function KitchenBuffetKDS() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => { setWorkflowOpen(item.menu_item_id); setWorkflow({ eta: null, note: '' }) }}
-                    className="rounded-xl py-4 text-sm font-black bg-blue-600/80 hover:bg-blue-600 text-white transition-all">
-                    🔥 Ετοιμάζεται
+                    className="rounded-full bg-sky-600 py-4 text-sm font-semibold text-white-fixed transition-all hover:bg-sky-500">
+                    Ετοιμάζεται
                   </button>
                   <button
                     disabled={isActing}
                     onClick={() => void setStatus(item, 'full')}
-                    className="rounded-xl py-4 text-sm font-black bg-emerald-600/80 hover:bg-emerald-600 text-white transition-all disabled:opacity-40 flex items-center justify-center">
+                    className="flex items-center justify-center rounded-full bg-lime py-4 text-sm font-semibold text-ink transition-all hover:brightness-95 disabled:opacity-40">
                     {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : '✓ Παραδόθηκε'}
                   </button>
                 </div>
@@ -375,13 +374,13 @@ export default function KitchenBuffetKDS() {
               <button
                 disabled={isActing}
                 onClick={() => void setStatus(item, 'coming', { note: item.note ?? undefined, eta_minutes: item.eta_minutes })}
-                className="rounded-xl py-4 text-sm font-black bg-cyan-600/80 hover:bg-cyan-600 text-white transition-all disabled:opacity-40 flex items-center justify-center gap-1.5">
+                className="flex items-center justify-center gap-1.5 rounded-full bg-sky-600 py-4 text-sm font-semibold text-white-fixed transition-all hover:bg-sky-500 disabled:opacity-40">
                 {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Truck className="h-4 w-4" />Έρχεται</>}
               </button>
               <button
                 disabled={isActing}
                 onClick={() => void setStatus(item, 'full')}
-                className="rounded-xl py-4 text-sm font-black bg-emerald-600/80 hover:bg-emerald-600 text-white transition-all disabled:opacity-40 flex items-center justify-center">
+                className="flex items-center justify-center rounded-full bg-lime py-4 text-sm font-semibold text-ink transition-all hover:brightness-95 disabled:opacity-40">
                 ✓ Παραδόθηκε
               </button>
             </div>
@@ -392,7 +391,7 @@ export default function KitchenBuffetKDS() {
             <button
               disabled={isActing}
               onClick={() => void setStatus(item, 'full')}
-              className="w-full rounded-xl py-5 text-base font-black bg-emerald-600 hover:bg-emerald-500 text-white transition-all disabled:opacity-40 flex items-center justify-center">
+              className="flex w-full items-center justify-center rounded-full bg-lime py-5 text-base font-semibold text-ink transition-all hover:brightness-95 disabled:opacity-40">
               {isActing ? <Loader2 className="h-5 w-5 animate-spin" /> : '✓ Παραδόθηκε'}
             </button>
           )}
@@ -403,10 +402,10 @@ export default function KitchenBuffetKDS() {
               onClick={() => void toggleUrgent(item)}
               disabled={isActing}
               className={cn(
-                'w-full rounded-xl py-2 text-xs font-semibold transition-all flex items-center justify-center gap-1.5',
+                'flex w-full items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-semibold transition-all',
                 item.is_urgent
-                  ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30'
-                  : 'bg-white/5 text-white/30 hover:text-red-400 hover:bg-red-500/10',
+                  ? 'bg-red-600 text-white-fixed hover:bg-red-500'
+                  : 'bg-white/[0.05] text-white/45 hover:bg-red-500/10 hover:text-red-400',
               )}>
               <Siren className="h-3 w-3" />
               {item.is_urgent ? 'Ακύρωση επείγοντος' : 'Σήμανση Επείγον'}
@@ -420,87 +419,67 @@ export default function KitchenBuffetKDS() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#030712', color: '#fff' }}>
+    <div className="theme-dark min-h-screen flex flex-col">
 
       {/* Header */}
-      <header className="sticky top-0 z-10 backdrop-blur border-b px-4 py-3 flex items-center gap-3"
-        style={{ backgroundColor: 'rgba(17,24,39,0.85)', borderColor: 'rgba(255,255,255,0.08)' }}>
-        <button onClick={() => navigate('/buffet-pulse')}
-          className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors"
-          style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+      <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 bg-bg-surface/90 px-4 py-3 backdrop-blur">
+        <button onClick={() => navigate('/buffet-pulse')} aria-label="Back"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.08] transition-colors hover:bg-white/[0.14]">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Activity className="h-5 w-5 shrink-0 text-red-400" />
-          <span className="font-semibold truncate">Κουζίνα — Buffet KDS</span>
-          {menuName && (
-            <span className="hidden sm:inline shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-              style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
-              📋 {menuName}
-            </span>
-          )}
-          <span className="ml-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase"
-            style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171' }}>
-            LIVE
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="truncate text-xl font-medium">Ανεφοδιασμός buffet</span>
+          {menuName && <span className="hidden shrink-0 rounded-full bg-white/[0.08] px-3 py-1 text-xs text-white/60 sm:inline">{menuName}</span>}
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink" />LIVE
           </span>
         </div>
-        <div className="shrink-0 text-sm font-mono tabular-nums text-white/40">
+        <span className="text-2xl font-medium tabular-nums">
           {new Date(nowMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-        </div>
+        </span>
       </header>
 
       {/* Content */}
-      <main className="flex-1 p-4 space-y-6">
+      <main className="flex-1 space-y-6 p-4">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-white/30" />
-          </div>
+          <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-white/30" /></div>
         ) : merged.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
             <Activity className="h-12 w-12 text-white/15" />
-            <p className="text-sm text-white/40">Δεν βρέθηκε buffet μενού</p>
+            <p className="text-sm text-white/50">Δεν βρέθηκε buffet μενού</p>
           </div>
         ) : (
           <>
-            {/* Urgent */}
             {urgent.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-2xl px-5 py-4"
-                style={{ backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-400" />
+              <div className="flex items-center gap-4 rounded-3xl bg-lime px-6 py-5 text-ink">
+                <CheckCircle2 className="h-8 w-8 shrink-0" />
                 <div>
-                  <p className="font-semibold text-emerald-400">Όλα καλά!</p>
-                  <p className="text-xs mt-0.5 text-emerald-400/60">Όλοι οι σταθμοί είναι γεμάτοι.</p>
+                  <p className="text-xl font-medium">Όλα καλά</p>
+                  <p className="text-sm text-ink/70">Όλοι οι σταθμοί είναι γεμάτοι.</p>
                 </div>
               </div>
             ) : (
-              <>
+              <section className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-widest text-white/40">Προτεραιότητα</span>
-                  <span className="rounded-full px-2 py-0.5 text-xs font-black bg-red-600 text-white">{urgent.length}</span>
+                  <span className="text-lg font-medium">Θέλουν ανεφοδιασμό</span>
+                  <span className="rounded-full bg-red-600 px-3 py-0.5 text-sm font-semibold text-white-fixed tabular-nums">{urgent.length}</span>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {urgent.map(renderCard)}
-                </div>
-              </>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{urgent.map(renderCard)}</div>
+              </section>
             )}
 
-            {/* OK items */}
             {ok.length > 0 && (
-              <div className="space-y-3">
-                <span className="text-xs font-bold uppercase tracking-widest text-white/25">
-                  Γεμάτα ({ok.length})
-                </span>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              <section className="space-y-3">
+                <span className="text-sm font-medium text-white/50">Γεμάτα · {ok.length}</span>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
                   {ok.map((item) => (
-                    <div key={item.menu_item_id}
-                      className="rounded-xl px-4 py-3 flex items-center gap-2"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                      <span className="shrink-0 h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                      <span className="text-sm font-medium truncate text-white/65">{item.item_name}</span>
+                    <div key={item.menu_item_id} className="flex items-center gap-2 rounded-full bg-white/[0.05] px-4 py-3">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                      <span className="truncate text-sm font-medium text-white/70">{item.item_name}</span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
           </>
         )}

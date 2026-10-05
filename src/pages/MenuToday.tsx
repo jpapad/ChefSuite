@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { UtensilsCrossed } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MenuPublicContent } from './MenuPublic'
 
@@ -31,8 +32,8 @@ export default function MenuToday() {
   // Loading
   if (menuId === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0f1117]">
-        <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F2EE]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0F1210]/15 border-t-[#0F1210]/60" />
       </div>
     )
   }
@@ -40,16 +41,17 @@ export default function MenuToday() {
   // No daily menu set
   if (!menuId) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center"
-        style={{ background: 'linear-gradient(135deg, #f8f6f3 0%, #fdfcfb 50%, #f8f6f3 100%)' }}
-      >
-        <div className="text-5xl">🍽️</div>
-        <h1 className="text-xl font-bold text-neutral-800">Δεν υπάρχει μενού για σήμερα</h1>
-        <p className="text-sm text-neutral-500 max-w-xs">
-          Το εστιατόριο δεν έχει ορίσει το μενού της ημέρας ακόμα. Δοκιμάστε ξανά αργότερα.
-        </p>
-        <p className="text-xs text-neutral-400 mt-4">Powered by ChefSuite</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F2EE] p-4 text-[#0F1210]">
+        <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-[2rem] bg-white p-8 text-center shadow-[0_1px_2px_rgba(15,18,16,0.06),0_8px_24px_-12px_rgba(15,18,16,0.12)]">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#C8F03C]">
+            <UtensilsCrossed className="h-6 w-6" />
+          </span>
+          <h1 className="text-2xl font-medium tracking-[-0.02em]">Δεν υπάρχει μενού για σήμερα</h1>
+          <p className="text-sm text-[#0F1210]/55">
+            Το εστιατόριο δεν έχει ορίσει το μενού της ημέρας ακόμα. Η σελίδα ανανεώνεται αυτόματα.
+          </p>
+          <p className="mt-2 text-xs text-[#0F1210]/35">Powered by ChefSuite</p>
+        </div>
       </div>
     )
   }

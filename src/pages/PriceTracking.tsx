@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TrendingUp, TrendingDown, Minus, Search, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
-import { Input } from '../components/ui/Input'
+import { Page, PageHeader, StatRow, StatTile, SearchField, Panel, EmptyState, Notice } from '../components/ui/page'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
@@ -189,188 +188,166 @@ export default function PriceTracking() {
 
   const alertCount = items.filter((i) => (i.pct_change ?? 0) >= ALERT_THRESHOLD).length
 
-  return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold">{t('priceTracking.title')}</h1>
-        <p className="text-white/60 mt-1">{t('priceTracking.subtitle')}</p>
-      </header>
+  const selected = filtered.find((i) => i.name === expanded) ?? filtered.find((i) => (i.pct_change ?? 0) >= ALERT_THRESHOLD) ?? filtered[0]
+  const decreases = filtered.filter((i) => i.pct_change != null && i.pct_change < -2).length
+  const changes = filtered.filter((i) => i.pct_change != null).map((i) => i.pct_change!)
+  const avgChange = changes.length ? changes.reduce((a, b) => a + b, 0) / changes.length : null
+  const changeTone = (pct: number | null) =>
+    pct == null ? 'text-white/40' : pct >= ALERT_THRESHOLD ? 'text-amber-500' : pct < -2 ? 'text-emerald-500' : 'text-white/55'
 
-      {alertCount > 0 && (
-        <GlassCard className="flex items-center gap-3 border border-amber-500/40 bg-amber-500/5">
-          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
-          <p className="text-amber-300 text-sm">
-            {t('priceTracking.alertBanner', { count: alertCount, pct: ALERT_THRESHOLD })}
-          </p>
-        </GlassCard>
+  return (
+    <Page>
+      <PageHeader title={t('priceTracking.title')} subtitle={t('priceTracking.subtitle')} />
+
+      {error && <Notice>{error}</Notice>}
+
+      {!loading && filtered.length > 0 && (
+        <StatRow>
+          <StatTile tone="ink" label={t('priceTracking.v2.tracked')} value={filtered.length} hint={t('priceTracking.v2.trackedHint')} />
+          <StatTile label={t('priceTracking.v2.alerts')} value={alertCount} tone={alertCount ? 'warn' : 'good'} hint={t('priceTracking.v2.alertsHint', { pct: ALERT_THRESHOLD })} />
+          <StatTile label={t('priceTracking.v2.cheaper')} value={decreases} tone={decreases ? 'good' : 'default'} hint={t('priceTracking.v2.cheaperHint')} />
+          <StatTile label={t('priceTracking.v2.avgChange')} value={avgChange != null ? `${avgChange > 0 ? '+' : ''}${avgChange.toFixed(1)}%` : '—'} tone={avgChange != null && avgChange > 5 ? 'warn' : 'default'} hint={t('priceTracking.v2.avgChangeHint')} />
+        </StatRow>
       )}
 
-      {error && <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>}
-
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex-1 min-w-[200px] max-w-sm">
-          <Input
-            name="search"
-            placeholder={t('priceTracking.search')}
-            leftIcon={<Search className="h-4 w-4" />}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchField value={query} onChange={setQuery} placeholder={t('priceTracking.search')} className="flex-1 max-w-md" />
         {allSuppliers.length > 0 && (
-          <div className="glass flex items-center rounded-xl px-4 min-h-touch-target focus-within:ring-2 focus-within:ring-brand-orange">
-            <select
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-              className="bg-transparent outline-none text-sm text-white"
-            >
-              <option value="" className="bg-[#f5ede0]">{t('priceTracking.allSuppliers')}</option>
-              {allSuppliers.map((s) => (
-                <option key={s} value={s} className="bg-[#f5ede0]">{s}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={supplierFilter}
+            onChange={(e) => setSupplierFilter(e.target.value)}
+            aria-label={t('priceTracking.supplier')}
+            className="h-11 rounded-full bg-bg-card px-4 text-sm shadow-card outline-none focus:ring-2 focus:ring-brand-orange/40"
+          >
+            <option value="">{t('priceTracking.allSuppliers')}</option>
+            {allSuppliers.map((sp) => <option key={sp} value={sp}>{sp}</option>)}
+          </select>
         )}
       </div>
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : filtered.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <TrendingUp className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('priceTracking.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('priceTracking.empty.description')}</p>
-        </GlassCard>
+        <EmptyState icon={TrendingUp} title={t('priceTracking.empty.title')} body={t('priceTracking.empty.description')} />
       ) : (
-        <div className="space-y-3">
-          {filtered.map((item) => {
-            const isExpanded = expanded === item.name
-            const hasAlert = (item.pct_change ?? 0) >= ALERT_THRESHOLD
-            const hasDecrease = item.pct_change != null && item.pct_change < -2
-            const maxPrice = item.max > 0 ? item.max : 1
-
-            return (
-              <GlassCard
-                key={item.name}
-                className={cn(
-                  'space-y-0 transition-all',
-                  hasAlert && 'border border-amber-500/30',
-                )}
-              >
-                {/* Header row */}
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-4"
-                  onClick={() => setExpanded(isExpanded ? null : item.name)}
-                >
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold">{item.name}</span>
-                      <span className="text-xs text-white/40">/ {item.unit}</span>
-                      {hasAlert && (
-                        <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5">
-                          <AlertTriangle className="h-3 w-3" />
-                          +{item.pct_change!.toFixed(1)}%
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-white/40 mt-0.5">
-                      {t('priceTracking.dataPoints', { count: item.points.length })}
-                      {item.points.at(-1)?.supplier_name && ` · ${item.points.at(-1)!.supplier_name}`}
-                    </p>
-                  </div>
-
-                  {/* Sparkline */}
-                  <div className="hidden sm:flex items-end gap-0.5 h-8 w-20 shrink-0">
-                    {item.points.slice(-10).map((p, i) => {
-                      const h = Math.max(((p.price / maxPrice) * 100), 8)
-                      const isLast = i === Math.min(item.points.length, 10) - 1
-                      return (
-                        <div
-                          key={i}
-                          className={cn(
-                            'flex-1 rounded-t-sm transition-all',
-                            isLast
-                              ? hasAlert ? 'bg-amber-400' : hasDecrease ? 'bg-emerald-400' : 'bg-brand-orange'
-                              : 'bg-white/20',
-                          )}
-                          style={{ height: `${h}%` }}
-                        />
-                      )
-                    })}
-                  </div>
-
-                  {/* Price + change */}
-                  <div className="text-right shrink-0">
-                    <div className="font-semibold text-lg">€{fmt(item.latest)}</div>
-                    {item.pct_change != null && (
-                      <div className={cn(
-                        'flex items-center justify-end gap-1 text-xs',
-                        hasAlert ? 'text-amber-400' : hasDecrease ? 'text-emerald-400' : 'text-white/40',
-                      )}>
-                        {hasAlert
-                          ? <TrendingUp className="h-3 w-3" />
-                          : hasDecrease
-                          ? <TrendingDown className="h-3 w-3" />
-                          : <Minus className="h-3 w-3" />}
-                        {item.pct_change > 0 ? '+' : ''}{item.pct_change.toFixed(1)}%
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+          {/* ── Item list ── */}
+          <Panel padded={false}>
+            <ul className="flex flex-col p-2">
+              {filtered.map((item) => {
+                const hasAlert = (item.pct_change ?? 0) >= ALERT_THRESHOLD
+                const hasDecrease = item.pct_change != null && item.pct_change < -2
+                const maxPrice = item.max > 0 ? item.max : 1
+                const isSel = selected?.name === item.name
+                return (
+                  <li key={item.name}>
+                    <button
+                      type="button"
+                      aria-pressed={isSel}
+                      onClick={() => setExpanded(item.name)}
+                      className={cn('flex w-full items-center gap-4 rounded-2xl px-3 py-3 text-left transition', isSel ? 'bg-ink text-white-fixed' : 'hover:bg-white/[0.04]')}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium">{item.name}</span>
+                          <span className={cn('text-xs', isSel ? 'text-white-fixed/50' : 'text-white/45')}>/ {item.unit}</span>
+                          {hasAlert && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+                        </div>
+                        <p className={cn('text-xs', isSel ? 'text-white-fixed/55' : 'text-white/45')}>
+                          {item.points.at(-1)?.supplier_name ?? t('priceTracking.dataPoints', { count: item.points.length })}
+                        </p>
                       </div>
-                    )}
-                  </div>
+                      <div className="hidden sm:flex h-8 w-20 shrink-0 items-end gap-0.5">
+                        {item.points.slice(-10).map((p, i) => {
+                          const isLast = i === Math.min(item.points.length, 10) - 1
+                          return (
+                            <div
+                              key={i}
+                              className={cn('flex-1 rounded-t-sm',
+                                isLast ? (hasAlert ? 'bg-amber-500' : hasDecrease ? 'bg-emerald-500' : isSel ? 'bg-lime' : 'bg-white/70')
+                                  : isSel ? 'bg-white-fixed/25' : 'bg-white/15')}
+                              style={{ height: `${Math.max((p.price / maxPrice) * 100, 8)}%` }}
+                            />
+                          )
+                        })}
+                      </div>
+                      <div className="w-24 shrink-0 text-right">
+                        <div className="font-medium tabular-nums">€{fmt(item.latest)}</div>
+                        {item.pct_change != null && (
+                          <div className={cn('flex items-center justify-end gap-1 text-xs tabular-nums', isSel && !hasAlert && !hasDecrease ? 'text-white-fixed/55' : changeTone(item.pct_change))}>
+                            {hasAlert ? <TrendingUp className="h-3 w-3" /> : hasDecrease ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                            {item.pct_change > 0 ? '+' : ''}{item.pct_change.toFixed(1)}%
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </Panel>
 
-                  <div className="text-white/30 shrink-0">
-                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </button>
+          {/* ── Detail ── */}
+          {selected && (
+            <Panel className="lg:sticky lg:top-24">
+              <div>
+                <p className="text-sm text-white/55">{selected.name} / {selected.unit}</p>
+                <div className="mt-1 flex items-baseline gap-3">
+                  <span className="text-4xl font-medium tracking-[-0.03em] tabular-nums">€{fmt(selected.latest)}</span>
+                  {selected.pct_change != null && (
+                    <span className={cn('text-sm font-medium tabular-nums', changeTone(selected.pct_change))}>
+                      {selected.pct_change > 0 ? '+' : ''}{selected.pct_change.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              </div>
 
-                {/* Expanded history */}
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-glass-border">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 text-xs text-white/40 uppercase tracking-wide mb-2 px-1">
-                      <span>{t('priceTracking.date')}</span>
-                      <span>{t('priceTracking.supplier')}</span>
-                      <span>{t('priceTracking.price')}</span>
-                      <span>{t('priceTracking.change')}</span>
-                    </div>
-                    <ul className="space-y-1">
-                      {[...item.points].reverse().map((p, i, arr) => {
-                        const prev = arr[i + 1]
-                        const chg = prev ? ((p.price - prev.price) / prev.price) * 100 : null
-                        return (
-                          <li key={`${p.date}-${p.price}`} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center text-sm px-1 py-1.5 rounded-lg hover:bg-white/3 transition">
-                            <span className="text-white/60">{new Date(p.date).toLocaleDateString()}</span>
-                            <span className="text-white/70 truncate">{p.supplier_name ?? '—'}</span>
-                            <span className="font-medium">€{fmt(p.price)}</span>
-                            <span className={cn(
-                              'text-xs font-medium',
-                              chg == null ? 'text-white/20'
-                                : chg >= ALERT_THRESHOLD ? 'text-amber-400'
-                                : chg < -2 ? 'text-emerald-400'
-                                : 'text-white/40',
-                            )}>
-                              {chg == null ? '—' : `${chg > 0 ? '+' : ''}${chg.toFixed(1)}%`}
-                            </span>
-                          </li>
-                        )
-                      })}
-                    </ul>
+              <div className="flex h-36 items-end gap-1.5">
+                {selected.points.slice(-16).map((p, i, arr) => (
+                  <div
+                    key={`${p.date}-${i}`}
+                    title={`${new Date(p.date).toLocaleDateString()} · €${fmt(p.price)}`}
+                    className={cn('flex-1 rounded-t-lg', i === arr.length - 1 ? 'bg-ink' : 'bg-white/[0.1]')}
+                    style={{ height: `${Math.max((p.price / (selected.max || 1)) * 100, 6)}%` }}
+                  />
+                ))}
+              </div>
 
-                    <div className="flex items-center gap-6 mt-3 pt-3 border-t border-glass-border text-xs text-white/40">
-                      <span>{t('priceTracking.min')}: <span className="text-emerald-400 font-medium">€{fmt(item.min)}</span></span>
-                      <span>{t('priceTracking.max')}: <span className="text-red-400 font-medium">€{fmt(item.max)}</span></span>
-                      <span>{t('priceTracking.spread')}: <span className="text-white/60 font-medium">
-                        {item.max > 0 ? `${(((item.max - item.min) / item.max) * 100).toFixed(1)}%` : '—'}
-                      </span></span>
-                    </div>
-                  </div>
-                )}
-              </GlassCard>
-            )
-          })}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-2xl bg-white/[0.04] p-3">
+                  <p className="text-xs text-white/50">{t('priceTracking.min')}</p>
+                  <p className="font-medium tabular-nums text-emerald-500">€{fmt(selected.min)}</p>
+                </div>
+                <div className="rounded-2xl bg-white/[0.04] p-3">
+                  <p className="text-xs text-white/50">{t('priceTracking.max')}</p>
+                  <p className="font-medium tabular-nums text-red-500">€{fmt(selected.max)}</p>
+                </div>
+                <div className="rounded-2xl bg-white/[0.04] p-3">
+                  <p className="text-xs text-white/50">{t('priceTracking.spread')}</p>
+                  <p className="font-medium tabular-nums">{selected.max > 0 ? `${(((selected.max - selected.min) / selected.max) * 100).toFixed(1)}%` : '—'}</p>
+                </div>
+              </div>
+
+              <ul className="max-h-72 divide-y divide-white/[0.06] overflow-y-auto">
+                {[...selected.points].reverse().map((p, i, arr) => {
+                  const prev = arr[i + 1]
+                  const chg = prev ? ((p.price - prev.price) / prev.price) * 100 : null
+                  return (
+                    <li key={`${p.date}-${p.price}-${i}`} className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 py-2 text-sm">
+                      <span className="tabular-nums text-white/55">{new Date(p.date).toLocaleDateString()}</span>
+                      <span className="truncate text-white/70">{p.supplier_name ?? '—'}</span>
+                      <span className="font-medium tabular-nums">€{fmt(p.price)}</span>
+                      <span className={cn('w-14 text-right text-xs font-medium tabular-nums', changeTone(chg))}>
+                        {chg == null ? '—' : `${chg > 0 ? '+' : ''}${chg.toFixed(1)}%`}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </Panel>
+          )}
         </div>
       )}
-    </div>
+    </Page>
   )
 }

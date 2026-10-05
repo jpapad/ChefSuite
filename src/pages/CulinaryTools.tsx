@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Page, PageHeader } from '../components/ui/page'
 import { useTranslation } from 'react-i18next'
 import { Scale, Thermometer, Shuffle, Calculator, Plus, Trash2, ArrowRight, Sparkles, Loader2 } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -220,18 +221,15 @@ export default function CulinaryTools() {
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t('culinaryTools.title')}</h1>
-        <p className="text-sm text-white/40 mt-1">{t('culinaryTools.subtitle')}</p>
-      </div>
+    <Page>
+      <PageHeader title={t('culinaryTools.title')} subtitle={t('culinaryTools.subtitle')} />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" onClick={() => setTab(id)}
-            className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
-              tab === id ? 'bg-brand-orange text-white shadow-[0_0_12px_rgba(196,149,106,0.4)]'
-                         : 'glass text-white/50 hover:text-white/80')}>
+            className={cn('flex items-center gap-2 h-11 px-5 rounded-full text-sm font-medium transition-all',
+              tab === id ? 'bg-brand-orange text-on-accent '
+                         : 'bg-bg-card shadow-card text-white/70 hover:text-white')}>
             <Icon className="h-4 w-4" />
             {label}
           </button>
@@ -255,12 +253,12 @@ export default function CulinaryTools() {
             <div className="flex flex-col gap-1">
               <label className="text-xs text-white/40">{t('culinaryTools.convert.amount')}</label>
               <input type="number" value={inputVal} onChange={(e) => setInputVal(e.target.value)}
-                className="glass rounded-xl px-4 py-2.5 text-lg font-semibold text-white w-32 outline-none focus:ring-1 focus:ring-brand-orange/50" />
+                className="rounded-2xl bg-white/[0.05] px-4 py-2.5 text-lg font-semibold text-white w-32 outline-none focus:ring-1 focus:ring-brand-orange/50" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-white/40">{t('culinaryTools.convert.from')}</label>
               <select value={fromUnit} onChange={(e) => setFromUnit(e.target.value)}
-                className="glass rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-brand-orange/50 cursor-pointer">
+                className="rounded-2xl bg-white/[0.05] px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-brand-orange/50 cursor-pointer">
                 {Object.entries(unitMap).map(([k, v]) => (
                   <option key={k} value={k} className="bg-neutral-900">{v.label}</option>
                 ))}
@@ -270,7 +268,7 @@ export default function CulinaryTools() {
             <div className="flex flex-col gap-1">
               <label className="text-xs text-white/40">{t('culinaryTools.convert.to')}</label>
               <select value={toUnit} onChange={(e) => setToUnit(e.target.value)}
-                className="glass rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-brand-orange/50 cursor-pointer">
+                className="rounded-2xl bg-white/[0.05] px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-brand-orange/50 cursor-pointer">
                 {Object.entries(unitMap).map(([k, v]) => (
                   <option key={k} value={k} className="bg-neutral-900">{v.label}</option>
                 ))}
@@ -440,12 +438,12 @@ export default function CulinaryTools() {
           <div className="flex flex-col gap-3">
             <input type="text" placeholder={t('culinaryTools.substitute.search')} value={subSearch}
               onChange={(e) => setSubSearch(e.target.value)}
-              className="glass rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/50 w-full max-w-sm" />
+              className="rounded-full bg-bg-card shadow-card px-4 h-11 text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-brand-orange/40 w-full max-w-sm" />
             <div className="flex flex-wrap gap-2">
               {SUB_CATEGORIES.map((cat) => (
                 <button key={cat} type="button" onClick={() => setSubCat(cat)}
-                  className={cn('px-3 py-1 rounded-full text-xs font-medium transition',
-                    subCat === cat ? 'bg-brand-orange text-white' : 'glass text-white/50 hover:text-white/80')}>
+                  className={cn('h-9 px-3.5 rounded-full text-[13px] font-medium transition',
+                    subCat === cat ? 'bg-brand-orange text-on-accent' : 'bg-bg-card shadow-card text-white/70 hover:text-white')}>
                   {t(`culinaryTools.substitute.${cat}`)}
                 </button>
               ))}
@@ -567,6 +565,6 @@ export default function CulinaryTools() {
           </GlassCard>
         </div>
       )}
-    </div>
+    </Page>
   )
 }

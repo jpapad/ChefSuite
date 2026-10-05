@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, Truck, Mail, Phone, User, Search, X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, StatRow, StatTile, SearchField, Panel, EmptyState, Notice } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -100,114 +100,84 @@ export default function Suppliers() {
     return inventoryItems.filter((i) => i.supplier_id === supplierId).length
   }
 
-  return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('suppliers.title')}</h1>
-          <p className="text-white/60 mt-1">{t('suppliers.subtitle')}</p>
-        </div>
-        <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-          {t('suppliers.addSupplier')}
-        </Button>
-      </header>
+  const linkedTotal = inventoryItems.filter((i) => i.supplier_id).length
+  const withoutContact = suppliers.filter((s) => !s.email && !s.phone).length
+  const iconBtn = 'flex h-9 w-9 items-center justify-center rounded-full text-white/55 hover:bg-white/[0.06] hover:text-white transition'
 
-      {error && (
-        <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>
+  return (
+    <Page>
+      <PageHeader
+        title={t('suppliers.title')}
+        subtitle={t('suppliers.subtitle')}
+        actions={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('suppliers.addSupplier')}</PillButton>}
+      />
+
+      {error && <Notice>{error}</Notice>}
+
+      {suppliers.length > 0 && (
+        <StatRow>
+          <StatTile tone="ink" label={t('suppliers.title')} value={suppliers.length} />
+          <StatTile label={t('suppliers.v2.linkedItems')} value={linkedTotal} hint={t('suppliers.v2.linkedHint', { total: inventoryItems.length })} />
+          <StatTile label={t('suppliers.v2.unlinked')} value={inventoryItems.length - linkedTotal} tone={inventoryItems.length - linkedTotal > 0 ? 'warn' : 'default'} hint={t('suppliers.v2.unlinkedHint')} to="/inventory" />
+          <StatTile label={t('suppliers.v2.noContact')} value={withoutContact} hint={t('suppliers.v2.noContactHint')} />
+        </StatRow>
       )}
 
       {suppliers.length > 0 && (
-        <div className="max-w-md">
-          <Input
-            name="search"
-            placeholder={t('suppliers.searchPlaceholder')}
-            leftIcon={<Search className="h-5 w-5" />}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
+        <SearchField value={query} onChange={setQuery} placeholder={t('suppliers.searchPlaceholder')} className="max-w-md" />
       )}
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : suppliers.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <Truck className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('suppliers.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('suppliers.empty.description')}</p>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-            {t('suppliers.empty.cta')}
-          </Button>
-        </GlassCard>
+        <EmptyState
+          icon={Truck}
+          title={t('suppliers.empty.title')}
+          body={t('suppliers.empty.description')}
+          action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('suppliers.empty.cta')}</PillButton>}
+        />
       ) : filtered.length === 0 ? (
-        <GlassCard><p className="text-white/60">{t('suppliers.noMatch')}</p></GlassCard>
+        <EmptyState icon={Search} title={t('suppliers.noMatch')} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((s) => {
             const count = itemCountFor(s.id)
             return (
-              <GlassCard key={s.id} className="flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange overflow-hidden">
-                      {s.logo_url
-                        ? <img src={s.logo_url} alt={s.name} className="w-full h-full object-cover" />
-                        : <Truck className="h-5 w-5" />
-                      }
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold truncate">{s.name}</h3>
-                      {s.contact_name && (
-                        <p className="text-xs text-white/50 flex items-center gap-1">
-                          <User className="h-3 w-3" />{s.contact_name}
-                        </p>
-                      )}
-                    </div>
+              <article key={s.id} className="flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/[0.06]">
+                    {s.logo_url ? <img src={s.logo_url} alt={s.name} className="h-full w-full object-cover" /> : <Truck className="h-5 w-5 text-white/60" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-lg font-medium">{s.name}</h3>
+                    {s.contact_name && <p className="flex items-center gap-1 text-sm text-white/55"><User className="h-3.5 w-3.5" />{s.contact_name}</p>}
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <button type="button" onClick={() => openEdit(s)}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl text-white/60 hover:text-white hover:bg-white/5">
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button type="button" onClick={() => handleDelete(s)}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl text-white/60 hover:text-red-400 hover:bg-red-500/10">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <button type="button" aria-label={t('common.edit')} onClick={() => openEdit(s)} className={iconBtn}><Pencil className="h-4 w-4" /></button>
+                  <button type="button" aria-label={t('common.delete')} onClick={() => handleDelete(s)} className={`${iconBtn} hover:text-red-500`}><Trash2 className="h-4 w-4" /></button>
                 </div>
 
-                <div className="space-y-1 text-sm text-white/60">
-                  {s.email && (
-                    <a href={`mailto:${s.email}`} className="flex items-center gap-2 hover:text-white transition">
-                      <Mail className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{s.email}</span>
-                    </a>
-                  )}
+                {s.notes && <p className="line-clamp-2 text-sm text-white/55">{s.notes}</p>}
+
+                <div className="mt-auto flex flex-wrap items-center gap-2">
                   {s.phone && (
-                    <a href={`tel:${s.phone}`} className="flex items-center gap-2 hover:text-white transition">
-                      <Phone className="h-3.5 w-3.5 shrink-0" />
-                      <span>{s.phone}</span>
+                    <a href={`tel:${s.phone}`} className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-orange px-4 text-sm font-medium text-on-accent">
+                      <Phone className="h-4 w-4" />{s.phone}
                     </a>
                   )}
-                  {s.notes && (
-                    <p className="text-xs text-white/40 line-clamp-2 mt-1">{s.notes}</p>
+                  {s.email && (
+                    <a href={`mailto:${s.email}`} aria-label={s.email} title={s.email} className="inline-flex h-10 items-center gap-2 rounded-full bg-white/[0.06] px-4 text-sm font-medium hover:bg-white/[0.1]">
+                      <Mail className="h-4 w-4" /><span className="max-w-[140px] truncate">{s.email}</span>
+                    </a>
                   )}
-                </div>
-
-                <div className="border-t border-glass-border pt-3 mt-auto">
                   <button
                     type="button"
                     onClick={() => setLinkedDrawerSupplier(s)}
-                    className="text-xs text-white/50 hover:text-white transition"
+                    className="ml-auto rounded-full bg-white/[0.06] px-3 py-2 text-xs font-medium text-white/70 hover:text-white"
                   >
-                    {count > 0
-                      ? t('suppliers.linkedItems', { count })
-                      : t('suppliers.noLinkedItems')}
+                    {count > 0 ? t('suppliers.linkedItems', { count }) : t('suppliers.noLinkedItems')}
                   </button>
                 </div>
-              </GlassCard>
+              </article>
             )
           })}
         </div>
@@ -339,6 +309,6 @@ export default function Suppliers() {
           })()}
         </div>
       </Drawer>
-    </div>
+    </Page>
   )
 }

@@ -5,10 +5,11 @@ import {
   ArrowLeft, Plus, ChevronUp, ChevronDown,
   Pencil, Trash2, ToggleLeft, ToggleRight, GripVertical,
   Printer, ClipboardList, QrCode, X, TrendingUp, ShoppingCart, Tag, FileText, Radio,
-  Link2, Loader2, Search, AlertCircle, Download, BookOpen, ArrowRightLeft, Wand2,
+  Loader2, Search, AlertCircle, Download, BookOpen, ArrowRightLeft, Wand2,
 } from 'lucide-react'
 import QRCodeLib from 'qrcode'
 import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, ActionMenu, StatRow, StatTile, EmptyState } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -688,222 +689,191 @@ export default function MenuDetail() {
 
   const allPrepItems = menu.sections.flatMap((s) => s.items.filter((i) => !!i.recipe_id))
 
+  const allItems = menu.sections.flatMap((s) => s.items)
+  const availableItems = allItems.filter((i) => i.available).length
+  const linkedItems = allItems.filter((i) => !!i.recipe_id).length
+  const fcValues = allItems
+    .map((i) => ({ cost: linkedRecipe(i.recipe_id)?.cost_per_portion, price: i.price }))
+    .filter((x): x is { cost: number; price: number } => x.cost != null && x.price != null && x.price > 0)
+    .map((x) => (x.cost / x.price) * 100)
+  const avgFc = fcValues.length ? fcValues.reduce((a, b) => a + b, 0) / fcValues.length : null
+  const iconBtn = 'flex h-9 w-9 items-center justify-center rounded-full text-white/50 hover:bg-white/[0.06] hover:text-white transition disabled:opacity-20 disabled:pointer-events-none'
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <header className="space-y-3">
-        <Link to="/menus" className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm transition">
-          <ArrowLeft className="h-4 w-4" />{t('menus.detail.backToMenus')}
-        </Link>
-        <div className="flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-semibold">{menu.name}</h1>
-            <p className="text-white/60 mt-1">{t(`menus.types.${menu.type}`)}</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="secondary" leftIcon={<TrendingUp className="h-4 w-4" />} onClick={() => setCostDrawerOpen(true)}>
-              {t('menus.detail.costAnalysis')}
-            </Button>
-            <Button variant="secondary" leftIcon={<ShoppingCart className="h-4 w-4" />} onClick={() => setShoppingDrawerOpen(true)}>
-              {t('menus.detail.shoppingList')}
-            </Button>
-            <Button variant="secondary" leftIcon={<Tag className="h-4 w-4" />} onClick={() => setLabelsDrawerOpen(true)}>
-              {t('menus.labels.button')}
-            </Button>
-            <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />} onClick={exportCanvaCsv}>
-              Export για Canva
-            </Button>
-            <Button variant="secondary" leftIcon={<Link2 className="h-4 w-4" />} onClick={openLinkRecipes}>
-              Link Recipes
-            </Button>
-            <Button variant="secondary" leftIcon={<Radio className="h-4 w-4" />} onClick={() => setServiceBoardOpen(true)}>
-              {t('menus.serviceBoard.button')}
-            </Button>
-            <Button variant="secondary" leftIcon={<Printer className="h-4 w-4" />} onClick={() => setPrintOverlayOpen(true)}>
-              {t('menus.detail.printStaff')}
-            </Button>
-            {allPrepItems.length > 0 && (
-              <>
-                <Button variant="secondary" leftIcon={<ClipboardList className="h-4 w-4" />} onClick={() => setPrepDrawerOpen(true)}>
-                  {t('menus.detail.generatePrep')}
-                </Button>
-                <Button variant="secondary" leftIcon={<FileText className="h-4 w-4" />} onClick={() => setProductionSheetOpen(true)}>
-                  {t('menus.productionSheet.button')}
-                </Button>
-              </>
-            )}
-            <Button variant="secondary" leftIcon={<QrCode className="h-4 w-4" />} onClick={openQrDrawer}>
-              {t('menus.detail.qrCode')}{scanStats.total > 0 && ` · ${scanStats.total}`}
-            </Button>
-            <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openAddSection}>
-              {t('menus.detail.addSection')}
-            </Button>
-          </div>
-        </div>
-      </header>
+    <Page>
+      <Link to="/menus" className="inline-flex items-center gap-2 self-start text-sm text-white/55 hover:text-white">
+        <ArrowLeft className="h-4 w-4" />{t('menus.detail.backToMenus')}
+      </Link>
+      <PageHeader
+        eyebrow={t(`menus.types.${menu.type}`)}
+        title={menu.name}
+        actions={
+          <>
+            <ActionMenu
+              label={t('menus.v2.kitchen')}
+              icon={ClipboardList}
+              actions={[
+                { label: t('menus.detail.generatePrep'), icon: ClipboardList, onClick: () => setPrepDrawerOpen(true), hidden: allPrepItems.length === 0 },
+                { label: t('menus.productionSheet.button'), icon: FileText, onClick: () => setProductionSheetOpen(true), hidden: allPrepItems.length === 0 },
+                { label: t('menus.serviceBoard.button'), icon: Radio, onClick: () => setServiceBoardOpen(true) },
+                { label: t('menus.detail.printStaff'), icon: Printer, onClick: () => setPrintOverlayOpen(true) },
+                { label: t('menus.detail.shoppingList'), icon: ShoppingCart, onClick: () => setShoppingDrawerOpen(true) },
+              ]}
+            />
+            <ActionMenu
+              label={t('menus.v2.share')}
+              icon={QrCode}
+              actions={[
+                { label: t('menus.detail.qrCode'), hint: scanStats.total > 0 ? t('menus.v2.scansCount', { count: scanStats.total }) : undefined, icon: QrCode, onClick: openQrDrawer },
+                { label: t('menus.labels.button'), icon: Tag, onClick: () => setLabelsDrawerOpen(true) },
+                { label: t('menus.v2.canva'), icon: Download, onClick: exportCanvaCsv },
+              ]}
+            />
+            <PillButton icon={TrendingUp} onClick={() => setCostDrawerOpen(true)}>{t('menus.detail.costAnalysis')}</PillButton>
+            <PillButton icon={Plus} variant="primary" onClick={openAddSection}>{t('menus.detail.addSection')}</PillButton>
+          </>
+        }
+      />
 
-      {/* Empty state */}
-      {menu.sections.length === 0 && (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <GripVertical className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('menus.detail.noSections')}</h2>
-          <p className="text-white/60 max-w-sm">{t('menus.detail.noSectionsHint')}</p>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openAddSection} className="mt-2">
-            {t('menus.detail.addSection')}
-          </Button>
-        </GlassCard>
-      )}
+      <StatRow>
+        <StatTile tone="ink" label={t('menus.v2.dishes')} value={allItems.length} hint={t('menus.v2.inSections', { count: menu.sections.length })} />
+        <StatTile label={t('menus.v2.available')} value={`${availableItems}/${allItems.length}`} tone={availableItems < allItems.length ? 'warn' : 'default'} hint={t('menus.v2.availableHint')} />
+        <StatTile label={t('recipes.v2.avgFc')} value={avgFc != null ? `${avgFc.toFixed(1)}%` : '—'} tone={avgFc != null && avgFc > 30 ? 'warn' : 'default'} hint={t('menus.v2.fcHint', { count: fcValues.length })} onClick={() => setCostDrawerOpen(true)} />
+        <StatTile tone="lime" label={t('menus.v2.linked')} value={`${linkedItems}/${allItems.length}`} hint={t('menus.v2.linkedHint')} onClick={openLinkRecipes} />
+      </StatRow>
 
-      {/* Sections */}
-      <div className="space-y-4">
-        {menu.sections.map((section, sIdx) => (
-          <GlassCard key={section.id} className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="font-semibold text-lg">{section.name}</h2>
-              <div className="flex items-center gap-1 shrink-0">
-                {[
-                  { fn: () => moveSectionUp(section.id), icon: <ChevronUp className="h-4 w-4" />, disabled: sIdx === 0, label: t('menus.detail.moveUp') },
-                  { fn: () => moveSectionDown(section.id), icon: <ChevronDown className="h-4 w-4" />, disabled: sIdx === menu.sections.length - 1, label: t('menus.detail.moveDown') },
-                ].map(({ fn, icon, disabled, label }) => (
-                  <button key={label} type="button" onClick={fn} disabled={disabled} aria-label={label}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition disabled:opacity-20 disabled:pointer-events-none">
-                    {icon}
-                  </button>
-                ))}
-                <button type="button" onClick={() => openBulkLink(section.id)} aria-label="Μαζική σύνδεση συνταγών"
-                  title="Μαζική σύνδεση συνταγών"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10 transition">
-                  <BookOpen className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => void openTransfer(section.id)} aria-label="Μεταφορά τμήματος"
-                  title="Μεταφορά/Αντιγραφή σε άλλο μενού"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-sky-400 hover:bg-sky-500/10 transition">
-                  <ArrowRightLeft className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => openEditSection(section)} aria-label={t('common.edit')}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition">
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => onDeleteSection(section)} aria-label={t('menus.detail.deleteSection')}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+      {menu.sections.length === 0 ? (
+        <EmptyState
+          icon={GripVertical}
+          title={t('menus.detail.noSections')}
+          body={t('menus.detail.noSectionsHint')}
+          action={<PillButton icon={Plus} variant="primary" onClick={openAddSection}>{t('menus.detail.addSection')}</PillButton>}
+        />
+      ) : (
+        <div className="grid items-start gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+          {/* ── Section index ── */}
+          <nav aria-label={t('menus.v2.sections')} className="hidden lg:flex sticky top-24 flex-col gap-1 rounded-3xl bg-bg-card p-2 shadow-card">
+            <span className="px-3 pt-2 pb-1 text-xs font-medium text-white/50">{t('menus.v2.sections')}</span>
+            {menu.sections.map((section) => (
+              <a key={section.id} href={`#section-${section.id}`} className="flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm hover:bg-white/[0.05]">
+                <span className="truncate">{section.name}</span>
+                <span className="tabular-nums text-xs text-white/45">{section.items.length}</span>
+              </a>
+            ))}
+            <button type="button" onClick={openAddSection} className="mt-1 flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm text-white/55 hover:bg-white/[0.05] hover:text-white">
+              <Plus className="h-4 w-4" />{t('menus.detail.addSection')}
+            </button>
+          </nav>
 
-            <div className="space-y-2">
-              {section.items.length === 0 && (
-                <p className="text-sm text-white/40 italic px-1">{t('menus.detail.emptySection')}</p>
-              )}
-              {section.items.map((item, iIdx) => {
-                const recipe = linkedRecipe(item.recipe_id)
-                return (
-                  <div key={item.id} className={cn(
-                    'flex items-start gap-3 rounded-xl border border-glass-border px-3 py-2.5',
-                    !item.available && 'opacity-50',
-                  )}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={cn('font-medium text-sm', !item.available && 'line-through text-white/40')}>
-                          {item.name}
-                        </span>
-                        {(item.portions ?? 1) > 1 && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange font-semibold">
-                            ×{item.portions}
-                          </span>
-                        )}
-                        {!item.available && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/10 text-white/40">
-                            {t('menus.detail.unavailable')}
-                          </span>
-                        )}
-                        {(item.tags ?? []).map((tag) => (
-                          <span key={tag} className={cn('text-xs px-1.5 py-0.5 rounded-full font-medium', TAG_COLORS[tag])}>
-                            {TAG_EMOJI[tag]} {t(`menus.tags.${tag}`)}
-                          </span>
-                        ))}
-                        {recipe && recipe.allergens.length > 0 && (
-                          <span className="flex items-center gap-0.5">
-                            {recipe.allergens.slice(0, 3).map((a) => <AllergenDot key={a} allergen={a} />)}
-                            {recipe.allergens.length > 3 && <span className="text-[10px] text-white/40 ml-0.5">+{recipe.allergens.length - 3}</span>}
-                          </span>
-                        )}
-                      </div>
-                      {item.description && (
-                        <p className="text-xs text-white/50 mt-0.5 line-clamp-1">{item.description}</p>
-                      )}
-                      <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        {item.price != null && (
-                          <span className="text-sm font-semibold text-brand-orange">€{item.price.toFixed(2)}</span>
-                        )}
-                        {recipe?.cost_per_portion != null && (
-                          <span className="text-xs text-white/40">
-                            {t('menus.detail.costPerPortion')}: €{recipe.cost_per_portion.toFixed(2)}
-                            {item.price != null && item.price > 0 && (
-                              <span className="ml-1 text-white/30">
-                                ({Math.round((recipe.cost_per_portion / item.price) * 100)}% {t('menus.detail.foodCost')})
+          {/* ── Sections ── */}
+          <div className="flex flex-col gap-4">
+            {menu.sections.map((section, sIdx) => (
+              <section id={`section-${section.id}`} key={section.id} className="scroll-mt-24 rounded-3xl bg-bg-card p-5 shadow-card flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-baseline gap-2">
+                    <h2 className="text-xl font-medium tracking-[-0.02em]">{section.name}</h2>
+                    <span className="text-sm tabular-nums text-white/45">{section.items.length}</span>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <button type="button" onClick={() => moveSectionUp(section.id)} disabled={sIdx === 0} aria-label={t('menus.detail.moveUp')} className={iconBtn}><ChevronUp className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => moveSectionDown(section.id)} disabled={sIdx === menu.sections.length - 1} aria-label={t('menus.detail.moveDown')} className={iconBtn}><ChevronDown className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => openBulkLink(section.id)} aria-label={t('menus.v2.bulkLink')} title={t('menus.v2.bulkLink')} className={iconBtn}><BookOpen className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => void openTransfer(section.id)} aria-label={t('menus.v2.transfer')} title={t('menus.v2.transfer')} className={iconBtn}><ArrowRightLeft className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => openEditSection(section)} aria-label={t('common.edit')} className={iconBtn}><Pencil className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => onDeleteSection(section)} aria-label={t('menus.detail.deleteSection')} className={cn(iconBtn, 'hover:text-red-500')}><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+
+                {section.items.length === 0 && (
+                  <p className="rounded-2xl bg-white/[0.04] px-4 py-6 text-center text-sm text-white/50">{t('menus.detail.emptySection')}</p>
+                )}
+
+                <ul className="flex flex-col divide-y divide-white/[0.06]">
+                  {section.items.map((item, iIdx) => {
+                    const recipe = linkedRecipe(item.recipe_id)
+                    const fc = recipe?.cost_per_portion != null && item.price != null && item.price > 0
+                      ? Math.round((recipe.cost_per_portion / item.price) * 100) : null
+                    return (
+                      <li key={item.id} className={cn('group flex items-start gap-3 py-3', !item.available && 'opacity-50')}>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={cn('font-medium', !item.available && 'line-through')}>{item.name}</span>
+                            {(item.portions ?? 1) > 1 && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium">×{item.portions}</span>}
+                            {!item.available && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-white/55">{t('menus.detail.unavailable')}</span>}
+                            {(item.tags ?? []).map((tag) => (
+                              <span key={tag} className={cn('rounded-full px-2 py-0.5 text-xs font-medium', TAG_COLORS[tag])}>
+                                {t(`menus.tags.${tag}`)}
+                              </span>
+                            ))}
+                            {recipe && recipe.allergens.length > 0 && (
+                              <span className="flex items-center gap-0.5">
+                                {recipe.allergens.slice(0, 4).map((a) => <AllergenDot key={a} allergen={a} />)}
+                                {recipe.allergens.length > 4 && <span className="ml-0.5 text-[10px] text-white/45">+{recipe.allergens.length - 4}</span>}
                               </span>
                             )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                          </div>
+                          {item.description && <p className="mt-0.5 line-clamp-1 text-sm text-white/55">{item.description}</p>}
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                            {recipe?.cost_per_portion != null && (
+                              <span className="text-white/50 tabular-nums">{t('menus.detail.costPerPortion')}: €{recipe.cost_per_portion.toFixed(2)}</span>
+                            )}
+                            {fc != null && (
+                              <span className={cn('rounded-full px-2 py-0.5 font-medium tabular-nums', fc <= 30 ? 'bg-emerald-500/12 text-emerald-500' : fc <= 40 ? 'bg-amber-500/12 text-amber-500' : 'bg-red-500/10 text-red-500')}>
+                                FC {fc}%
+                              </span>
+                            )}
+                            {!item.recipe_id && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-white/50">{t('menus.v2.noRecipe')}</span>}
+                          </div>
+                        </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      {[
-                        { fn: () => moveItemUp(item.id, section.id), icon: <ChevronUp className="h-3.5 w-3.5" />, disabled: iIdx === 0, label: t('menus.detail.moveUp') },
-                        { fn: () => moveItemDown(item.id, section.id), icon: <ChevronDown className="h-3.5 w-3.5" />, disabled: iIdx === section.items.length - 1, label: t('menus.detail.moveDown') },
-                      ].map(({ fn, icon, disabled, label }) => (
-                        <button key={label} type="button" onClick={fn} disabled={disabled} aria-label={label}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition disabled:opacity-20 disabled:pointer-events-none">
-                          {icon}
-                        </button>
-                      ))}
-                      <button type="button" onClick={() => updateItem(item.id, section.id, { available: !item.available })}
-                        aria-label={item.available ? t('menus.detail.unavailable') : t('menus.detail.available')}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition">
-                        {item.available ? <ToggleRight className="h-4 w-4 text-emerald-400" /> : <ToggleLeft className="h-4 w-4" />}
-                      </button>
-                      {item.recipe_id && (
-                        <button type="button"
-                          onClick={() => { const r = linkedRecipe(item.recipe_id ?? null); if (r) { setEditingRecipeInline(r); setRecipeEditOpen(true) } }}
-                          aria-label="Επεξεργασία συνταγής"
-                          title="Επεξεργασία συνταγής"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-sky-400/60 hover:text-sky-300 hover:bg-sky-500/10 transition">
-                          <BookOpen className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      <button type="button" onClick={() => openEditItem(item, section.id)} aria-label={t('menus.detail.editItem')}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button type="button" onClick={() => onDeleteItem(item, section.id)} aria-label={t('menus.detail.deleteItem')}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                        {item.price != null && <span className="shrink-0 pt-0.5 text-lg font-medium tabular-nums">€{item.price.toFixed(2)}</span>}
 
-            <div className="flex gap-2">
-              <button type="button" onClick={() => openAddItem(section.id)}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-dashed border-glass-border px-3 py-2 text-sm text-white/40 hover:text-white hover:border-white/30 hover:bg-white/5 transition">
-                <Plus className="h-4 w-4" />{t('menus.detail.addItem')}
-              </button>
-              <button type="button" onClick={() => openQuickAdd(section.id)}
-                title="Προσθήκη από βιβλιοθήκη συνταγών"
-                className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-sky-500/30 px-3 py-2 text-sm text-sky-400/60 hover:text-sky-300 hover:border-sky-400/50 hover:bg-sky-500/5 transition">
-                <BookOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Από βιβλιοθήκη</span>
-              </button>
-            </div>
-          </GlassCard>
-        ))}
-      </div>
+                        <div className="flex shrink-0 items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100 transition-opacity">
+                          <button type="button" onClick={() => moveItemUp(item.id, section.id)} disabled={iIdx === 0} aria-label={t('menus.detail.moveUp')} className={iconBtn}><ChevronUp className="h-4 w-4" /></button>
+                          <button type="button" onClick={() => moveItemDown(item.id, section.id)} disabled={iIdx === section.items.length - 1} aria-label={t('menus.detail.moveDown')} className={iconBtn}><ChevronDown className="h-4 w-4" /></button>
+                          <button
+                            type="button"
+                            onClick={() => updateItem(item.id, section.id, { available: !item.available })}
+                            aria-label={item.available ? t('menus.detail.unavailable') : t('menus.detail.available')}
+                            className={iconBtn}
+                          >
+                            {item.available ? <ToggleRight className="h-5 w-5 text-emerald-500" /> : <ToggleLeft className="h-5 w-5" />}
+                          </button>
+                          {item.recipe_id && (
+                            <button
+                              type="button"
+                              onClick={() => { const r = linkedRecipe(item.recipe_id ?? null); if (r) { setEditingRecipeInline(r); setRecipeEditOpen(true) } }}
+                              aria-label={t('menus.v2.editRecipe')}
+                              title={t('menus.v2.editRecipe')}
+                              className={iconBtn}
+                            >
+                              <BookOpen className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button type="button" onClick={() => openEditItem(item, section.id)} aria-label={t('menus.detail.editItem')} className={iconBtn}><Pencil className="h-4 w-4" /></button>
+                          <button type="button" onClick={() => onDeleteItem(item, section.id)} aria-label={t('menus.detail.deleteItem')} className={cn(iconBtn, 'hover:text-red-500')}><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => openAddItem(section.id)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/[0.08] hover:text-white">
+                    <Plus className="h-4 w-4" />{t('menus.detail.addItem')}
+                  </button>
+                  <button type="button" onClick={() => openQuickAdd(section.id)}
+                    className="flex items-center justify-center gap-2 rounded-full bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/[0.08] hover:text-white">
+                    <BookOpen className="h-4 w-4" />
+                    <span className="hidden sm:inline">{t('menus.v2.fromLibrary')}</span>
+                  </button>
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Link Recipes drawer ── */}
       <Drawer open={linkRecipesOpen} onClose={closeLinkRecipes} title="Link Recipes to Items">
@@ -921,7 +891,7 @@ export default function MenuDetail() {
                 className={cn(
                   'flex-1 py-2 text-sm font-medium transition',
                   linkTab === key
-                    ? 'bg-brand-orange text-white'
+                    ? 'bg-brand-orange text-on-accent'
                     : 'text-white/50 hover:text-white hover:bg-white/5',
                 )}
               >
@@ -1140,7 +1110,7 @@ export default function MenuDetail() {
                                   )}
                                 />
                                 {isOpen && (
-                                  <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-52 overflow-y-auto rounded-xl border border-white/15 bg-[#2a2a2a] shadow-2xl">
+                                  <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-52 overflow-y-auto rounded-xl border border-white/15 bg-bg-card shadow-2xl">
                                     {filtered.length === 0
                                       ? <p className="px-3 py-2.5 text-sm text-white/40">No recipes found</p>
                                       : filtered.map((r) => (
@@ -1847,7 +1817,7 @@ export default function MenuDetail() {
                           )}
                         </div>
                         {isOpen && (
-                          <div className="absolute z-50 mt-1 w-full rounded-xl border border-glass-border bg-[#1a1a2e] shadow-xl overflow-hidden">
+                          <div className="absolute z-50 mt-1 w-full rounded-xl border border-glass-border bg-bg-card shadow-xl overflow-hidden">
                             {filtered.length === 0
                               ? <p className="px-3 py-2 text-xs text-white/40">Δεν βρέθηκε</p>
                               : filtered.map((r) => (
@@ -1886,7 +1856,7 @@ export default function MenuDetail() {
       {transferSectionId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={(e) => { if (e.target === e.currentTarget && !transferring) setTransferSectionId(null) }}>
-          <div className="w-full max-w-sm rounded-2xl border border-glass-border bg-[#1a1a2e] p-5 space-y-4 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl border border-glass-border bg-bg-card p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-white">Μεταφορά Τμήματος</h3>
               <button type="button" onClick={() => { if (!transferring) setTransferSectionId(null) }}
@@ -1956,6 +1926,6 @@ export default function MenuDetail() {
           />
         )}
       </Drawer>
-    </div>
+    </Page>
   )
 }

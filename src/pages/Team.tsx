@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { UserPlus, Copy, Check, Trash2, Shield, Pencil, Save, Lock, Languages, Clock, AlertTriangle, Percent } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PillButton, StatRow, StatTile, Panel, Notice } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Drawer } from '../components/ui/Drawer'
@@ -226,216 +226,154 @@ export default function Team() {
     await revokeInvite(id)
   }
 
+  const expiring = memberExpiries.filter((e) => { const x = expiryInfo(e.expiresAt); return x?.urgent }).length
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+    <Page>
+      <header className="flex flex-wrap items-end justify-between gap-4 pt-1">
+        <div className="min-w-0">
+          <p className="text-sm text-white/55">{t('team.subtitle')}</p>
           {renamingTeam && isOwner ? (
-            <form onSubmit={onRenameTeam} className="flex items-center gap-2">
-              <Input
+            <form onSubmit={onRenameTeam} className="mt-1 flex flex-wrap items-center gap-2">
+              <input
                 name="team_name"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 required
                 minLength={2}
                 autoFocus
+                aria-label={t('team.renameTeam')}
+                className="h-12 rounded-full bg-bg-card px-5 text-2xl font-medium shadow-card outline-none focus:ring-2 focus:ring-brand-orange/40"
               />
-              <Button type="submit" size="md" leftIcon={<Save className="h-4 w-4" />} disabled={savingTeam}>
-                {savingTeam ? t('team.savingTeam') : t('common.save')}
-              </Button>
-              <Button type="button" variant="secondary" size="md" onClick={() => { setRenamingTeam(false); setTeamName(team?.name ?? '') }}>
-                {t('common.cancel')}
-              </Button>
+              <PillButton type="submit" variant="primary" icon={Save} disabled={savingTeam}>{savingTeam ? t('team.savingTeam') : t('common.save')}</PillButton>
+              <PillButton onClick={() => { setRenamingTeam(false); setTeamName(team?.name ?? '') }}>{t('common.cancel')}</PillButton>
             </form>
           ) : (
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-semibold">{team?.name ?? t('team.title')}</h1>
+            <div className="mt-0.5 flex items-center gap-2">
+              <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">{team?.name ?? t('team.title')}</h1>
               {isOwner && (
-                <button
-                  type="button"
-                  onClick={() => { setTeamName(team?.name ?? ''); setRenamingTeam(true) }}
-                  aria-label={t('team.renameTeam')}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/5 transition"
-                >
+                <button type="button" onClick={() => { setTeamName(team?.name ?? ''); setRenamingTeam(true) }} aria-label={t('team.renameTeam')}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-white/50 hover:bg-white/[0.06] hover:text-white">
                   <Pencil className="h-4 w-4" />
                 </button>
               )}
             </div>
           )}
-          {teamNameError && <p className="text-sm text-red-400 mt-1">{teamNameError}</p>}
-          <p className="text-white/60 mt-1">{t('team.subtitle')}</p>
+          {teamNameError && <p className="mt-1 text-sm text-red-500">{teamNameError}</p>}
         </div>
         {isOwner && (
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              leftIcon={<UserPlus className="h-5 w-5" />}
-              onClick={() => setDrawerOpen(true)}
-            >
-              {t('team.invite')}
-            </Button>
-            <Button
-              leftIcon={<UserPlus className="h-5 w-5" />}
-              onClick={() => setCreateOpen(true)}
-            >
-              {t('team.createMember')}
-            </Button>
+          <div className="flex flex-wrap gap-2">
+            <PillButton icon={UserPlus} onClick={() => setDrawerOpen(true)}>{t('team.invite')}</PillButton>
+            <PillButton icon={UserPlus} variant="primary" onClick={() => setCreateOpen(true)}>{t('team.createMember')}</PillButton>
           </div>
         )}
       </header>
 
-      {error && (
-        <GlassCard className="border border-red-500/40 text-red-300">
-          {error}
-        </GlassCard>
-      )}
+      {error && <Notice>{error}</Notice>}
 
-      {canManageSettings && (
-        <GlassCard className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Percent className="h-4 w-4 text-brand-orange" />
-            <h2 className="text-base font-semibold">Στόχος Food Cost %</h2>
-          </div>
-          <p className="text-sm text-white/50">
-            Ορίζει το επιθυμητό ποσοστό κόστους τροφίμων. Χρησιμοποιείται για τα χρώματα κατάστασης στο Costing και την ανάλυση κόστους μενού, καθώς και για προτεινόμενες τιμές πώλησης.
-          </p>
-          <form onSubmit={onSaveTarget} className="flex items-center gap-2">
-            <div className="relative w-32">
-              <input
-                type="number" step="0.5" min="1" max="90"
-                value={targetInput}
-                onChange={(e) => setTargetInput(e.target.value)}
-                disabled={loadingTarget}
-                className="w-full rounded-xl border border-glass-border bg-white/5 px-3 py-2 pr-7 text-sm text-white focus:outline-none focus:border-brand-orange/50"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-white/40">%</span>
-            </div>
-            <Button type="submit" size="md" leftIcon={<Save className="h-4 w-4" />} disabled={savingTarget || loadingTarget}>
-              {savingTarget ? t('team.savingTeam') : t('common.save')}
-            </Button>
-            {targetSaved && <Check className="h-4 w-4 text-emerald-400" />}
-          </form>
-        </GlassCard>
-      )}
+      <StatRow>
+        <StatTile tone="ink" label={t('team.members')} value={members.length} />
+        <StatTile label={t('team.pendingInvites')} value={invites.length} tone={invites.length ? 'warn' : 'default'} />
+        <StatTile label={t('team.v2.expiring')} value={expiring} tone={expiring ? 'warn' : 'default'} icon={Clock} hint={t('team.v2.expiringHint')} />
+        <StatTile tone="lime" label={t('team.v2.target')} value={`${targetFoodCostPct}%`} icon={Percent} hint="food cost" to="/costing" />
+      </StatRow>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">{t('team.members')}</h2>
-        {loading ? (
-          <GlassCard>
-            <p className="text-white/60">{t('team.loadingTeam')}</p>
-          </GlassCard>
-        ) : (
-          <GlassCard className="p-0 overflow-hidden">
-            <ul className="divide-y divide-glass-border">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        {/* ── Members ── */}
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-medium">{t('team.members')}</h2>
+          {loading ? (
+            <Panel><p className="text-white/55">{t('team.loadingTeam')}</p></Panel>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
               {members.map((m) => {
                 const exp = memberExpiries.find((e) => e.userId === m.id)
                 const expInfo = expiryInfo(exp?.expiresAt ?? null)
+                const isMe = m.id === profile?.id
                 return (
-                  <li
-                    key={m.id}
-                    className="flex items-center gap-4 px-5 py-4"
-                  >
-                    <div className={cn(
-                      'flex h-12 w-12 items-center justify-center rounded-full font-semibold',
-                      expInfo?.expired
-                        ? 'bg-red-500/20 text-red-400'
-                        : 'bg-brand-orange/20 text-brand-orange',
-                    )}>
-                      {initialsFor(m.full_name)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {m.full_name ?? '—'}
-                        {m.id === profile?.id && (
-                          <span className="ml-2 text-xs text-white/50">
-                            {t('team.you')}
-                          </span>
-                        )}
+                  <article key={m.id} className={cn('flex flex-col gap-4 rounded-3xl p-5 shadow-card', isMe ? 'bg-ink text-white-fixed' : 'bg-bg-card')}>
+                    <div className="flex items-start gap-3">
+                      <span className={cn('flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-semibold',
+                        expInfo?.expired ? 'bg-red-500/15 text-red-500' : isMe ? 'bg-lime text-ink' : 'bg-white/[0.06]')}>
+                        {initialsFor(m.full_name)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-lg font-medium">{m.full_name ?? '—'}</p>
+                        {isMe && <p className="text-xs text-lime">{t('team.you')}</p>}
                       </div>
-                      {expInfo && (
-                        <div className={cn(
-                          'inline-flex items-center gap-1 mt-0.5 text-xs',
-                          expInfo.expired ? 'text-red-400' : expInfo.urgent ? 'text-amber-400' : 'text-white/40',
-                        )}>
-                          {expInfo.expired ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                          {expInfo.label}
-                        </div>
+                      {isOwner && !isMe && m.role !== 'owner' && (
+                        <button type="button" onClick={() => openPermissions(m)} title={t('team.editPermissions')} aria-label={t('team.editPermissions')}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-white/60 hover:text-white">
+                          <Lock className="h-4 w-4" />
+                        </button>
                       )}
                     </div>
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-glass-border px-2.5 py-1 text-sm text-white/80">
-                      <Shield className="h-3.5 w-3.5" />
-                      {roleLabel(m.role)}
-                    </span>
-                    {isOwner && m.id !== profile?.id && m.role !== 'owner' && (
-                      <button
-                        type="button"
-                        onClick={() => openPermissions(m)}
-                        title={t('team.editPermissions')}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl text-white/40 hover:text-brand-orange hover:bg-brand-orange/10 transition"
-                      >
-                        <Lock className="h-4 w-4" />
-                      </button>
-                    )}
-                  </li>
+                    <div className="mt-auto flex flex-wrap items-center gap-2 text-xs">
+                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium', isMe ? 'bg-white-fixed/10' : 'bg-white/[0.06]')}>
+                        <Shield className="h-3.5 w-3.5" />{roleLabel(m.role)}
+                      </span>
+                      {m.permissions !== null && <span className={cn('rounded-full px-2.5 py-1 font-medium', isMe ? 'bg-white-fixed/10' : 'bg-white/[0.06]')}>{t('team.v2.custom')}</span>}
+                      {expInfo && (
+                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium',
+                          expInfo.expired ? 'bg-red-500/10 text-red-500' : expInfo.urgent ? 'bg-amber-500/12 text-amber-500' : 'bg-white/[0.06] text-white/60')}>
+                          {expInfo.expired ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{expInfo.label}
+                        </span>
+                      )}
+                    </div>
+                  </article>
                 )
               })}
-            </ul>
-          </GlassCard>
-        )}
-      </section>
-
-      {canInvite && (
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">{t('team.pendingInvites')}</h2>
-          {invites.length === 0 ? (
-            <GlassCard>
-              <p className="text-white/60">{t('team.noPendingInvites')}</p>
-            </GlassCard>
-          ) : (
-            <GlassCard className="p-0 overflow-hidden">
-              <ul className="divide-y divide-glass-border">
-                {invites.map((inv) => (
-                  <li
-                    key={inv.id}
-                    className="flex items-center gap-3 px-5 py-4 flex-wrap"
-                  >
-                    <div className="flex-1 min-w-[180px]">
-                      <div className="font-medium">{inv.email}</div>
-                      <div className="text-xs text-white/50 mt-0.5">
-                        {roleLabel(inv.role)}
-                        {inv.expires_at &&
-                          ` · ${t('team.expires', { date: new Date(inv.expires_at).toLocaleDateString() })}`}
-                      </div>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      leftIcon={
-                        copiedId === inv.id ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )
-                      }
-                      onClick={() => onCopy(inv.token, inv.id)}
-                    >
-                      {copiedId === inv.id ? t('team.copied') : t('team.copyLink')}
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => onRevoke(inv.id)}
-                      aria-label={t('team.revokeLabel')}
-                      className="flex h-11 w-11 items-center justify-center rounded-xl text-white/70 hover:text-red-400 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </GlassCard>
+            </div>
           )}
         </section>
-      )}
+
+        <div className="flex flex-col gap-4">
+          {canManageSettings && (
+            <Panel title={<span className="flex items-center gap-2"><Percent className="h-4 w-4" />{t('team.v2.targetTitle')}</span>}>
+              <p className="-mt-2 text-sm text-white/55">{t('team.v2.targetHint')}</p>
+              <form onSubmit={onSaveTarget} className="flex items-center gap-2">
+                <label className="relative">
+                  <input type="number" step="0.5" min="1" max="90" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} disabled={loadingTarget}
+                    aria-label={t('team.v2.targetTitle')}
+                    className="h-11 w-28 rounded-full bg-white/[0.06] px-4 pr-8 text-sm tabular-nums outline-none focus:ring-2 focus:ring-brand-orange/40" />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/45">%</span>
+                </label>
+                <PillButton type="submit" variant="primary" icon={Save} disabled={savingTarget || loadingTarget}>{savingTarget ? t('team.savingTeam') : t('common.save')}</PillButton>
+                {targetSaved && <Check className="h-5 w-5 text-emerald-500" />}
+              </form>
+            </Panel>
+          )}
+
+          {canInvite && (
+            <Panel title={t('team.pendingInvites')}>
+              {invites.length === 0 ? (
+                <p className="text-sm text-white/55">{t('team.noPendingInvites')}</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-white/[0.06]">
+                  {invites.map((inv) => (
+                    <li key={inv.id} className="flex items-center gap-2 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{inv.email}</p>
+                        <p className="text-xs text-white/50">
+                          {roleLabel(inv.role)}{inv.expires_at && ` · ${t('team.expires', { date: new Date(inv.expires_at).toLocaleDateString() })}`}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => onCopy(inv.token, inv.id)} aria-label={t('team.copyLink')} title={t('team.copyLink')}
+                        className={cn('flex h-10 w-10 items-center justify-center rounded-full', copiedId === inv.id ? 'bg-lime text-ink' : 'bg-white/[0.06] text-white/60 hover:text-white')}>
+                        {copiedId === inv.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                      <button type="button" onClick={() => onRevoke(inv.id)} aria-label={t('team.revokeLabel')}
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-white/50 hover:bg-red-500/10 hover:text-red-500">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          )}
+        </div>
+      </div>
 
       <Drawer
         open={drawerOpen}
@@ -502,7 +440,7 @@ export default function Team() {
                     className={cn(
                       'rounded-xl px-3 py-2.5 text-sm font-medium text-left transition-all',
                       createForm.role === r
-                        ? 'bg-brand-orange text-white-fixed shadow-[0_0_12px_rgba(196,149,106,0.4)]'
+                        ? 'bg-brand-orange text-on-accent shadow-[0_0_12px_rgba(196,149,106,0.4)]'
                         : 'glass text-white/70 hover:text-white hover:bg-white/8',
                     )}
                   >
@@ -679,6 +617,6 @@ export default function Team() {
           </div>
         )}
       </Drawer>
-    </div>
+    </Page>
   )
 }

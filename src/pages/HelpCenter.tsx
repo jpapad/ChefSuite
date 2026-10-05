@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Page, PageHeader } from '../components/ui/page'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 import {
@@ -7,7 +8,7 @@ import {
   Thermometer, Package, Truck, ClipboardCheck, Trash2, LineChart,
   Users, CalendarDays, TimerIcon, Award, Star, CalendarCheck,
   TrendingUp, BarChart3, MessageSquare, Radio, BookOpen, Heart,
-  Bot, Scale, BookMarked, Layers, Keyboard, HelpCircle, Sparkles,
+  Bot, Scale, BookMarked, Layers, Keyboard, Sparkles,
   Activity, Camera, BarChart2,
   type LucideIcon,
 } from 'lucide-react'
@@ -440,18 +441,8 @@ export default function HelpCenter() {
   const progress = Math.round((done.size / STEPS.length) * 100)
 
   return (
-    <div className="space-y-8 pb-8">
-
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-orange/15 border border-brand-orange/25">
-          <HelpCircle className="h-6 w-6 text-brand-orange" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">{t('help.title')}</h1>
-          <p className="text-sm text-white/40 mt-1">{t('help.subtitle')}</p>
-        </div>
-      </div>
+    <Page className="pb-8">
+      <PageHeader title={t('help.title')} subtitle={t('help.subtitle')} />
 
       {/* ── Getting Started ── */}
       <GlassCard className="space-y-4">
@@ -462,7 +453,7 @@ export default function HelpCenter() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-[120px] h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full bg-brand-orange rounded-full transition-all duration-500"
+              <div className="h-full bg-lime rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }} />
             </div>
             <span className="text-xs font-semibold text-white/50 tabular-nums shrink-0">
@@ -482,7 +473,7 @@ export default function HelpCenter() {
             const checked = done.has(step.id)
             return (
               <div key={step.id}
-                className={cn('flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all glass',
+                className={cn('flex items-center gap-3 rounded-2xl bg-white/[0.04] px-3 py-3 transition-all',
                   checked && 'opacity-60')}>
                 <button type="button" onClick={() => toggleStep(step.id)}
                   className={cn('shrink-0 transition-colors',
@@ -620,6 +611,6 @@ export default function HelpCenter() {
         <Sparkles className="h-4 w-4 mt-0.5 shrink-0 text-brand-orange" />
         <p>{t('help.tip')}</p>
       </div>
-    </div>
+    </Page>
   )
 }

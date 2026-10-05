@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
-import { Send, MessageCircle, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Send, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { useTeamChat, CHAT_CHANNELS, type ChatChannel } from '../hooks/useTeamChat'
@@ -38,8 +38,8 @@ function Avatar({ name, own }: { name?: string | null; own: boolean }) {
     <div className={cn(
       'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold select-none',
       own
-        ? 'bg-brand-orange text-white-fixed shadow-[0_0_10px_rgba(196,149,106,0.4)]'
-        : 'bg-white/60 border border-white/80 text-white/70 shadow-sm',
+        ? 'bg-lime text-ink'
+        : 'bg-white/[0.07] text-white/75',
     )}>
       {initialsFor(name)}
     </div>
@@ -88,10 +88,10 @@ function MessageBubble({
 
         <div className="relative">
           <div className={cn(
-            'rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+            'rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed',
             own
-              ? 'bg-brand-orange text-white-fixed rounded-br-sm shadow-[0_2px_12px_rgba(196,149,106,0.35)]'
-              : 'bg-white/70 border border-white/80 text-white/85 rounded-bl-sm shadow-sm',
+              ? 'bg-brand-orange text-on-accent rounded-br-md'
+              : 'bg-bg-card text-white shadow-card rounded-bl-md',
           )}>
             {msg.content}
           </div>
@@ -111,7 +111,7 @@ function MessageBubble({
               type="button"
               onClick={onDelete}
               aria-label="Delete message"
-              className="absolute -left-9 top-1 hidden group-hover:flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-red-500 hover:bg-red-50 transition"
+              className="absolute -left-10 top-1 hidden group-hover:flex h-8 w-8 items-center justify-center rounded-full text-white/40 hover:text-red-500 hover:bg-red-500/10 transition"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -144,11 +144,11 @@ function MessageInput({ onSend, sending, placeholder }: {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex-none flex items-center gap-2.5 px-4 py-3 border-t border-white/40 bg-white/20"
+      className="flex-none flex items-center gap-2.5 p-3"
     >
       <div className={cn(
-        'flex flex-1 items-center gap-2 rounded-xl px-4 h-11 transition-all',
-        'bg-white-fixed/55 border border-white/70',
+        'flex flex-1 items-center gap-2 rounded-full px-5 h-12 transition-all',
+        'bg-bg-card shadow-card',
         'focus-within:ring-2 focus-within:ring-brand-orange/50 focus-within:border-brand-orange/30',
       )}>
         <input
@@ -168,8 +168,8 @@ function MessageInput({ onSend, sending, placeholder }: {
         disabled={sending || !draft.trim()}
         aria-label="Send"
         className={cn(
-          'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition',
-          'bg-brand-orange text-white-fixed shadow-[0_2px_8px_rgba(196,149,106,0.40)]',
+          'flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition',
+          'bg-brand-orange text-on-accent',
           'hover:bg-brand-orange/85 disabled:opacity-40 disabled:cursor-not-allowed',
         )}
       >
@@ -186,15 +186,14 @@ function ChannelView({ channel, myId }: { channel: ChatChannel; myId: string }) 
   const { messages, loading, sending, sendMessage, deleteMessage } = useTeamChat(channel)
   const bottomRef = useRef<HTMLDivElement>(null)
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
-  const chDef = CHAT_CHANNELS.find((c) => c.slug === channel)
 
   return (
     <>
-      <div className="flex-none flex items-center gap-3 px-5 py-3.5 border-b border-white/40 bg-white/20">
-        <span className="text-2xl leading-none">{chDef?.emoji}</span>
+      <div className="flex-none flex items-center gap-3 px-5 py-4">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-lime text-lg font-semibold text-ink">#</span>
         <div>
-          <h2 className="font-semibold text-white/85 leading-none text-base">#{channel}</h2>
-          <p className="text-[11px] text-white/40 mt-0.5">{t(`chat.channelDesc.${channel}`)}</p>
+          <h2 className="text-lg font-medium leading-none">#{channel}</h2>
+          <p className="mt-1 text-xs text-white/50">{t(`chat.channelDesc.${channel}`)}</p>
         </div>
       </div>
 
@@ -203,7 +202,7 @@ function ChannelView({ channel, myId }: { channel: ChatChannel; myId: string }) 
           <p className="text-white/40 text-sm text-center py-16">{t('chat.loading')}</p>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-            <span className="text-5xl opacity-60">{chDef?.emoji}</span>
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/[0.06] text-2xl text-white/50">#</span>
             <p className="text-sm text-white/45 max-w-xs">{t('chat.channelEmpty', { channel: `#${channel}` })}</p>
           </div>
         ) : (
@@ -235,10 +234,10 @@ function DmView({ recipient, myId }: { recipient: TeamMember; myId: string }) {
 
   return (
     <>
-      <div className="flex-none flex items-center gap-3 px-5 py-3.5 border-b border-white/40 bg-white/20">
+      <div className="flex-none flex items-center gap-3 px-5 py-4">
         <Avatar name={recipient.full_name} own={false} />
         <div>
-          <h2 className="font-semibold text-white/85 text-base leading-none">{recipient.full_name ?? '—'}</h2>
+          <h2 className="text-lg font-medium leading-none">{recipient.full_name ?? '—'}</h2>
           <p className="text-[11px] text-white/40 mt-0.5 capitalize">{recipient.role?.replace(/_/g, ' ')}</p>
         </div>
       </div>
@@ -292,7 +291,7 @@ function ChatSidebar({ current, members, onSelect }: {
       <button
         type="button"
         onClick={() => setChannelsOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/40 hover:text-white/65 transition select-none w-full"
+        className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white/50 hover:text-white transition select-none w-full"
       >
         {channelsOpen
           ? <ChevronDown className="h-3 w-3" />
@@ -310,14 +309,14 @@ function ChatSidebar({ current, members, onSelect }: {
                 type="button"
                 onClick={() => onSelect({ type: 'channel', channel: ch.slug as ChatChannel })}
                 className={cn(
-                  'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition w-full text-left',
+                  'flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-sm font-medium transition w-full text-left',
                   active
-                    ? 'bg-brand-orange/15 text-brand-orange shadow-[inset_2px_0_0_#C4956A]'
-                    : 'text-white/60 hover:bg-white/40 hover:text-white/85',
+                    ? 'bg-brand-orange text-on-accent'
+                    : 'text-white/65 hover:bg-white/[0.05] hover:text-white',
                 )}
               >
-                <span className="text-base w-5 text-center leading-none">{ch.emoji}</span>
-                <span className="truncate">#{ch.slug}</span>
+                <span className="w-5 text-center text-base leading-none text-current opacity-60">#</span>
+                <span className="truncate">{ch.slug}</span>
               </button>
             )
           })}
@@ -329,7 +328,7 @@ function ChatSidebar({ current, members, onSelect }: {
           <button
             type="button"
             onClick={() => setDmsOpen((v) => !v)}
-            className="flex items-center gap-1.5 px-4 py-1.5 mt-3 text-[10px] font-semibold uppercase tracking-widest text-white/40 hover:text-white/65 transition select-none w-full"
+            className="flex items-center gap-1.5 px-4 py-1.5 mt-3 text-xs font-medium text-white/50 hover:text-white transition select-none w-full"
           >
             {dmsOpen
               ? <ChevronDown className="h-3 w-3" />
@@ -352,13 +351,13 @@ function ChatSidebar({ current, members, onSelect }: {
                       type="button"
                       onClick={() => onSelect({ type: 'dm', member: m })}
                       className={cn(
-                        'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition w-full text-left',
+                        'flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-sm font-medium transition w-full text-left',
                         active
-                          ? 'bg-brand-orange/15 text-brand-orange shadow-[inset_2px_0_0_#C4956A]'
-                          : 'text-white/60 hover:bg-white/40 hover:text-white/85',
+                          ? 'bg-brand-orange text-on-accent'
+                          : 'text-white/65 hover:bg-white/[0.05] hover:text-white',
                       )}
                     >
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/60 border border-white/80 text-[10px] font-bold text-white/70 shadow-sm">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-[10px] font-bold text-white/75">
                         {initialsFor(m.full_name)}
                       </div>
                       <span className="truncate">{m.full_name ?? '—'}</span>
@@ -384,48 +383,31 @@ export default function Chat() {
   const myId = profile?.id ?? ''
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] md:h-[calc(100vh-2rem)] gap-4 min-h-0">
-
-      {/* ── Left panel (desktop) ── */}
-      <div className="hidden md:flex md:w-56 lg:w-60 shrink-0 flex-col glass-strong rounded-2xl gradient-border overflow-hidden">
-        {/* Panel header */}
-        <div className="flex items-center gap-2.5 px-4 pt-4 pb-3 border-b border-white/40">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-orange/15 text-brand-orange">
-            <MessageCircle className="h-4 w-4" />
-          </div>
-          <h1 className="font-semibold text-white/85 text-base">{t('chat.title')}</h1>
+    <div className="mx-auto flex h-[calc(100vh-10rem)] w-full max-w-[1360px] min-h-0 gap-4">
+      {/* ── Conversations ── */}
+      <div className="hidden md:flex md:w-64 shrink-0 flex-col overflow-hidden rounded-3xl bg-bg-card shadow-card">
+        <div className="px-5 pb-1 pt-5">
+          <h1 className="text-2xl font-medium tracking-[-0.02em]">{t('chat.title')}</h1>
         </div>
         <ChatSidebar current={view} members={members} onSelect={setView} />
       </div>
 
-      {/* ── Main panel ── */}
-      <div className="flex-1 flex flex-col glass rounded-2xl gradient-border overflow-hidden min-w-0">
-
-        {/* Mobile top bar */}
-        <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-white/40 bg-white/20">
+      {/* ── Conversation ── */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white/[0.03]">
+        {/* Mobile picker */}
+        <div className="md:hidden flex items-center gap-2 px-4 py-3">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-medium text-white/70 hover:text-white/90 transition"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-bg-card px-4 text-sm font-medium shadow-card"
           >
-            <span className="text-base">
-              {view.type === 'channel'
-                ? CHAT_CHANNELS.find((c) => c.slug === view.channel)?.emoji
-                : '👤'}
-            </span>
-            <span>{view.type === 'channel' ? `#${view.channel}` : view.member.full_name}</span>
-            <ChevronDown className="h-3.5 w-3.5" />
+            {view.type === 'channel' ? `#${view.channel}` : view.member.full_name}
+            <ChevronDown className="h-4 w-4" />
           </button>
         </div>
-
-        {/* Mobile sidebar dropdown */}
         {mobileSidebarOpen && (
-          <div className="md:hidden border-b border-white/40 bg-white/30 max-h-64 overflow-y-auto">
-            <ChatSidebar
-              current={view}
-              members={members}
-              onSelect={(v) => { setView(v); setMobileSidebarOpen(false) }}
-            />
+          <div className="md:hidden mx-3 mb-2 max-h-64 overflow-y-auto rounded-3xl bg-bg-card shadow-card">
+            <ChatSidebar current={view} members={members} onSelect={(v) => { setView(v); setMobileSidebarOpen(false) }} />
           </div>
         )}
 

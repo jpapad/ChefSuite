@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Star, TrendingUp, AlertTriangle, Minus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, Panel, StatRow, StatTile, Chip, ChipRow, EmptyState, Notice } from '../components/ui/page'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
@@ -21,10 +21,10 @@ interface EngineeredItem {
 }
 
 const QUADRANT_META: Record<Quadrant, { label: string; color: string; bg: string; border: string; icon: typeof Star; desc: string }> = {
-  star:      { label: 'menuEng.star',      color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-500/30', icon: Star,          desc: 'menuEng.starDesc' },
-  plowhorse: { label: 'menuEng.plowhorse', color: 'text-blue-400',    bg: 'bg-blue-400/10',    border: 'border-blue-500/30',    icon: TrendingUp,    desc: 'menuEng.plowhorseDesc' },
-  puzzle:    { label: 'menuEng.puzzle',    color: 'text-amber-400',   bg: 'bg-amber-400/10',   border: 'border-amber-500/30',   icon: AlertTriangle, desc: 'menuEng.puzzleDesc' },
-  dog:       { label: 'menuEng.dog',       color: 'text-white/40',    bg: 'bg-white/5',        border: 'border-white/10',       icon: Minus,         desc: 'menuEng.dogDesc' },
+  star:      { label: 'menuEng.star',      color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: Star,          desc: 'menuEng.starDesc' },
+  plowhorse: { label: 'menuEng.plowhorse', color: 'text-sky-500',     bg: 'bg-sky-500/10',     border: 'border-sky-500/30',     icon: TrendingUp,    desc: 'menuEng.plowhorseDesc' },
+  puzzle:    { label: 'menuEng.puzzle',    color: 'text-amber-500',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   icon: AlertTriangle, desc: 'menuEng.puzzleDesc' },
+  dog:       { label: 'menuEng.dog',       color: 'text-red-500',     bg: 'bg-red-500/[0.07]', border: 'border-red-500/20',     icon: Minus,         desc: 'menuEng.dogDesc' },
 }
 
 const QUADRANT_ORDER: Quadrant[] = ['star', 'plowhorse', 'puzzle', 'dog']
@@ -45,6 +45,7 @@ export default function MenuEngineering() {
   const [items, setItems] = useState<EngineeredItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<Quadrant | 'all'>('all')
 
   useEffect(() => {
     if (!profile?.team_id) return
@@ -186,127 +187,133 @@ export default function MenuEngineering() {
 
   const totalRevenue = items.reduce((s, i) => s + i.revenue, 0)
 
-  return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold">{t('menuEng.title')}</h1>
-        <p className="text-white/60 mt-1">{t('menuEng.subtitle')}</p>
-      </header>
+  const visible = filter === 'all' ? items : items.filter((i) => i.quadrant === filter)
+  // Matrix laid out on the two axes: margin (rows) × popularity (columns)
+  const MATRIX: Quadrant[] = ['puzzle', 'star', 'dog', 'plowhorse']
 
-      {error && <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>}
+  return (
+    <Page>
+      <PageHeader title={t('menuEng.title')} subtitle={t('menuEng.subtitle')} eyebrow={t('menuEng.v2.window')} />
+
+      {error && <Notice>{error}</Notice>}
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : items.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <Star className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('menuEng.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('menuEng.empty.description')}</p>
-        </GlassCard>
+        <EmptyState icon={Star} title={t('menuEng.empty.title')} body={t('menuEng.empty.description')} />
       ) : (
         <>
-          {/* 2×2 matrix overview */}
-          <div className="grid grid-cols-2 gap-4">
-            {QUADRANT_ORDER.map((q) => {
-              const meta = QUADRANT_META[q]
-              const qItems = byQuadrant.get(q)!
-              const Icon = meta.icon
-              const qRevenue = qItems.reduce((s, i) => s + i.revenue, 0)
-              return (
-                <GlassCard key={q} className={cn('border', meta.border, meta.bg)}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={cn('flex h-9 w-9 items-center justify-center rounded-xl', meta.bg)}>
-                      <Icon className={cn('h-5 w-5', meta.color)} />
-                    </div>
-                    <div>
-                      <div className={cn('font-semibold', meta.color)}>{t(meta.label)}</div>
-                      <div className="text-xs text-white/40">{t(meta.desc)}</div>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <div className="text-sm font-semibold">{qItems.length}</div>
-                      <div className="text-xs text-white/40">{t('menuEng.items')}</div>
-                    </div>
-                  </div>
-                  {qItems.length > 0 && (
-                    <ul className="space-y-1 mt-2">
-                      {qItems.slice(0, 4).map((item) => (
-                        <li key={item.menu_item_id ?? item.name} className="flex items-center justify-between text-sm">
-                          <span className="truncate text-white/80 max-w-[60%]">{item.name}</span>
-                          <div className="flex items-center gap-2 shrink-0 text-white/50 text-xs">
-                            <span>×{item.units_sold}</span>
-                            <span className="text-white/30">·</span>
-                            <span>€{fmt(item.revenue)}</span>
-                          </div>
-                        </li>
-                      ))}
-                      {qItems.length > 4 && (
-                        <li className="text-xs text-white/30">+{qItems.length - 4} {t('menuEng.more')}</li>
-                      )}
-                    </ul>
-                  )}
-                  {qRevenue > 0 && (
-                    <div className={cn('mt-3 pt-3 border-t border-white/10 text-xs', meta.color)}>
-                      {t('menuEng.revenue')}: €{fmt(qRevenue)}
-                      {totalRevenue > 0 && (
-                        <span className="text-white/30 ml-1">({Math.round((qRevenue / totalRevenue) * 100)}%)</span>
-                      )}
-                    </div>
-                  )}
-                </GlassCard>
-              )
-            })}
-          </div>
+          <StatRow>
+            <StatTile tone="ink" label={t('menuEng.revenue')} value={`€${fmt(totalRevenue)}`} hint={t('menuEng.v2.window')} />
+            <StatTile label={t('menuEng.v2.dishes')} value={items.length} hint={t('menuEng.v2.unitsTotal', { count: items.reduce((s, i) => s + i.units_sold, 0) })} />
+            <StatTile label={t('menuEng.star')} value={byQuadrant.get('star')!.length} tone="good" hint={t('menuEng.starDesc')} onClick={() => setFilter('star')} />
+            <StatTile label={t('menuEng.dog')} value={byQuadrant.get('dog')!.length} tone={byQuadrant.get('dog')!.length ? 'bad' : 'default'} hint={t('menuEng.dogDesc')} onClick={() => setFilter('dog')} />
+          </StatRow>
 
-          {/* Full item list */}
-          <GlassCard className="p-0 overflow-hidden">
-            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-5 py-3 text-xs uppercase tracking-wide text-white/40 border-b border-glass-border">
-              <span>{t('menuEng.item')}</span>
-              <span>{t('menuEng.quadrant')}</span>
-              <span>{t('menuEng.unitsSold')}</span>
-              <span>{t('menuEng.revenue')}</span>
-              <span>{t('menuEng.margin')}</span>
-              <span>{t('menuEng.avgPrice')}</span>
+          {/* ── Matrix ── */}
+          <Panel title={t('menuEng.v2.matrix')}>
+            <div className="grid grid-cols-[auto_1fr] gap-3">
+              <div className="flex items-center justify-center">
+                <span className="text-xs font-medium text-white/45 [writing-mode:vertical-rl] rotate-180">{t('menuEng.v2.marginAxis')} →</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {MATRIX.map((q) => {
+                  const meta = QUADRANT_META[q]
+                  const qItems = byQuadrant.get(q)!
+                  const Icon = meta.icon
+                  const qRevenue = qItems.reduce((s, i) => s + i.revenue, 0)
+                  return (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setFilter(filter === q ? 'all' : q)}
+                      className={cn('flex min-h-[200px] flex-col gap-3 rounded-2xl p-4 text-left transition', meta.bg, filter === q && 'ring-2 ring-brand-orange')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className={cn('h-5 w-5', meta.color)} />
+                        <span className={cn('font-medium', meta.color)}>{t(meta.label)}</span>
+                        <span className="ml-auto text-2xl font-medium tabular-nums">{qItems.length}</span>
+                      </div>
+                      <p className="text-xs text-white/60">{t(`menuEng.${q}Hint`)}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {qItems.slice(0, 6).map((item) => (
+                          <span key={item.menu_item_id ?? item.name} className="rounded-full bg-bg-card px-2.5 py-1 text-xs font-medium shadow-card">
+                            {item.name}
+                          </span>
+                        ))}
+                        {qItems.length > 6 && <span className="px-1 py-1 text-xs text-white/45">+{qItems.length - 6}</span>}
+                      </div>
+                      {qRevenue > 0 && (
+                        <span className="mt-auto text-xs text-white/55 tabular-nums">
+                          €{fmt(qRevenue)}{totalRevenue > 0 && ` · ${Math.round((qRevenue / totalRevenue) * 100)}%`}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              <span />
+              <p className="text-center text-xs font-medium text-white/45">{t('menuEng.v2.popularityAxis')} →</p>
             </div>
-            <ul className="divide-y divide-glass-border">
-              {items.map((item) => {
-                const meta = QUADRANT_META[item.quadrant]
-                const Icon = meta.icon
-                return (
-                  <li key={item.menu_item_id ?? item.name}
-                    className="grid gap-2 md:gap-4 px-5 py-3.5 items-center md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr]"
-                  >
-                    <span className="font-medium truncate">{item.name}</span>
-                    <span className={cn('flex items-center gap-1.5 text-sm font-medium', meta.color)}>
-                      <Icon className="h-3.5 w-3.5 shrink-0" />
-                      {t(meta.label)}
-                    </span>
-                    <span className="text-sm text-white/70">×{item.units_sold}</span>
-                    <span className="text-sm font-medium">€{fmt(item.revenue)}</span>
-                    <span className={cn('text-sm font-medium',
-                      item.margin_pct == null ? 'text-white/30'
-                        : item.margin_pct >= 70 ? 'text-emerald-400'
-                        : item.margin_pct >= 55 ? 'text-amber-400'
-                        : 'text-red-400',
-                    )}>
-                      {item.margin_pct != null ? `${item.margin_pct.toFixed(1)}%` : '—'}
-                    </span>
-                    <span className="text-sm text-white/60">€{fmt(item.avg_price)}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          </GlassCard>
+          </Panel>
 
-          <GlassCard className="text-xs text-white/40 space-y-1">
-            <p><span className={cn('font-semibold', QUADRANT_META.star.color)}>{t('menuEng.star')}</span>: {t('menuEng.starHint')}</p>
-            <p><span className={cn('font-semibold', QUADRANT_META.plowhorse.color)}>{t('menuEng.plowhorse')}</span>: {t('menuEng.plowhorseHint')}</p>
-            <p><span className={cn('font-semibold', QUADRANT_META.puzzle.color)}>{t('menuEng.puzzle')}</span>: {t('menuEng.puzzleHint')}</p>
-            <p><span className={cn('font-semibold', QUADRANT_META.dog.color)}>{t('menuEng.dog')}</span>: {t('menuEng.dogHint')}</p>
-          </GlassCard>
+          {/* ── All dishes ── */}
+          <Panel
+            title={t('menuEng.v2.allDishes')}
+            padded={false}
+            actions={
+              <ChipRow className="pb-0">
+                <Chip active={filter === 'all'} onClick={() => setFilter('all')} count={items.length}>{t('recipes.v2.all')}</Chip>
+                {QUADRANT_ORDER.map((q) => (
+                  <Chip key={q} active={filter === q} onClick={() => setFilter(q)} count={byQuadrant.get(q)!.length}>{t(QUADRANT_META[q].label)}</Chip>
+                ))}
+              </ChipRow>
+            }
+          >
+            <div className="overflow-x-auto px-2 pb-2">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-white/50">
+                    <th className="px-4 py-3 font-medium">{t('menuEng.item')}</th>
+                    <th className="px-4 py-3 font-medium">{t('menuEng.quadrant')}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t('menuEng.unitsSold')}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t('menuEng.revenue')}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t('menuEng.margin')}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t('menuEng.avgPrice')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.06]">
+                  {visible.map((item) => {
+                    const meta = QUADRANT_META[item.quadrant]
+                    const Icon = meta.icon
+                    return (
+                      <tr key={item.menu_item_id ?? item.name}>
+                        <td className="px-4 py-3 font-medium">{item.name}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium', meta.bg, meta.color)}>
+                            <Icon className="h-3.5 w-3.5" />{t(meta.label)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums">{item.units_sold}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-medium">€{fmt(item.revenue)}</td>
+                        <td className={cn('px-4 py-3 text-right tabular-nums font-medium',
+                          item.margin_pct == null ? 'text-white/35'
+                            : item.margin_pct >= 70 ? 'text-emerald-500'
+                            : item.margin_pct >= 55 ? 'text-amber-500'
+                            : 'text-red-500')}
+                        >
+                          {item.margin_pct != null ? `${item.margin_pct.toFixed(1)}%` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-white/60">€{fmt(item.avg_price)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
         </>
       )}
-    </div>
+    </Page>
   )
 }

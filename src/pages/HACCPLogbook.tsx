@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Settings2, Plus, RefrigeratorIcon, Snowflake, Trash2, Thermometer, BrushIcon, ChevronDown } from 'lucide-react'
+import { Settings2, Plus, RefrigeratorIcon, Snowflake, Trash2, Thermometer, BrushIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, StatRow, StatTile, Segmented, Panel } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -237,116 +237,59 @@ export default function HACCPLogbook() {
   ]
 
   return (
-    <div className="space-y-6">
-      {/* ── Page header ── */}
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500/15 text-teal-400">
-              <Thermometer className="h-5 w-5" />
-            </div>
-            <h1 className="text-3xl font-semibold">Digital HACCP Logbook</h1>
-          </div>
-          <p className="text-white/60 mt-1 capitalize">{fmtDate(date)}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <div className="relative">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-10 rounded-xl border border-glass-border bg-white/5 pl-4 pr-8 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
-            />
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-          </div>
-          <Button variant="secondary" leftIcon={<Settings2 className="h-4 w-4" />} onClick={() => setSettingsOpen(true)}>
-            {t('haccpLogbook.settings')}
-          </Button>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        eyebrow={<span className="first-letter:uppercase">{fmtDate(date)}</span>}
+        title={t('haccpLogbook.v2.title')}
+        actions={
+          <>
+            <label className="flex h-11 items-center gap-2 rounded-full bg-bg-card px-4 shadow-card">
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t('haccpLogbook.v2.title')} className="bg-transparent text-sm outline-none" />
+            </label>
+            <PillButton icon={Settings2} onClick={() => setSettingsOpen(true)}>{t('haccpLogbook.settings')}</PillButton>
+          </>
+        }
+      />
 
-      {/* ── Summary strip ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <GlassCard className={cn('space-y-0.5', tempFail > 0 && 'border border-red-500/30')}>
-          <p className="text-xs text-white/50 flex items-center gap-1">
-            <Thermometer className="h-3.5 w-3.5" />{t('haccpLogbook.tempLogs')}
-          </p>
-          <p className={cn('text-2xl font-bold', tempFail > 0 ? 'text-red-400' : 'text-white')}>
-            {tempLogged}/{tempTotal}
-          </p>
-          {tempFail > 0 && <p className="text-xs text-red-400">{tempFail} {t('haccpLogbook.outOfRange')}</p>}
-        </GlassCard>
-        <GlassCard className={cn('space-y-0.5', cleanDone === cleanTotal && cleanTotal > 0 && 'border border-emerald-500/30')}>
-          <p className="text-xs text-white/50 flex items-center gap-1">
-            <BrushIcon className="h-3.5 w-3.5" />{t('haccpLogbook.cleanliness')}
-          </p>
-          <p className={cn('text-2xl font-bold', cleanDone === cleanTotal && cleanTotal > 0 ? 'text-emerald-400' : 'text-white')}>
-            {cleanDone}/{cleanTotal}
-          </p>
-        </GlassCard>
-        {tempFail > 0 && (
-          <GlassCard className="space-y-0.5 border border-amber-500/30 col-span-2">
-            <p className="text-xs text-amber-400">{t('haccpLogbook.outOfRangeWarning')}</p>
-          </GlassCard>
-        )}
-      </div>
+      <StatRow>
+        <StatTile tone="ink" label={t('haccpLogbook.tempLogs')} value={`${tempLogged}/${tempTotal}`} icon={Thermometer}
+          hint={tempTotal > 0 ? t('haccpLogbook.v2.thisShift') : undefined} onClick={() => setTab('temperature')} />
+        <StatTile label={t('haccpLogbook.outOfRange')} value={tempFail} tone={tempFail > 0 ? 'bad' : 'good'}
+          hint={tempFail > 0 ? t('haccpLogbook.outOfRangeWarning') : undefined} />
+        <StatTile label={t('haccpLogbook.cleanliness')} value={`${cleanDone}/${cleanTotal}`} icon={BrushIcon}
+          tone={cleanDone === cleanTotal && cleanTotal > 0 ? 'good' : 'default'} onClick={() => setTab('cleaning')} />
+        <StatTile tone="lime" label={t('haccpLogbook.v2.completion')}
+          value={tempTotal + cleanTotal > 0 ? `${Math.round(((tempLogged + cleanDone) / (tempTotal + cleanTotal)) * 100)}%` : '—'}
+          hint={t('haccpLogbook.v2.completionHint')} />
+      </StatRow>
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-2">
-        <button type="button" onClick={() => setTab('temperature')}
-          className={cn(
-            'flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition',
-            tab === 'temperature'
-              ? 'border-teal-500/50 bg-teal-500/10 text-teal-400'
-              : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
-          )}>
-          <Thermometer className="h-4 w-4" />
-          {t('haccpLogbook.temperatures')}
-          {tempLogged > 0 && (
-            <span className={cn(
-              'rounded-full px-1.5 py-0.5 text-xs font-bold',
-              tempFail > 0 ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400',
-            )}>
-              {tempLogged}/{tempTotal}
-            </span>
-          )}
-        </button>
-        <button type="button" onClick={() => setTab('cleaning')}
-          className={cn(
-            'flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition',
-            tab === 'cleaning'
-              ? 'border-purple-500/50 bg-purple-500/10 text-purple-400'
-              : 'border-glass-border bg-white/5 text-white/60 hover:bg-white/10',
-          )}>
-          <BrushIcon className="h-4 w-4" />
-          {t('haccpLogbook.cleanliness')}
-          {cleanTotal > 0 && (
-            <span className={cn(
-              'rounded-full px-1.5 py-0.5 text-xs font-bold',
-              cleanDone === cleanTotal ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/40',
-            )}>
-              {cleanDone}/{cleanTotal}
-            </span>
-          )}
-        </button>
-      </div>
+      <Segmented
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'temperature', label: `${t('haccpLogbook.temperatures')}${tempTotal ? ` · ${tempLogged}/${tempTotal}` : ''}`, icon: Thermometer },
+          { value: 'cleaning', label: `${t('haccpLogbook.cleanliness')}${cleanTotal ? ` · ${cleanDone}/${cleanTotal}` : ''}`, icon: BrushIcon },
+        ]}
+      />
 
-      {/* ── Content ── */}
-      <GlassCard className="space-y-5">
+      <Panel>
         {tab === 'temperature' ? (
           <>
             {/* Shift selector */}
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {SHIFT_OPTIONS.map(({ value, label, sub }) => (
-                <button key={value} type="button" onClick={() => setShift(value)}
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={shift === value}
+                  onClick={() => setShift(value)}
                   className={cn(
-                    'flex-1 flex flex-col items-center gap-0.5 rounded-2xl border py-3 text-sm font-semibold transition',
-                    shift === value
-                      ? 'border-teal-500/50 bg-teal-500/10 text-teal-300'
-                      : 'border-glass-border bg-white/5 text-white/50 hover:bg-white/10',
-                  )}>
+                    'flex flex-col items-center gap-0.5 rounded-2xl py-3 text-sm font-medium transition',
+                    shift === value ? 'bg-ink text-white-fixed' : 'bg-white/[0.04] text-white/70 hover:bg-white/[0.07]',
+                  )}
+                >
                   <span className="text-base">{label}</span>
-                  <span className="text-xs font-normal text-current/70">{sub}</span>
+                  <span className={cn('text-xs font-normal', shift === value ? 'text-lime' : 'text-white/45')}>{sub}</span>
                 </button>
               ))}
             </div>
@@ -369,7 +312,7 @@ export default function HACCPLogbook() {
             loading={cleaning.loadingTasks || cleaning.loadingLogs}
           />
         )}
-      </GlassCard>
+      </Panel>
 
       <SettingsDrawer
         open={settingsOpen}
@@ -377,6 +320,6 @@ export default function HACCPLogbook() {
         logbook={logbook}
         cleaning={cleaning}
       />
-    </div>
+    </Page>
   )
 }

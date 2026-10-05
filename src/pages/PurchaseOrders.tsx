@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  Plus, ShoppingCart, ChevronRight, Trash2, Check, Package,
+  Plus, ShoppingCart, FileUp, Trash2, Check, Package,
   Send, RotateCcw, X, Euro, Loader2, Sparkles, AlertTriangle, ClipboardList,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, Panel, EmptyState, Notice } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -358,123 +358,140 @@ export default function PurchaseOrders() {
     0,
   )
 
-  return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('purchaseOrders.title')}</h1>
-          <p className="text-white/60 mt-1">{t('purchaseOrders.subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => void handleInvoiceFile(e)}
-          />
-          <Button
-            variant="ghost"
-            leftIcon={parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-brand-orange" />}
-            disabled={parsing}
-            onClick={() => fileInputRef.current?.click()}
-            className="border border-white/20"
+  const COLUMNS: { status: PurchaseOrderStatus; tone: string }[] = [
+    { status: 'draft', tone: 'bg-white/[0.06] text-white/70' },
+    { status: 'sent', tone: 'bg-sky-500/10 text-sky-500' },
+    { status: 'received', tone: 'bg-emerald-500/12 text-emerald-500' },
+  ]
+  const byStatus = (st: PurchaseOrderStatus) => orders.filter((o) => o.status === st)
+  const cancelled = byStatus('cancelled')
+
+  function renderOrder(order: (typeof orders)[number]) {
+    return (
+      <div
+        key={order.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => openOrder(order)}
+        onKeyDown={(e) => { if (e.key === 'Enter') openOrder(order) }}
+        className="group flex cursor-pointer flex-col gap-2 rounded-2xl bg-bg-card p-4 shadow-card transition-transform hover:-translate-y-0.5"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span className="font-medium leading-snug">{order.supplier_name ?? t('purchaseOrders.noSupplier')}</span>
+          <button
+            type="button"
+            aria-label={t('common.delete')}
+            onClick={(e) => { e.stopPropagation(); if (window.confirm(t('purchaseOrders.deleteConfirm'))) void remove(order.id) }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/35 opacity-0 transition hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
           >
-            {parsing ? t('purchaseOrders.parsing') : t('purchaseOrders.uploadInvoice')}
-          </Button>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-            {t('purchaseOrders.newOrder')}
-          </Button>
+            <Trash2 className="h-4 w-4" />
+          </button>
         </div>
-      </header>
+        <p className="text-xs text-white/50">
+          {new Date(order.created_at).toLocaleDateString()}
+          {order.notes && ` · ${order.notes.slice(0, 60)}`}
+        </p>
+        {order.status === 'draft' && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); void handleStatusChange(order, 'sent') }}
+            className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-orange px-3 py-2 text-xs font-medium text-on-accent"
+          >
+            <Send className="h-3.5 w-3.5" />{t('purchaseOrders.markSent')}
+          </button>
+        )}
+        {order.status === 'sent' && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); void handleStatusChange(order, 'received') }}
+            className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-lime px-3 py-2 text-xs font-medium text-ink"
+          >
+            <Check className="h-3.5 w-3.5" />{t('purchaseOrders.markReceived')}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <Page>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => void handleInvoiceFile(e)}
+      />
+      <PageHeader
+        title={t('purchaseOrders.title')}
+        subtitle={t('purchaseOrders.subtitle')}
+        actions={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('purchaseOrders.newOrder')}</PillButton>}
+      />
+
+      {/* ── AI invoice reader ── */}
+      <section className="flex flex-wrap items-center gap-4 rounded-3xl bg-ink p-5 sm:p-6 text-white-fixed">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-lime text-ink">
+          <Sparkles className="h-5 w-5" />
+        </span>
+        <div className="min-w-[200px] flex-1">
+          <p className="text-lg font-medium">{t('purchaseOrders.uploadInvoice')}</p>
+          <p className="text-sm text-[#C9CEC8]">{t('purchaseOrders.v2.invoiceHint')}</p>
+        </div>
+        <button
+          type="button"
+          disabled={parsing}
+          onClick={() => fileInputRef.current?.click()}
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-lime px-5 text-sm font-medium text-ink disabled:opacity-50"
+        >
+          {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+          {parsing ? t('purchaseOrders.parsing') : t('purchaseOrders.v2.chooseFile')}
+        </button>
+      </section>
 
       {parseError && (
-        <GlassCard className="border border-red-500/40 flex items-center gap-3">
-          <X className="h-5 w-5 text-red-400 shrink-0" />
-          <p className="text-red-300 text-sm">{parseError}</p>
-          <button type="button" onClick={() => setParseError(null)} className="ml-auto text-white/40 hover:text-white">
-            <X className="h-4 w-4" />
-          </button>
-        </GlassCard>
+        <div className="flex items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-500">
+          <X className="h-4 w-4 shrink-0" />
+          <p className="flex-1">{parseError}</p>
+          <button type="button" aria-label={t('common.close', 'Close')} onClick={() => setParseError(null)}><X className="h-4 w-4" /></button>
+        </div>
       )}
-
-      {error && <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>}
+      {error && <Notice>{error}</Notice>}
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : orders.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <ShoppingCart className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('purchaseOrders.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('purchaseOrders.empty.description')}</p>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-            {t('purchaseOrders.empty.cta')}
-          </Button>
-        </GlassCard>
+        <EmptyState
+          icon={ShoppingCart}
+          title={t('purchaseOrders.empty.title')}
+          body={t('purchaseOrders.empty.description')}
+          action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('purchaseOrders.empty.cta')}</PillButton>}
+        />
       ) : (
-        <div className="space-y-3">
-          {orders.map((order) => {
-            const statusKey = `purchaseOrders.status.${order.status}` as const
-            return (
-              <GlassCard
-                key={order.id}
-                className="flex items-center gap-4 cursor-pointer hover:bg-white/[.03] transition"
-                onClick={() => openOrder(order)}
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange">
-                  <ShoppingCart className="h-5 w-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">
-                      {order.supplier_name ?? t('purchaseOrders.noSupplier')}
-                    </span>
-                    <span className={cn('text-xs rounded-full px-2 py-0.5 font-medium', STATUS_STYLES[order.status])}>
-                      {t(statusKey)}
-                    </span>
+        <>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {COLUMNS.map(({ status, tone }) => {
+              const list = byStatus(status)
+              return (
+                <section key={status} className="flex flex-col gap-3 rounded-3xl bg-white/[0.04] p-3">
+                  <div className="flex items-center justify-between px-2 pt-1">
+                    <span className={cn('rounded-full px-3 py-1 text-sm font-medium', tone)}>{t(`purchaseOrders.status.${status}`)}</span>
+                    <span className="text-sm tabular-nums text-white/50">{list.length}</span>
                   </div>
-                  <p className="text-sm text-white/50 mt-0.5">
-                    {new Date(order.created_at).toLocaleDateString()}
-                    {order.notes && ` · ${order.notes.slice(0, 50)}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {order.status === 'draft' && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); void handleStatusChange(order, 'sent') }}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 transition"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      {t('purchaseOrders.markSent')}
-                    </button>
+                  {list.length === 0 ? (
+                    <p className="px-2 py-8 text-center text-sm text-white/40">—</p>
+                  ) : (
+                    list.map(renderOrder)
                   )}
-                  {order.status === 'sent' && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); void handleStatusChange(order, 'received') }}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      {t('purchaseOrders.markReceived')}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); if (window.confirm(t('purchaseOrders.deleteConfirm'))) void remove(order.id) }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  <ChevronRight className="h-4 w-4 text-white/30" />
-                </div>
-              </GlassCard>
-            )
-          })}
-        </div>
+                </section>
+              )
+            })}
+          </div>
+          {cancelled.length > 0 && (
+            <Panel title={<span className="flex items-center gap-2">{t('purchaseOrders.status.cancelled')}<span className="text-sm text-white/45">{cancelled.length}</span></span>}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{cancelled.map(renderOrder)}</div>
+            </Panel>
+          )}
+        </>
       )}
 
       {/* Invoice preview drawer */}
@@ -650,9 +667,9 @@ export default function PurchaseOrders() {
                   onChange={(e) => setSupplierId(e.target.value)}
                   className="flex-1 bg-transparent outline-none text-base text-white"
                 >
-                  <option value="" className="bg-[#f5ede0]">{t('purchaseOrders.noSupplier')}</option>
+                  <option value="" className="bg-bg-card">{t('purchaseOrders.noSupplier')}</option>
                   {suppliers.map((s) => (
-                    <option key={s.id} value={s.id} className="bg-[#f5ede0]">{s.name}</option>
+                    <option key={s.id} value={s.id} className="bg-bg-card">{s.name}</option>
                   ))}
                 </select>
               </div>
@@ -801,9 +818,9 @@ export default function PurchaseOrders() {
                       onChange={(e) => { if (e.target.value) onInventoryItemSelect(e.target.value) }}
                       className="flex-1 bg-transparent outline-none text-sm text-white/70"
                     >
-                      <option value="" className="bg-[#f5ede0]">{t('purchaseOrders.pickFromInventory')}</option>
+                      <option value="" className="bg-bg-card">{t('purchaseOrders.pickFromInventory')}</option>
                       {inventoryItems.map((i) => (
-                        <option key={i.id} value={i.id} className="bg-[#f5ede0]">{i.name}</option>
+                        <option key={i.id} value={i.id} className="bg-bg-card">{i.name}</option>
                       ))}
                     </select>
                   </div>
@@ -853,6 +870,6 @@ export default function PurchaseOrders() {
           </div>
         )}
       </Drawer>
-    </div>
+    </Page>
   )
 }

@@ -79,7 +79,7 @@ export function WareCategories({ onNavigate }: Props) {
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-white hover:bg-brand-orange/90 transition"
+          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-on-accent hover:bg-brand-orange/90 transition"
         >
           <Plus className="h-4 w-4" /> Νέα
         </button>
@@ -138,7 +138,7 @@ export function WareCategories({ onNavigate }: Props) {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-glass-border bg-[#1a1a2e] p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl border border-glass-border bg-bg-card p-6 space-y-4 shadow-2xl">
             <h3 className="font-bold text-white">{editing ? 'Επεξεργασία' : 'Νέα Κατηγορία'}</h3>
             <div className="space-y-3">
               <div>
@@ -171,7 +171,7 @@ export function WareCategories({ onNavigate }: Props) {
                   'flex-1 rounded-xl py-2.5 text-sm font-semibold transition',
                   saving || !form.name.trim()
                     ? 'bg-white/10 text-white/30 cursor-not-allowed'
-                    : 'bg-brand-orange text-white hover:bg-brand-orange/90',
+                    : 'bg-brand-orange text-on-accent hover:bg-brand-orange/90',
                 )}
               >
                 {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}

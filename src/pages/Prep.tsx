@@ -10,15 +10,13 @@ import {
   Utensils,
   LayoutGrid,
   ChevronRight as ArrowRight,
-  Settings2,
   X,
   Check,
   BookTemplate,
   UtensilsCrossed,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
-import { Button } from '../components/ui/Button'
+import { Page, PageHeader, PillButton, ActionMenu, Panel, EmptyState, Notice, Chip, ChipRow } from '../components/ui/page'
 import { Drawer } from '../components/ui/Drawer'
 import {
   PrepTaskForm,
@@ -58,16 +56,10 @@ const STATUS_LABEL_KEY: Record<PrepTaskStatus, string> = {
   done: 'prep.kanban.done',
 }
 
-const STATUS_COLOR: Record<PrepTaskStatus, string> = {
-  pending: 'border-white/20 text-white/60',
-  in_progress: 'border-amber-400/60 text-amber-400',
-  done: 'border-emerald-400/60 text-emerald-400',
-}
-
 const STATUS_DOT: Record<PrepTaskStatus, string> = {
   pending: 'bg-white/30',
-  in_progress: 'bg-amber-400',
-  done: 'bg-emerald-400',
+  in_progress: 'bg-amber-500',
+  done: 'bg-emerald-500',
 }
 
 const STATUS_NEXT_KEY: Record<PrepTaskStatus, string> = {
@@ -93,17 +85,17 @@ interface KanbanColumnProps {
 
 function KanbanColumn({ status, tasks, recipesById, membersById, stepsByTaskId, onCycle, onEdit, onDelete, onToggleStep, t }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col gap-3 min-w-0">
+    <div className="flex min-w-0 flex-col gap-3 rounded-3xl bg-white/[0.04] p-3">
       {/* Column header */}
-      <div className="flex items-center gap-2 px-1">
-        <span className={cn('h-2 w-2 rounded-full shrink-0', STATUS_DOT[status])} />
-        <span className="text-sm font-semibold text-white/80">{t(STATUS_LABEL_KEY[status])}</span>
-        <span className="ml-auto text-xs text-white/40 tabular-nums">{tasks.length}</span>
+      <div className="flex items-center gap-2 px-1 pt-1">
+        <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', STATUS_DOT[status])} />
+        <span className="font-medium">{t(STATUS_LABEL_KEY[status])}</span>
+        <span className="ml-auto rounded-full bg-bg-card px-2.5 py-0.5 text-xs font-medium tabular-nums shadow-card">{tasks.length}</span>
       </div>
 
       {/* Cards */}
       {tasks.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-xs text-white/30">
+        <div className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
           {t('prep.kanban.empty')}
         </div>
       ) : (
@@ -113,15 +105,14 @@ function KanbanColumn({ status, tasks, recipesById, membersById, stepsByTaskId, 
           return (
             <div key={task.id}
               className={cn(
-                'rounded-xl border bg-white/5 p-3 space-y-2 group transition',
+                'group space-y-2.5 rounded-2xl bg-bg-card p-4 shadow-card transition',
                 status === 'done' ? 'opacity-60' : '',
-                STATUS_COLOR[status].split(' ')[0],
               )}
             >
               {/* Title row */}
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className={cn('font-medium text-sm', status === 'done' && 'line-through text-white/50')}>
+                  <p className={cn('font-medium', status === 'done' && 'line-through text-white/50')}>
                     {task.title}
                     {task.quantity != null && (
                       <span className="ml-1.5 text-white/40 font-normal">×{task.quantity}</span>
@@ -132,27 +123,27 @@ function KanbanColumn({ status, tasks, recipesById, membersById, stepsByTaskId, 
                   )}
                 </div>
                 {/* Actions — visible on hover */}
-                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0">
-                  <button type="button" onClick={() => onEdit(task)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10">
+                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition shrink-0">
+                  <button type="button" onClick={() => onEdit(task)} aria-label={t('common.edit')}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 hover:text-white hover:bg-white/[0.06]">
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
-                  <button type="button" onClick={() => onDelete(task)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10">
+                  <button type="button" onClick={() => onDelete(task)} aria-label={t('common.delete')}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 hover:text-red-500 hover:bg-red-500/10">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
 
               {/* Meta */}
-              <div className="flex flex-wrap gap-2 text-xs text-white/40">
+              <div className="flex flex-wrap gap-1.5 text-xs text-white/60">
                 {recipe && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5">
                     <Utensils className="h-3 w-3" />{recipe.title}
                   </span>
                 )}
                 {assignee && (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5">
                     <UserCircle2 className="h-3 w-3" />{assignee.full_name ?? '—'}
                   </span>
                 )}
@@ -183,10 +174,11 @@ function KanbanColumn({ status, tasks, recipesById, membersById, stepsByTaskId, 
                         <button
                           type="button"
                           onClick={() => onToggleStep(step.id, !step.done)}
+                          aria-label={step.title}
                           className={cn(
-                            'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition',
+                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition',
                             step.done
-                              ? 'bg-emerald-500 border-emerald-500 text-white'
+                              ? 'bg-emerald-600 border-emerald-600 text-white-fixed'
                               : 'border-white/30 hover:border-white/60'
                           )}
                         >
@@ -205,17 +197,17 @@ function KanbanColumn({ status, tasks, recipesById, membersById, stepsByTaskId, 
               {status !== 'done' ? (
                 <button type="button" onClick={() => onCycle(task)}
                   className={cn(
-                    'w-full flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                    'w-full flex items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-sm font-medium transition',
                     status === 'pending'
-                      ? 'border-amber-400/40 text-amber-400 hover:bg-amber-400/10'
-                      : 'border-emerald-400/40 text-emerald-400 hover:bg-emerald-400/10',
+                      ? 'bg-brand-orange text-on-accent hover:bg-brand-orange/85'
+                      : 'bg-lime text-ink hover:brightness-95',
                   )}>
                   <ArrowRight className="h-3 w-3" />
                   {t(STATUS_NEXT_KEY[status])}
                 </button>
               ) : (
                 <button type="button" onClick={() => onCycle(task)}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-white/15 text-white/40 hover:text-white/70 hover:bg-white/5 px-3 py-1.5 text-xs font-medium transition">
+                  className="w-full flex items-center justify-center gap-1.5 rounded-full bg-white/[0.05] text-white/60 hover:text-white px-3 py-2 text-xs font-medium transition">
                   <X className="h-3 w-3" />
                   {t(STATUS_NEXT_KEY[status])}
                 </button>
@@ -258,7 +250,7 @@ function WorkstationSidebar({ workstations, selected, onSelect, onCreate, onDele
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-white/40">
+      <p className="px-3 pb-1 pt-2 text-xs font-medium text-white/50">
         {t('prep.workstations.title')}
       </p>
 
@@ -266,10 +258,10 @@ function WorkstationSidebar({ workstations, selected, onSelect, onCreate, onDele
       <button type="button"
         onClick={() => onSelect(null)}
         className={cn(
-          'flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition text-left',
+          'flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition text-left',
           selected === null
-            ? 'bg-brand-orange/20 text-brand-orange'
-            : 'text-white/70 hover:bg-white/5 hover:text-white',
+            ? 'bg-brand-orange text-on-accent'
+            : 'text-white/70 hover:bg-white/[0.05] hover:text-white',
         )}
       >
         <LayoutGrid className="h-4 w-4 shrink-0" />
@@ -281,10 +273,10 @@ function WorkstationSidebar({ workstations, selected, onSelect, onCreate, onDele
           <button type="button"
             onClick={() => onSelect(w.id)}
             className={cn(
-              'flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition text-left min-w-0',
+              'flex-1 flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition text-left min-w-0',
               selected === w.id
-                ? 'bg-brand-orange/20 text-brand-orange'
-                : 'text-white/70 hover:bg-white/5 hover:text-white',
+                ? 'bg-brand-orange text-on-accent'
+                : 'text-white/70 hover:bg-white/[0.05] hover:text-white',
             )}
           >
             <span className="truncate">{w.name}</span>
@@ -311,7 +303,7 @@ function WorkstationSidebar({ workstations, selected, onSelect, onCreate, onDele
             className="flex-1 min-w-0 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-brand-orange"
           />
           <button type="button" onClick={() => void handleAdd()} disabled={saving}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange text-white-fixed hover:bg-brand-orange/80 transition shrink-0">
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange text-on-accent hover:bg-brand-orange/80 transition shrink-0">
             <Check className="h-4 w-4" />
           </button>
           <button type="button" onClick={() => { setAdding(false); setNewName('') }}
@@ -504,138 +496,119 @@ export default function Prep() {
 
   const selectedWorkstationName = workstations.find((w) => w.id === selectedWorkstation)?.name ?? null
 
+  const doneCount = byStatus.done.length
+  const progress = filteredTasks.length ? Math.round((doneCount / filteredTasks.length) * 100) : 0
+
   return (
-    <div className="flex gap-6 min-h-0">
-      {/* ── Left: workstation sidebar ── */}
-      <aside className="hidden lg:flex flex-col w-52 shrink-0 gap-4">
-        <WorkstationSidebar
-          workstations={workstations}
-          selected={selectedWorkstation}
-          onSelect={setSelectedWorkstation}
-          onCreate={createWorkstation}
-          onDelete={handleDeleteWorkstation}
-          t={t}
-        />
-      </aside>
-
-      {/* ── Right: main area ── */}
-      <div className="flex-1 min-w-0 space-y-6">
-        {/* Header */}
-        <header className="flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-semibold">{t('prep.title')}</h1>
-            <p className="text-white/60 mt-1">
-              {selectedWorkstationName
-                ? selectedWorkstationName
-                : t('prep.subtitle')}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Mobile workstation dropdown */}
-            <div className="lg:hidden">
-              <div className="glass flex items-center rounded-xl px-3 min-h-touch-target focus-within:ring-2 focus-within:ring-brand-orange">
-                <Settings2 className="h-4 w-4 text-white/40 mr-2" />
-                <select
-                  value={selectedWorkstation ?? ''}
-                  onChange={(e) => setSelectedWorkstation(e.target.value || null)}
-                  className="bg-transparent outline-none text-sm text-white py-2"
-                >
-                  <option value="" className="bg-[#f5ede0]">{t('prep.workstations.all')}</option>
-                  {workstations.map((w) => (
-                    <option key={w.id} value={w.id} className="bg-[#f5ede0]">{w.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {activeTaskIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void onDeleteAll()}
-                disabled={deletingAll}
-                className="flex items-center gap-1.5 rounded-xl border border-red-500/40 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('prep.deleteAll')}</span>
+    <Page>
+      <PageHeader
+        title={t('prep.title')}
+        subtitle={selectedWorkstationName ?? t('prep.subtitle')}
+        actions={
+          <>
+            <div className="flex items-center gap-1 rounded-full bg-bg-card p-1 shadow-card">
+              <button type="button" onClick={() => setDate((d) => shiftDate(d, -1))} aria-label={t('prep.prevDay')}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white">
+                <ChevronLeft className="h-4 w-4" />
               </button>
-            )}
-            <Button variant="secondary" leftIcon={<UtensilsCrossed className="h-5 w-5" />} onClick={() => setFromMenuOpen(true)}>
-              <span className="hidden sm:inline">{t('prep.fromMenu.button')}</span>
-            </Button>
-            <Button variant="secondary" leftIcon={<BookTemplate className="h-5 w-5" />} onClick={() => setTemplatesOpen(true)}>
-              <span className="hidden sm:inline">{t('prep.templates.button')}</span>
-            </Button>
-            <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-              {t('prep.addTask')}
-            </Button>
-          </div>
-        </header>
-
-        {/* Date picker */}
-        <GlassCard className="flex items-center justify-between gap-3">
-          <button type="button"
-            onClick={() => setDate((d) => shiftDate(d, -1))}
-            aria-label={t('prep.prevDay')}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-lg font-semibold">{formatLabel(date)}</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value || todayIso())}
-              className="bg-transparent text-xs text-white/60 outline-none text-center"
-            />
-          </div>
-          <button type="button"
-            onClick={() => setDate((d) => shiftDate(d, 1))}
-            aria-label={t('prep.nextDay')}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </GlassCard>
-
-        {error && (
-          <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>
-        )}
-
-        {loading ? (
-          <GlassCard>
-            <p className="text-white/60">{t('common.loading')}</p>
-          </GlassCard>
-        ) : filteredTasks.length === 0 ? (
-          <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-              <ClipboardList className="h-7 w-7" />
+              <label className="relative flex min-w-[110px] cursor-pointer flex-col items-center px-1">
+                <span className="text-sm font-medium">{formatLabel(date)}</span>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value || todayIso())} aria-label={t('prep.title')}
+                  className="absolute inset-0 cursor-pointer opacity-0" />
+              </label>
+              <button type="button" onClick={() => setDate((d) => shiftDate(d, 1))} aria-label={t('prep.nextDay')}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white">
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-            <h2 className="text-xl font-semibold">{t('prep.empty.title')}</h2>
-            <p className="text-white/60 max-w-sm">
-              {t('prep.empty.description', { date: formatLabel(date).toLowerCase() })}
-            </p>
-            <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-              {t('prep.empty.cta')}
-            </Button>
-          </GlassCard>
-        ) : (
-          /* ── 3-column Kanban ── */
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {(['pending', 'in_progress', 'done'] as PrepTaskStatus[]).map((status) => (
-              <KanbanColumn
-                key={status}
-                status={status}
-                tasks={byStatus[status]}
-                recipesById={recipesById as Map<string, Recipe>}
-                membersById={membersById}
-                stepsByTaskId={stepsByTaskId}
-                onCycle={cycleStatus}
-                onEdit={openEdit}
-                onDelete={onDelete}
-                onToggleStep={toggleStep}
-                t={t}
-              />
+            <ActionMenu
+              label={t('prep.v2.more')}
+              actions={[
+                { label: t('prep.fromMenu.button'), icon: UtensilsCrossed, onClick: () => setFromMenuOpen(true) },
+                { label: t('prep.templates.button'), icon: BookTemplate, onClick: () => setTemplatesOpen(true) },
+                { label: t('prep.deleteAll'), icon: Trash2, onClick: () => void onDeleteAll(), hidden: activeTaskIds.length === 0 || deletingAll },
+              ]}
+            />
+            <PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('prep.addTask')}</PillButton>
+          </>
+        }
+      />
+
+      {error && <Notice>{error}</Notice>}
+
+      <div className="grid items-start gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+        {/* ── Workstations ── */}
+        <aside className="hidden lg:block rounded-3xl bg-bg-card p-2 shadow-card lg:sticky lg:top-24">
+          <WorkstationSidebar
+            workstations={workstations}
+            selected={selectedWorkstation}
+            onSelect={setSelectedWorkstation}
+            onCreate={createWorkstation}
+            onDelete={handleDeleteWorkstation}
+            t={t}
+          />
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* Mobile workstation picker */}
+          <ChipRow className="lg:hidden">
+            <Chip active={selectedWorkstation === null} onClick={() => setSelectedWorkstation(null)}>{t('prep.workstations.all')}</Chip>
+            {workstations.map((w) => (
+              <Chip key={w.id} active={selectedWorkstation === w.id} onClick={() => setSelectedWorkstation(w.id)}>{w.name}</Chip>
             ))}
-          </div>
-        )}
+          </ChipRow>
+
+          {!loading && filteredTasks.length > 0 && (
+            <section className="flex flex-wrap items-center gap-6 rounded-3xl bg-ink p-5 sm:p-6 text-white-fixed">
+              <div>
+                <p className="text-sm text-[#C9CEC8]">{t('prep.v2.progress')}</p>
+                <p className="text-5xl font-medium tracking-[-0.04em] tabular-nums text-lime">{progress}%</p>
+              </div>
+              <div className="flex min-w-[200px] flex-1 flex-col gap-3">
+                <div className="h-3 overflow-hidden rounded-full bg-white-fixed/10">
+                  <div className="h-3 rounded-full bg-lime transition-all duration-700" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="flex flex-wrap gap-4 text-sm text-[#C9CEC8]">
+                  {(['pending', 'in_progress', 'done'] as PrepTaskStatus[]).map((st) => (
+                    <span key={st} className="flex items-center gap-2">
+                      <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[st])} />
+                      {t(STATUS_LABEL_KEY[st])} <span className="font-medium tabular-nums text-white-fixed">{byStatus[st].length}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {loading ? (
+            <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
+          ) : filteredTasks.length === 0 ? (
+            <EmptyState
+              icon={ClipboardList}
+              title={t('prep.empty.title')}
+              body={t('prep.empty.description', { date: formatLabel(date).toLowerCase() })}
+              action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('prep.empty.cta')}</PillButton>}
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {(['pending', 'in_progress', 'done'] as PrepTaskStatus[]).map((status) => (
+                <KanbanColumn
+                  key={status}
+                  status={status}
+                  tasks={byStatus[status]}
+                  recipesById={recipesById as Map<string, Recipe>}
+                  membersById={membersById}
+                  stepsByTaskId={stepsByTaskId}
+                  onCycle={cycleStatus}
+                  onEdit={openEdit}
+                  onDelete={onDelete}
+                  onToggleStep={toggleStep}
+                  t={t}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Task drawer */}
@@ -679,6 +652,6 @@ export default function Prep() {
         members={members}
         onGenerate={generateFromMenu}
       />
-    </div>
+    </Page>
   )
 }

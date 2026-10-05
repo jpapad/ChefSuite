@@ -13,14 +13,14 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <label htmlFor={inputId} className="block w-full">
         {label && (
-          <span className="mb-2 block text-sm font-medium text-white/80">
+          <span className="mb-1.5 block text-[13px] font-medium text-white/60">
             {label}
           </span>
         )}
         <div
           className={cn(
             'rounded-xl px-4 py-3',
-            'bg-white-fixed/55 border border-white/70',
+            'bg-bg-input border border-inv-border',
             'focus-within:ring-2 focus-within:ring-brand-orange/50 focus-within:border-brand-orange/30',
             error && 'ring-2 ring-red-500/60 border-red-500/30',
           )}

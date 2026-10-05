@@ -3,11 +3,9 @@ import { useTranslation } from 'react-i18next'
 import {
   ClipboardList,
   Plus,
-  X,
   ArrowDownCircle,
   ArrowUpCircle,
   CheckCircle,
-  AlertTriangle,
   Minus,
   ArrowUp,
   ArrowDown,
@@ -15,7 +13,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
-import { Button } from '../components/ui/Button'
+import { Page, PageHeader, PillButton, Panel, Segmented, Chip, ChipRow, EmptyState } from '../components/ui/page'
 
 type Priority = 'low' | 'medium' | 'high'
 type FilterMode = 'all' | 'received' | 'sent'
@@ -149,234 +147,144 @@ export default function HandoverNotes() {
       .eq('id', noteId)
   }
 
-  return (
-    <div className="p-6 space-y-5 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange/15">
-            <ClipboardList className="h-5 w-5 text-brand-orange" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold leading-none">{t('handover.title')}</h1>
-            <p className="text-xs text-white/40 mt-0.5">{t('handover.subtitle')}</p>
-          </div>
-          {unreadCount > 0 && (
-            <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-bold text-white animate-pulse">
-              {t('handover.unread_other', { count: unreadCount })}
-            </span>
-          )}
-        </div>
-        <Button onClick={() => setFormOpen(true)} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t('handover.newNote')}
-        </Button>
-      </div>
-
-      {/* New Note form */}
-      {formOpen && (
-        <form onSubmit={submitNote} className="glass gradient-border rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-semibold">{t('handover.newNote')}</span>
-            <button type="button" onClick={() => setFormOpen(false)} className="text-white/40 hover:text-white/70 transition">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Recipient */}
-          <div>
-            <label className="block text-xs text-white/50 mb-1.5">{t('handover.to')}</label>
-            <div className="flex flex-wrap gap-2">
-              {members.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, toUserId: m.id }))}
-                  className={cn(
-                    'rounded-xl px-3 py-1.5 text-sm font-medium transition-all',
-                    form.toUserId === m.id
-                      ? 'bg-brand-orange text-white-fixed'
-                      : 'glass text-white/70 hover:text-white',
-                  )}
-                >
-                  {m.full_name ?? m.id.slice(0, 8)}
-                </button>
-              ))}
-              {members.length === 0 && (
-                <span className="text-xs text-white/30">{t('handover.selectRecipient')}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Priority */}
-          <div>
-            <label className="block text-xs text-white/50 mb-1.5">{t('handover.priorityAll')}</label>
-            <div className="flex gap-2">
-              {(['low', 'medium', 'high'] as Priority[]).map((p) => {
-                const cfg = PRIORITY_CONFIG[p]
-                const Icon = cfg.icon
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, priority: p }))}
-                    className={cn(
-                      'flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all',
-                      form.priority === p
-                        ? p === 'high' ? 'bg-red-500/20 text-red-300 ring-1 ring-red-500/50'
-                          : p === 'medium' ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50'
-                          : 'bg-green-500/20 text-green-300 ring-1 ring-green-500/50'
-                        : 'glass text-white/50 hover:text-white/80',
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {t(cfg.label_key)}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div>
-            <label className="block text-xs text-white/50 mb-1.5">{t('handover.note')}</label>
-            <textarea
-              value={form.content}
-              onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-              rows={4}
-              required
-              placeholder={t('handover.notePlaceholder')}
-              className="w-full rounded-xl bg-white-fixed/55 border border-white/70 text-white text-sm px-3 py-2.5 placeholder:text-white/30 outline-none focus:ring-1 focus:ring-brand-orange/40 resize-none"
-            />
-          </div>
-
-          <div className="flex gap-2 justify-end pt-1">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)} disabled={saving}>
-              {t('handover.cancel')}
-            </Button>
-            <Button type="submit" size="sm" disabled={saving || !form.toUserId || !form.content.trim()}>
-              {saving ? t('handover.saving') : t('handover.save')}
-            </Button>
-          </div>
-        </form>
-      )}
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="flex gap-1.5">
-          {(['all', 'received', 'sent'] as FilterMode[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={cn(
-                'rounded-xl px-3 py-1.5 text-sm font-medium transition-all',
-                filter === f ? 'bg-brand-orange text-white-fixed' : 'glass text-white/55 hover:text-white/80',
-              )}
-            >
-              {t(`handover.filter${f.charAt(0).toUpperCase() + f.slice(1)}`)}
-            </button>
+  const composer = (
+    <form onSubmit={submitNote} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-white/60">{t('handover.to')}</span>
+        <div className="flex flex-wrap gap-2">
+          {members.map((m) => (
+            <Chip key={m.id} active={form.toUserId === m.id} onClick={() => setForm((f) => ({ ...f, toUserId: m.id }))}>
+              {m.full_name ?? m.id.slice(0, 8)}
+            </Chip>
           ))}
-        </div>
-        <div className="h-5 w-px bg-white/10" />
-        <div className="flex gap-1.5">
-          {(['all', 'high', 'medium', 'low'] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPriorityFilter(p)}
-              className={cn(
-                'rounded-xl px-3 py-1.5 text-xs font-medium transition-all',
-                priorityFilter === p ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70',
-              )}
-            >
-              {p === 'all' ? t('handover.priorityAll') : t(`handover.priority${p.charAt(0).toUpperCase() + p.slice(1)}`)}
-            </button>
-          ))}
+          {members.length === 0 && <span className="text-xs text-white/45">{t('handover.selectRecipient')}</span>}
         </div>
       </div>
 
-      {/* Notes list */}
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="glass rounded-2xl h-24 animate-pulse" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="glass gradient-border rounded-2xl p-12 text-center">
-          <ClipboardList className="h-12 w-12 mx-auto mb-3 text-white/20" />
-          <p className="text-white/50 font-medium">{t('handover.empty')}</p>
-          <p className="text-white/30 text-sm mt-1">{t('handover.emptyHint')}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((note) => {
-            const isReceived = note.to_user_id === user?.id
-            const cfg = PRIORITY_CONFIG[note.priority]
-            const PriorityIcon = cfg.icon
-            const unread = isReceived && !note.acknowledged
-
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-white/60">{t('handover.priorityAll')}</span>
+        <div className="grid grid-cols-3 gap-2">
+          {(['low', 'medium', 'high'] as Priority[]).map((p) => {
+            const cfg = PRIORITY_CONFIG[p]
+            const Icon = cfg.icon
+            const on = form.priority === p
             return (
-              <div
-                key={note.id}
+              <button
+                key={p}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setForm((f) => ({ ...f, priority: p }))}
                 className={cn(
-                  'glass gradient-border rounded-2xl p-4 border-l-4 transition-all',
-                  cfg.border,
-                  unread && 'ring-1 ring-brand-orange/40',
+                  'flex items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-sm font-medium transition',
+                  on
+                    ? p === 'high' ? 'bg-red-600 text-white-fixed' : p === 'medium' ? 'bg-amber-500 text-ink' : 'bg-emerald-600 text-white-fixed'
+                    : 'bg-white/[0.05] text-white/60 hover:text-white',
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {isReceived ? (
-                        <ArrowDownCircle className="h-4 w-4 text-sky-400 shrink-0" />
-                      ) : (
-                        <ArrowUpCircle className="h-4 w-4 text-purple-400 shrink-0" />
-                      )}
-                      <span className="text-sm font-semibold">
-                        {isReceived
-                          ? `${t('handover.from')}: ${note.from_name ?? '—'}`
-                          : `${t('handover.to')}: ${note.to_name ?? '—'}`}
-                      </span>
-                      <span className={cn('flex items-center gap-1 text-xs font-medium', cfg.color)}>
-                        <PriorityIcon className="h-3 w-3" />
-                        {t(cfg.label_key)}
-                      </span>
-                      {unread && (
-                        <span className="h-2 w-2 rounded-full bg-brand-orange animate-pulse" />
-                      )}
-                    </div>
-                    <p className="text-[11px] text-white/35 mb-2">
-                      {new Date(note.created_at).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">{note.content}</p>
-                  </div>
-
-                  <div className="shrink-0">
-                    {unread && (
-                      <button
-                        type="button"
-                        onClick={() => void acknowledge(note.id)}
-                        className="flex items-center gap-1.5 rounded-xl bg-green-500/20 border border-green-500/30 px-3 py-1.5 text-xs font-semibold text-green-300 hover:bg-green-500/30 transition-all"
-                      >
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        {t('handover.acknowledge')}
-                      </button>
-                    )}
-                    {note.acknowledged && isReceived && (
-                      <span className="flex items-center gap-1 text-xs text-green-400/70">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        {t('handover.acknowledged')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+                <Icon className="h-4 w-4" />{t(cfg.label_key)}
+              </button>
             )
           })}
         </div>
-      )}
-    </div>
+      </div>
+
+      <label className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-white/60">{t('handover.note')}</span>
+        <textarea
+          value={form.content}
+          onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+          rows={5}
+          required
+          placeholder={t('handover.notePlaceholder')}
+          className="w-full resize-none rounded-2xl bg-white/[0.05] px-4 py-3 text-sm outline-none placeholder:text-white/40 focus:ring-2 focus:ring-brand-orange/40"
+        />
+      </label>
+
+      <div className="flex justify-end gap-2">
+        <PillButton onClick={() => setFormOpen(false)} disabled={saving} className="lg:hidden">{t('handover.cancel')}</PillButton>
+        <PillButton type="submit" variant="primary" disabled={saving || !form.toUserId || !form.content.trim()}>
+          {saving ? t('handover.saving') : t('handover.save')}
+        </PillButton>
+      </div>
+    </form>
+  )
+
+  return (
+    <Page>
+      <PageHeader
+        title={t('handover.title')}
+        subtitle={t('handover.subtitle')}
+        actions={
+          <>
+            {unreadCount > 0 && <span className="rounded-full bg-red-600 px-3 py-1.5 text-sm font-medium text-white-fixed">{t('handover.unread_other', { count: unreadCount })}</span>}
+            <PillButton icon={Plus} variant="primary" onClick={() => setFormOpen(true)} className="lg:hidden">{t('handover.newNote')}</PillButton>
+          </>
+        }
+      />
+
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          {formOpen && <Panel title={t('handover.newNote')} className="lg:hidden">{composer}</Panel>}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Segmented
+              value={filter}
+              onChange={setFilter}
+              options={(['all', 'received', 'sent'] as FilterMode[]).map((f) => ({ value: f, label: t(`handover.filter${f.charAt(0).toUpperCase() + f.slice(1)}`) }))}
+            />
+            <ChipRow className="pb-0">
+              {(['all', 'high', 'medium', 'low'] as const).map((p) => (
+                <Chip key={p} active={priorityFilter === p} onClick={() => setPriorityFilter(p)}>
+                  {p === 'all' ? t('handover.priorityAll') : t(`handover.priority${p.charAt(0).toUpperCase() + p.slice(1)}`)}
+                </Chip>
+              ))}
+            </ChipRow>
+          </div>
+
+          {loading ? (
+            <div className="flex flex-col gap-3">{[...Array(3)].map((_, i) => <div key={i} className="h-28 rounded-3xl bg-white/[0.05] animate-pulse" />)}</div>
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={ClipboardList} title={t('handover.empty')} body={t('handover.emptyHint')} />
+          ) : (
+            <div className="flex flex-col gap-3">
+              {filtered.map((note) => {
+                const isReceived = note.to_user_id === user?.id
+                const cfg = PRIORITY_CONFIG[note.priority]
+                const PriorityIcon = cfg.icon
+                const unread = isReceived && !note.acknowledged
+                return (
+                  <article key={note.id} className={cn('flex flex-col gap-3 rounded-3xl bg-bg-card p-5 shadow-card', unread && 'ring-2 ring-lime')}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isReceived ? <ArrowDownCircle className="h-4 w-4 text-sky-500" /> : <ArrowUpCircle className="h-4 w-4 text-violet-500" />}
+                      <span className="font-medium">
+                        {isReceived ? `${t('handover.from')}: ${note.from_name ?? '—'}` : `${t('handover.to')}: ${note.to_name ?? '—'}`}
+                      </span>
+                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        note.priority === 'high' ? 'bg-red-500/10 text-red-500' : note.priority === 'medium' ? 'bg-amber-500/12 text-amber-500' : 'bg-emerald-500/10 text-emerald-500')}>
+                        <PriorityIcon className="h-3 w-3" />{t(cfg.label_key)}
+                      </span>
+                      <span className="ml-auto text-xs text-white/45 tabular-nums">{new Date(note.created_at).toLocaleString()}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                    {unread && (
+                      <button type="button" onClick={() => void acknowledge(note.id)}
+                        className="inline-flex items-center gap-1.5 self-start rounded-full bg-lime px-4 py-2 text-sm font-medium text-ink">
+                        <CheckCircle className="h-4 w-4" />{t('handover.acknowledge')}
+                      </button>
+                    )}
+                    {note.acknowledged && isReceived && (
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-500"><CheckCircle className="h-3.5 w-3.5" />{t('handover.acknowledged')}</span>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Composer (always visible on desktop) ── */}
+        <Panel title={t('handover.newNote')} className="hidden lg:flex lg:sticky lg:top-24">{composer}</Panel>
+      </div>
+    </Page>
   )
 }

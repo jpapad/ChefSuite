@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Plus, BookOpen, Tag, X, Pencil, Trash2, Search } from 'lucide-react'
+import { Plus, BookOpen, Tag, X, Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, SearchField, Chip, ChipRow, Panel, EmptyState } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -109,80 +109,67 @@ export default function ChefJournal() {
   })
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('journal.title')}</h1>
-          <p className="text-white/60 mt-1">{t('journal.subtitle')}</p>
-        </div>
-        <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-          {t('journal.newEntry')}
-        </Button>
-      </header>
+    <Page>
+      <PageHeader
+        title={t('journal.title')}
+        subtitle={t('journal.subtitle')}
+        actions={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('journal.newEntry')}</PillButton>}
+      />
 
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex-1 min-w-[200px] max-w-sm">
-          <Input name="search" placeholder={t('journal.search')} leftIcon={<Search className="h-4 w-4" />}
-            value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
+      <div className="flex flex-col gap-3">
+        <SearchField value={query} onChange={setQuery} placeholder={t('journal.search')} className="max-w-md" />
         {allTags.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => setTagFilter('')}
-              className={cn('rounded-full px-3 py-1 text-xs font-medium transition',
-                !tagFilter ? 'bg-brand-orange text-white-fixed' : 'bg-white/10 text-white/60 hover:text-white')}>
-              {t('common.all')}
-            </button>
+          <ChipRow>
+            <Chip active={!tagFilter} onClick={() => setTagFilter('')}>{t('common.all')}</Chip>
             {allTags.map((tag) => (
-              <button key={tag} type="button" onClick={() => setTagFilter(tag === tagFilter ? '' : tag)}
-                className={cn('rounded-full px-3 py-1 text-xs font-medium transition',
-                  tagFilter === tag ? 'bg-brand-orange text-white-fixed' : 'bg-white/10 text-white/60 hover:text-white')}>
-                #{tag}
-              </button>
+              <Chip key={tag} active={tagFilter === tag} onClick={() => setTagFilter(tag === tagFilter ? '' : tag)}>#{tag}</Chip>
             ))}
-          </div>
+          </ChipRow>
         )}
       </div>
 
       {loadError ? (
         <ErrorState message={loadError} onRetry={() => void load()} />
       ) : loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : filtered.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <BookOpen className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('journal.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('journal.empty.description')}</p>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-            {t('journal.newEntry')}
-          </Button>
-        </GlassCard>
+        <EmptyState
+          icon={BookOpen}
+          title={t('journal.empty.title')}
+          body={t('journal.empty.description')}
+          action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('journal.newEntry')}</PillButton>}
+        />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((entry) => (
-            <GlassCard key={entry.id} className="cursor-pointer hover:bg-white/[.03] transition space-y-3"
-              onClick={() => setViewing(entry)}>
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold leading-snug line-clamp-2">{entry.title}</h3>
-                {entry.mood && <span className="text-xl shrink-0">{MOOD_EMOJI[entry.mood]}</span>}
-              </div>
-              {entry.content && (
-                <p className="text-sm text-white/60 line-clamp-3 leading-relaxed">{entry.content}</p>
-              )}
-              {entry.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {entry.tags.map((tag) => (
-                    <span key={tag} className="text-xs bg-white/10 text-white/50 rounded-full px-2 py-0.5">#{tag}</span>
-                  ))}
+        <div className="columns-1 gap-4 sm:columns-2 xl:columns-3 [&>*]:mb-4">
+          {filtered.map((entry, i) => {
+            const d = new Date(entry.created_at)
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => setViewing(entry)}
+                className={cn('flex w-full break-inside-avoid flex-col gap-3 rounded-3xl p-5 text-left shadow-card transition-transform hover:-translate-y-0.5', i === 0 ? 'bg-ink text-white-fixed' : 'bg-bg-card')}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-baseline gap-2">
+                    <span className={cn('text-3xl font-medium tabular-nums tracking-[-0.03em]', i === 0 && 'text-lime')}>{d.getDate()}</span>
+                    <span className={cn('text-sm', i === 0 ? 'text-white-fixed/60' : 'text-white/50')}>{d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
+                  </div>
+                  {entry.mood && <span className="text-xl" aria-hidden>{MOOD_EMOJI[entry.mood]}</span>}
                 </div>
-              )}
-              <p className="text-xs text-white/30">
-                {new Date(entry.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                {entry.author_name && ` · ${entry.author_name}`}
-              </p>
-            </GlassCard>
-          ))}
+                <h3 className="text-lg font-medium leading-snug">{entry.title}</h3>
+                {entry.content && <p className={cn('line-clamp-5 text-sm leading-relaxed', i === 0 ? 'text-white-fixed/70' : 'text-white/60')}>{entry.content}</p>}
+                {entry.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {entry.tags.map((tag) => (
+                      <span key={tag} className={cn('rounded-full px-2.5 py-0.5 text-xs', i === 0 ? 'bg-white-fixed/10' : 'bg-white/[0.06] text-white/60')}>#{tag}</span>
+                    ))}
+                  </div>
+                )}
+                {entry.author_name && <p className={cn('text-xs', i === 0 ? 'text-white-fixed/50' : 'text-white/45')}>{entry.author_name}</p>}
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -288,6 +275,6 @@ export default function ChefJournal() {
           </div>
         </form>
       </Drawer>
-    </div>
+    </Page>
   )
 }

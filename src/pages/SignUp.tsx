@@ -1,10 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Building2, Lock, Mail, User as UserIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
-import { Input } from '../components/ui/Input'
-import { Button } from '../components/ui/Button'
+import { AuthShell, AuthField } from '../components/layout/AuthShell'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function SignUp() {
@@ -46,85 +43,36 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-chef-dark p-6">
-      <GlassCard variant="strong" className="w-full max-w-md">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-orange">
-            <Building2 className="h-7 w-7 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">{t('signup.ownerTitle')}</h1>
-            <p className="text-white/60 text-sm">{t('signup.ownerSubtitle')}</p>
-          </div>
+    <AuthShell>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h2 className="text-4xl font-medium tracking-[-0.03em]">{t('signup.ownerTitle')}</h2>
+          <p className="mt-1.5 text-white/55">{t('signup.ownerSubtitle')}</p>
         </div>
+        <p className="rounded-2xl bg-lime/30 px-4 py-3 text-sm text-ink">{t('signup.ownerNote')}</p>
 
-        <div className="mb-5 px-3 py-2.5 rounded-xl bg-brand-orange/10 border border-brand-orange/20 text-xs text-white/70">
-          {t('signup.ownerNote')}
-        </div>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <AuthField label={t('signup.fullName')} name="full_name" placeholder={t('signup.fullNamePlaceholder')} autoComplete="name" required
+            value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <AuthField label={t('signup.email')} type="email" name="email" placeholder={t('signup.emailPlaceholder')} autoComplete="email" required
+            value={email} onChange={(e) => setEmail(e.target.value)} />
+          <AuthField label={t('signup.password')} type="password" name="password" placeholder={t('signup.passwordHint')} autoComplete="new-password" minLength={6} required
+            value={password} onChange={(e) => setPassword(e.target.value)} />
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <Input
-            name="full_name"
-            label={t('signup.fullName')}
-            placeholder={t('signup.fullNamePlaceholder')}
-            autoComplete="name"
-            required
-            leftIcon={<UserIcon className="h-5 w-5" />}
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-          <Input
-            type="email"
-            name="email"
-            label={t('signup.email')}
-            placeholder={t('signup.emailPlaceholder')}
-            autoComplete="email"
-            required
-            leftIcon={<Mail className="h-5 w-5" />}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Input
-            type="password"
-            name="password"
-            label={t('signup.password')}
-            placeholder={t('signup.passwordHint')}
-            autoComplete="new-password"
-            minLength={6}
-            required
-            leftIcon={<Lock className="h-5 w-5" />}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          {error && <div className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-500">{error}</div>}
+          {info && <div className="rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-500">{info}</div>}
 
-          {error && (
-            <div className="glass rounded-xl px-4 py-3 text-sm text-red-300 border border-red-500/40">
-              {error}
-            </div>
-          )}
-          {info && (
-            <div className="glass rounded-xl px-4 py-3 text-sm text-emerald-300 border border-emerald-500/40">
-              {info}
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={submitting}
-          >
+          <button type="submit" disabled={submitting}
+            className="mt-1 h-12 rounded-full bg-brand-orange text-[15px] font-medium text-on-accent transition hover:bg-brand-orange/85 disabled:opacity-60">
             {submitting ? t('signup.creatingAccount') : t('signup.createAccount')}
-          </Button>
+          </button>
         </form>
 
-        <p className="text-center text-sm text-white/60 mt-6">
+        <p className="text-center text-sm text-white/55">
           {t('signup.alreadyHaveAccount')}{' '}
-          <Link to="/login" className="text-brand-orange hover:underline">
-            {t('signup.signIn')}
-          </Link>
+          <Link to="/login" className="font-medium text-white underline-offset-4 hover:underline">{t('signup.signIn')}</Link>
         </p>
-      </GlassCard>
-    </div>
+      </div>
+    </AuthShell>
   )
 }

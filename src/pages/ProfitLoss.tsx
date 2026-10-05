@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TrendingUp, TrendingDown, Euro, ShoppingBag, Trash2, Percent, Scale, Info } from 'lucide-react'
+import { TrendingUp, TrendingDown, Euro, ShoppingBag, Trash2, Scale, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, Panel, Segmented, EmptyState } from '../components/ui/page'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
@@ -213,237 +213,145 @@ export default function ProfitLoss() {
     { key: 'ytd', label: t('pl.periodYtd') },
   ]
 
+  const gpTone = gpPct == null ? 'text-white/40' : gpPct >= 60 ? 'text-emerald-500' : gpPct >= 40 ? 'text-amber-500' : 'text-red-500'
+  const lines = [
+    { label: t('pl.revenue'), sub: t('pl.fromOnlineOrders'), value: revenue, sign: '', icon: ShoppingBag, bar: 'bg-ink' },
+    { label: t('pl.purchases'), sub: t('pl.receivedOrders'), value: purchases, sign: '−', icon: Euro, bar: 'bg-sky-500' },
+    { label: t('pl.waste'), sub: t('pl.wastedIngredients'), value: waste, sign: '−', icon: Trash2, bar: 'bg-amber-500' },
+  ]
+  const lineMax = Math.max(revenue, purchases, waste, 1)
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('pl.title')}</h1>
-          <p className="text-white/60 mt-1">{t('pl.subtitle')}</p>
-        </div>
-        <div className="flex gap-1 flex-wrap">
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPeriod(p.key)}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-sm font-medium transition',
-                period === p.key
-                  ? 'bg-brand-orange text-white-fixed'
-                  : 'text-white/60 hover:text-white hover:bg-white/5',
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        title={t('pl.title')}
+        subtitle={t('pl.subtitle')}
+        actions={<Segmented value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: p.label }))} />}
+      />
 
-      {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          {
-            label: t('pl.revenue'),
-            value: `€${fmt(revenue)}`,
-            sub: t('pl.fromOnlineOrders'),
-            icon: ShoppingBag,
-            color: 'text-emerald-400',
-            bg: 'bg-emerald-400/15',
-          },
-          {
-            label: t('pl.purchases'),
-            value: `€${fmt(purchases)}`,
-            sub: t('pl.receivedOrders'),
-            icon: Euro,
-            color: 'text-blue-400',
-            bg: 'bg-blue-400/15',
-          },
-          {
-            label: t('pl.waste'),
-            value: `€${fmt2(waste)}`,
-            sub: t('pl.wastedIngredients'),
-            icon: Trash2,
-            color: 'text-amber-400',
-            bg: 'bg-amber-400/15',
-          },
-          {
-            label: t('pl.grossProfit'),
-            value: `€${fmt(grossProfit)}`,
-            sub: t('pl.revenueMinusCosts'),
-            icon: grossProfit >= 0 ? TrendingUp : TrendingDown,
-            color: grossProfit >= 0 ? 'text-emerald-400' : 'text-red-400',
-            bg: grossProfit >= 0 ? 'bg-emerald-400/15' : 'bg-red-400/15',
-          },
-          {
-            label: t('pl.gpPct'),
-            value: gpPct != null ? `${gpPct.toFixed(1)}%` : '—',
-            sub: t('pl.gpBenchmark'),
-            icon: Percent,
-            color: gpPct == null ? 'text-white/40' : gpPct >= 60 ? 'text-emerald-400' : gpPct >= 40 ? 'text-amber-400' : 'text-red-400',
-            bg: gpPct == null ? 'bg-white/10' : gpPct >= 60 ? 'bg-emerald-400/15' : gpPct >= 40 ? 'bg-amber-400/15' : 'bg-red-400/15',
-          },
-        ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <GlassCard key={label} className="flex items-start gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${bg} ${color}`}>
-              <Icon className="h-6 w-6" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm text-white/60">{label}</div>
-              <div className={cn('text-2xl font-semibold mt-0.5', loading ? 'text-white/20' : color === 'text-emerald-400' || color === 'text-blue-400' || color === 'text-amber-400' ? '' : color)}>
-                {loading ? '…' : value}
+      {!loading && revenue === 0 && purchases === 0 && waste === 0 ? (
+        <EmptyState icon={TrendingUp} title={t('pl.empty.title')} body={t('pl.empty.description')} />
+      ) : (
+        <>
+          {/* ── Statement ── */}
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+            <div className="flex flex-col justify-between gap-6 rounded-3xl bg-ink p-6 sm:p-7 text-white-fixed">
+              <div className="flex items-center justify-between text-sm text-[#C9CEC8]">
+                {t('pl.grossProfit')}
+                {grossProfit >= 0 ? <TrendingUp className="h-5 w-5 text-lime" /> : <TrendingDown className="h-5 w-5 text-red-400" />}
               </div>
-              <div className="text-xs text-white/40 mt-1">{sub}</div>
-            </div>
-          </GlassCard>
-        ))}
-      </div>
-
-      {/* Weekly trend chart */}
-      {!loading && weeks.length > 0 && (
-        <GlassCard>
-          <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-brand-orange" />
-            {t('pl.weeklyTrend')}
-          </h2>
-          <p className="text-xs text-white/40 mb-5">{t('pl.weeklyTrendHint')}</p>
-          <div className="flex items-end gap-3">
-            {weeks.map((w) => {
-              const revH = (w.revenue / maxBar) * 100
-              const costH = ((w.purchases + w.waste) / maxBar) * 100
-              const profitPositive = w.profit >= 0
-              return (
-                <div key={w.week} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                  <div className="w-full flex items-end gap-0.5 h-28 justify-center">
-                    {/* Revenue bar */}
-                    <div className="flex-1 flex flex-col justify-end">
-                      <div
-                        className="w-full rounded-t-sm bg-emerald-400/70 transition-all"
-                        style={{ height: `${Math.max(revH, w.revenue > 0 ? 4 : 0)}%` }}
-                        title={`Revenue: €${fmt2(w.revenue)}`}
-                      />
-                    </div>
-                    {/* Cost bar */}
-                    <div className="flex-1 flex flex-col justify-end">
-                      <div
-                        className="w-full rounded-t-sm bg-red-400/50 transition-all"
-                        style={{ height: `${Math.max(costH, w.purchases + w.waste > 0 ? 4 : 0)}%` }}
-                        title={`Costs: €${fmt2(w.purchases + w.waste)}`}
-                      />
-                    </div>
-                  </div>
-                  <div className={cn('text-[10px] font-medium', profitPositive ? 'text-emerald-400' : 'text-red-400')}>
-                    {profitPositive ? '+' : ''}€{fmt(w.profit)}
-                  </div>
-                  <div className="text-[10px] text-white/40 text-center truncate w-full">{w.label}</div>
+              <p className={cn('text-6xl font-medium tracking-[-0.04em] tabular-nums', grossProfit >= 0 ? 'text-lime' : 'text-red-400')}>
+                {loading ? '…' : `€${fmt(grossProfit)}`}
+              </p>
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-sm text-[#C9CEC8]">{t('pl.gpPct')}</p>
+                  <p className="text-3xl font-medium tabular-nums">{gpPct != null ? `${gpPct.toFixed(1)}%` : '—'}</p>
                 </div>
-              )
-            })}
-          </div>
-          <div className="flex items-center gap-4 mt-4 text-xs text-white/50">
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-400/70 inline-block" />{t('pl.revenue')}</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-red-400/50 inline-block" />{t('pl.costs')}</span>
-          </div>
-        </GlassCard>
-      )}
+                <p className="max-w-[12rem] text-right text-xs text-[#A7ADA6]">{t('pl.gpBenchmark')}</p>
+              </div>
+            </div>
 
-      {/* Cost breakdown */}
-      {!loading && (purchases > 0 || waste > 0) && (
-        <GlassCard>
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Euro className="h-5 w-5 text-blue-400" />
-            {t('pl.costBreakdown')}
-          </h2>
-          <div className="space-y-4">
-            {[
-              { label: t('pl.purchases'), value: purchases, color: 'bg-blue-400', text: 'text-blue-400' },
-              { label: t('pl.waste'),     value: waste,     color: 'bg-amber-400', text: 'text-amber-400' },
-            ].map(({ label, value, color, text }) => {
-              const total = purchases + waste
-              const pct = total > 0 ? (value / total) * 100 : 0
-              const ofRev = revenue > 0 ? (value / revenue) * 100 : null
-              return (
-                <div key={label}>
-                  <div className="flex items-center justify-between mb-1.5 text-sm">
-                    <span className="text-white/70">{label}</span>
+            <Panel title={t('pl.v2.statement')}>
+              <ul className="flex flex-col gap-4">
+                {lines.map(({ label, sub, value, sign, icon: Icon, bar }) => (
+                  <li key={label} className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                      {ofRev != null && (
-                        <span className="text-white/40 text-xs">{ofRev.toFixed(1)}% {t('pl.ofRevenue')}</span>
-                      )}
-                      <span className={cn('font-semibold', text)}>€{fmt2(value)}</span>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/[0.06]"><Icon className="h-4 w-4" /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{label}</p>
+                        <p className="text-xs text-white/50">{sub}</p>
+                      </div>
+                      <span className="text-xl font-medium tabular-nums">{loading ? '…' : `${sign}€${fmt2(value)}`}</span>
                     </div>
+                    <div className="ml-[52px] h-2 rounded-full bg-white/[0.06]">
+                      <div className={cn('h-2 rounded-full transition-all', bar)} style={{ width: `${(value / lineMax) * 100}%` }} />
+                    </div>
+                  </li>
+                ))}
+                <li className="flex items-center justify-between border-t border-white/[0.08] pt-4">
+                  <span className="font-medium">{t('pl.grossProfit')}</span>
+                  <span className={cn('text-2xl font-medium tabular-nums', grossProfit >= 0 ? '' : 'text-red-500')}>€{fmt(grossProfit)}</span>
+                </li>
+                {gpPct != null && <li className={cn('-mt-2 text-right text-sm font-medium', gpTone)}>{gpPct.toFixed(1)}% {t('pl.gpPct')}</li>}
+              </ul>
+            </Panel>
+          </section>
+
+          {/* ── Weekly trend ── */}
+          {!loading && weeks.length > 0 && (
+            <Panel
+              title={t('pl.weeklyTrend')}
+              actions={
+                <div className="flex items-center gap-4 text-xs text-white/55">
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-ink" />{t('pl.revenue')}</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500/60" />{t('pl.costs')}</span>
+                </div>
+              }
+            >
+              <p className="-mt-2 text-xs text-white/50">{t('pl.weeklyTrendHint')}</p>
+              <div className="flex items-end gap-3">
+                {weeks.map((w) => {
+                  const revH = (w.revenue / maxBar) * 100
+                  const costH = ((w.purchases + w.waste) / maxBar) * 100
+                  return (
+                    <div key={w.week} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                      <div className="flex h-40 w-full items-end justify-center gap-1">
+                        <div className="flex flex-1 flex-col justify-end">
+                          <div className="w-full rounded-t-lg bg-ink" style={{ height: `${Math.max(revH, w.revenue > 0 ? 4 : 0)}%` }} title={`${t('pl.revenue')}: €${fmt2(w.revenue)}`} />
+                        </div>
+                        <div className="flex flex-1 flex-col justify-end">
+                          <div className="w-full rounded-t-lg bg-red-500/60" style={{ height: `${Math.max(costH, w.purchases + w.waste > 0 ? 4 : 0)}%` }} title={`${t('pl.costs')}: €${fmt2(w.purchases + w.waste)}`} />
+                        </div>
+                      </div>
+                      <span className={cn('text-xs font-medium tabular-nums', w.profit >= 0 ? 'text-emerald-500' : 'text-red-500')}>
+                        {w.profit >= 0 ? '+' : ''}€{fmt(w.profit)}
+                      </span>
+                      <span className="w-full truncate text-center text-[11px] text-white/45">{w.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </Panel>
+          )}
+
+          {/* ── Ideal vs actual food cost ── */}
+          {!loading && revenue > 0 && (idealFoodCost > 0 || actualFoodCost > 0) && (() => {
+            const idealPct = revenue > 0 ? (idealFoodCost / revenue) * 100 : null
+            const actualPct = revenue > 0 ? (actualFoodCost / revenue) * 100 : null
+            const variance = idealPct != null && actualPct != null ? actualPct - idealPct : null
+            const toneFor = (st: ReturnType<typeof costStatus>) => st === 'good' ? 'text-emerald-500' : st === 'warn' ? 'text-amber-500' : st === 'bad' ? 'text-red-500' : 'text-white/40'
+            const varianceTone = variance == null ? 'text-white/40' : variance > 3 ? 'text-red-500' : variance > 0 ? 'text-amber-500' : 'text-emerald-500'
+            return (
+              <Panel
+                title={<span className="flex items-center gap-2"><Scale className="h-5 w-5" />{t('pl.v2.idealVsActual')}</span>}
+                actions={<span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55"><Info className="h-3.5 w-3.5" />{t('pl.v2.idealOnlineOnly')}</span>}
+              >
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-white/[0.04] p-4">
+                    <p className="text-sm text-white/55">{t('pl.v2.ideal')}</p>
+                    <p className={cn('text-3xl font-medium tabular-nums', toneFor(costStatus(idealPct, target)))}>{idealPct != null ? `${idealPct.toFixed(1)}%` : '—'}</p>
+                    <p className="text-xs text-white/45 tabular-nums">€{fmt2(idealFoodCost)}</p>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-white/10">
-                    <div className={cn('h-2 rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
+                  <div className="rounded-2xl bg-white/[0.04] p-4">
+                    <p className="text-sm text-white/55">{t('pl.v2.actual')}</p>
+                    <p className={cn('text-3xl font-medium tabular-nums', toneFor(costStatus(actualPct, target)))}>{actualPct != null ? `${actualPct.toFixed(1)}%` : '—'}</p>
+                    <p className="text-xs text-white/45 tabular-nums">€{fmt2(actualFoodCost)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/[0.04] p-4">
+                    <p className="text-sm text-white/55">{t('pl.v2.variance')}</p>
+                    <p className={cn('text-3xl font-medium tabular-nums', varianceTone)}>{variance != null ? `${variance >= 0 ? '+' : ''}${variance.toFixed(1)}%` : '—'}</p>
+                    {variance != null && (
+                      <p className="text-xs text-white/45">{variance > 0 ? t('pl.v2.overuse') : variance < 0 ? t('pl.v2.belowIdeal') : t('pl.v2.onTarget')}</p>
+                    )}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </GlassCard>
+                <p className="text-xs text-white/45">{t('pl.v2.idealExplain')}</p>
+              </Panel>
+            )
+          })()}
+        </>
       )}
-
-      {/* Ideal vs Actual food cost */}
-      {!loading && revenue > 0 && (idealFoodCost > 0 || actualFoodCost > 0) && (() => {
-        const idealPct = revenue > 0 ? (idealFoodCost / revenue) * 100 : null
-        const actualPct = revenue > 0 ? (actualFoodCost / revenue) * 100 : null
-        const variance = idealPct != null && actualPct != null ? actualPct - idealPct : null
-        const idealStatus = costStatus(idealPct, target)
-        const actualStatus = costStatus(actualPct, target)
-        return (
-          <GlassCard className="space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Scale className="h-5 w-5 text-brand-orange" />
-                Ιδανικό vs Πραγματικό Food Cost
-              </h2>
-              <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1 text-xs text-white/40">
-                <Info className="h-3.5 w-3.5 shrink-0" />
-                Ιδανικό: μόνο online παραγγελίες
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: 'Ιδανικό Food Cost %', pct: idealPct, status: idealStatus, cost: idealFoodCost },
-                { label: 'Πραγματικό Food Cost %', pct: actualPct, status: actualStatus, cost: actualFoodCost },
-                { label: 'Απόκλιση', pct: variance, status: null, cost: null },
-              ].map(({ label, pct, status, cost }) => {
-                const color = label === 'Απόκλιση'
-                  ? variance == null ? 'text-white/40' : variance > 3 ? 'text-red-400' : variance > 0 ? 'text-amber-400' : 'text-emerald-400'
-                  : status === 'good' ? 'text-emerald-400' : status === 'warn' ? 'text-amber-400' : status === 'bad' ? 'text-red-400' : 'text-white/40'
-                return (
-                  <div key={label} className="rounded-xl bg-white/5 border border-glass-border p-3 space-y-1">
-                    <p className="text-xs text-white/50">{label}</p>
-                    <p className={cn('text-2xl font-bold', color)}>
-                      {pct != null ? `${label === 'Απόκλιση' && pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : '—'}
-                    </p>
-                    {cost != null && (
-                      <p className="text-xs text-white/40">€{fmt2(cost)}</p>
-                    )}
-                    {label === 'Απόκλιση' && variance != null && (
-                      <p className="text-xs text-white/40">
-                        {variance > 0 ? 'Υπερκατανάλωση / φύρα' : variance < 0 ? 'Κάτω από ιδανικό' : 'Εντός στόχου'}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="text-xs text-white/30">
-              Ιδανικό = θεωρητικό κόστος από συνταγές × πωλήσεις. Πραγματικό = κατανάλωση από αποθήκη. Θετική απόκλιση υποδηλώνει φύρα ή υπερμερίδες.
-            </div>
-          </GlassCard>
-        )
-      })()}
-
-      {!loading && revenue === 0 && purchases === 0 && waste === 0 && (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <TrendingUp className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('pl.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('pl.empty.description')}</p>
-        </GlassCard>
-      )}
-    </div>
+    </Page>
   )
 }

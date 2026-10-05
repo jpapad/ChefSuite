@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Calendar } from 'lucide-react'
+import { Page, PageHeader } from '../components/ui/page'
 import { cn } from '../lib/cn'
 
 interface Produce {
@@ -199,17 +199,8 @@ export default function SeasonalCalendar() {
   const restItems = filtered.filter((p) => !p.peak)
 
   return (
-    <div className="p-6 flex flex-col gap-5 h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/15">
-          <Calendar className="h-5 w-5 text-emerald-400" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold leading-none">Εποχικά Προϊόντα</h1>
-          <p className="text-xs text-white/40 mt-0.5">Τι είναι σε εποχή κάθε μήνα στην Ελλάδα</p>
-        </div>
-      </div>
+    <Page>
+      <PageHeader title="Εποχικά προϊόντα" subtitle="Τι είναι στην εποχή του κάθε μήνα στην Ελλάδα" />
 
       {/* Month picker */}
       <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
@@ -294,6 +285,6 @@ export default function SeasonalCalendar() {
           </div>
         )}
       </div>
-    </div>
+    </Page>
   )
 }

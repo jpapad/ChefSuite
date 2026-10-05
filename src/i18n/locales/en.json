@@ -52,7 +52,29 @@
       "library": "Library"
     },
     "search": "Search…",
-    "noResults": "No results"
+    "noResults": "No results",
+    "primary": "Main navigation",
+    "switchTeam": "Switch kitchen",
+    "sections": {
+      "home": "Home",
+      "homeShort": "Home",
+      "recipes": "Recipes & Menus",
+      "recipesShort": "Recipes",
+      "stock": "Stock & Purchasing",
+      "stockShort": "Stock",
+      "finance": "Finance",
+      "financeShort": "Finance",
+      "kitchen": "Kitchen",
+      "kitchenShort": "Kitchen",
+      "buffet": "Buffet Live",
+      "buffetShort": "Buffet",
+      "team": "Team & Bookings",
+      "teamShort": "Team",
+      "comms": "Comms & AI",
+      "commsShort": "Chat",
+      "library": "Knowledge",
+      "libraryShort": "Library"
+    }
   },
   "notifications": {
     "title": "Notifications",
@@ -285,6 +307,56 @@
       "variations": "Variations",
       "comments": "Team Notes",
       "addComment": "Add a note…"
+    },
+    "v2": {
+      "import": "Import",
+      "importHint": "From a URL or text",
+      "scanHint": "Photo or handwriting",
+      "excel": "Excel import",
+      "excelHint": "Recipes and a new menu at once",
+      "quick": "Quick list",
+      "quickHint": "Many recipes from a list of names",
+      "aiTools": "AI tools",
+      "batch": "AI fill & prep",
+      "batchHint": "Descriptions, times, allergens, prep templates",
+      "allergenHint": "Detect across the whole library",
+      "bulkAi": "Bulk AI update",
+      "bulkHint": "Names and descriptions in EL/BG",
+      "total": "Recipes",
+      "totalHint": "in {{count}} categories",
+      "avgFc": "Average food cost",
+      "avgFcHint": "across {{count}} priced recipes",
+      "overTarget": "Above 30%",
+      "overTargetHint": "food cost per portion",
+      "incomplete": "Incomplete",
+      "incompleteHint": "Complete with AI →",
+      "all": "All",
+      "grid": "Grid",
+      "groups": "Groups",
+      "allergens": "Allergens",
+      "showing": "{{count}} of {{total}} recipes"
+    },
+    "v3": {
+      "back": "Recipes",
+      "more": "More",
+      "cookMode": "Cook mode",
+      "upNext": "Up next",
+      "sayCommands": "Say \"next\", \"back\", \"repeat\" or \"stop\"",
+      "costPerPortion": "Cost / portion",
+      "sellingPrice": "Selling price",
+      "margin": "Margin",
+      "fcTarget": "Target ≤ 30%",
+      "stock": "Stock",
+      "ready": "Ready",
+      "missingN": "{{count}} missing",
+      "forPortions": "For {{count}} portions",
+      "noIngredients": "No ingredients",
+      "allergens": "Allergens",
+      "checked": "{{done}} of {{total}} ready",
+      "stepsDone": "{{done}} of {{total}} steps",
+      "reset": "Reset",
+      "makeDeduct": "Make & deduct stock",
+      "noNutrition": "No nutrition data yet."
     }
   },
   "inventory": {
@@ -345,7 +417,29 @@
       "now": "NOW"
     },
     "autoOrder": "Create Order",
-    "autoOrderCreated": "Order created for {{supplier}}"
+    "autoOrderCreated": "Order created for {{supplier}}",
+    "v2": {
+      "scan": "Scan",
+      "receiveHint": "Receive by barcode",
+      "checkHint": "Quick stock check",
+      "tools": "Tools",
+      "count": "Stock count",
+      "countHint": "Full-screen counting",
+      "watchlistHint": "Items you watch for ordering",
+      "importExcel": "Excel import",
+      "items": "Stock items",
+      "locationsCount": "in {{count}} locations",
+      "low": "Low stock",
+      "lowHint": "Tap to filter",
+      "value": "Stock value",
+      "valueHint": "at latest unit cost",
+      "urgent": "Running out in ≤3 days",
+      "urgentHint": "See the reorder list →",
+      "stock": "Stock",
+      "daily": "Daily orders",
+      "dailyHint": "What has to go out today",
+      "unassigned": "No location"
+    }
   },
   "prep": {
     "title": "Prep",
@@ -443,6 +537,10 @@
       "noSteps": "no steps",
       "smartGenerate": "Smart Breakdown ({{count}} recipe(s))",
       "analyzing": "Analyzing with AI…"
+    },
+    "v2": {
+      "more": "More",
+      "progress": "Today's progress"
     }
   },
   "suppliers": {
@@ -477,6 +575,14 @@
       "notesPlaceholder": "Delivery schedule, special terms…",
       "logo": "Logo",
       "create": "Add supplier"
+    },
+    "v2": {
+      "linkedItems": "Items with a supplier",
+      "linkedHint": "of {{total}} stock items",
+      "unlinked": "Without a supplier",
+      "unlinkedHint": "Link in stock →",
+      "noContact": "No contact details",
+      "noContactHint": "no phone or email"
     }
   },
   "team": {
@@ -528,7 +634,15 @@
     "removeExpiry": "Remove expiry",
     "savePermissions": "Save permissions",
     "savingPermissions": "Saving…",
-    "permissionsSaved": "Permissions saved"
+    "permissionsSaved": "Permissions saved",
+    "v2": {
+      "expiring": "Expiring soon",
+      "expiringHint": "member access within 7 days",
+      "target": "Target",
+      "targetTitle": "Food cost target",
+      "targetHint": "Used for cost colours, menu analysis and suggested prices.",
+      "custom": "Custom permissions"
+    }
   },
   "analytics": {
     "title": "Analytics",
@@ -670,6 +784,17 @@
       "labelPlaceholder": "e.g. Morning temp check",
       "frequency": "Check every",
       "overdueWarning": "{{count}} check(s) are overdue! Log a temperature reading."
+    },
+    "v2": {
+      "more": "More",
+      "checks": "Checks",
+      "locationsCount": "across {{count}} points",
+      "pass": "In range",
+      "fail": "Out of range",
+      "compliance": "Compliance",
+      "overdue": "{{count}} overdue checks →",
+      "inRange": "In range",
+      "outOfRange": "Out of range"
     }
   },
   "chat": {
@@ -694,15 +819,21 @@
     }
   },
   "kds": {
-    "title": "Kitchen Display",
-    "enterFullscreen": "Enter fullscreen",
-    "exitFullscreen": "Exit fullscreen",
-    "pending": "{{count}} pending",
-    "done": "{{count}} done",
-    "general": "General",
-    "allDone": "All done",
-    "noTasks": "No tasks for {{date}}",
-    "addTasksHint": "Add tasks in the Prep page."
+    "tabPrep": "Prep",
+    "tabOrders": "Orders",
+    "noOrders": "No active orders",
+    "v2": {
+      "new": "New",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "table": "Table {{table}}",
+      "takeaway": "Takeaway",
+      "start": "Start",
+      "markReady": "Ready",
+      "served": "Served"
+    }
   },
   "walkie": {
     "title": "Walkie Feed",
@@ -872,6 +1003,16 @@
       "close": "Close",
       "total": "Total",
       "totalRow": "Total hours"
+    },
+    "v2": {
+      "export": "Export",
+      "hours": "Hours this week",
+      "shifts": "Shifts",
+      "people": "People scheduled",
+      "peopleHint": "out of the whole team",
+      "today": "Shifts today",
+      "todayHint": "on the schedule",
+      "hoursShort": "Hours"
     }
   },
   "waste": {
@@ -1185,6 +1326,52 @@
       "clearFilter": "Show all",
       "hiddenByFilter": "Hidden by filter",
       "switchTemplate": "Template"
+    },
+    "v2": {
+      "more": "More",
+      "scans": "QR scans",
+      "scansHint": "How many opened the digital menu",
+      "todayQr": "Daily menu QR",
+      "todayQrHint": "Print or download",
+      "today": "Serving today",
+      "activeMenus": "Active menus",
+      "ofTotal": "of {{total}} in total",
+      "scheduledDays": "Scheduled days",
+      "scheduledHint": "switches automatically each day",
+      "expiredHint": "past their end date",
+      "week": "Weekly schedule",
+      "weekHint": "The active menu switches on the QR, KDS and buffet",
+      "none": "No menu",
+      "person": "person",
+      "dailyMenu": "Daily menu",
+      "setDaily": "Set as daily menu",
+      "unsetDaily": "Remove as daily menu",
+      "days": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ],
+      "kitchen": "Kitchen",
+      "share": "QR & export",
+      "scansCount": "{{count}} scans",
+      "canva": "Export for Canva",
+      "dishes": "Dishes",
+      "inSections": "in {{count}} sections",
+      "available": "Available",
+      "availableHint": "the rest are hidden from the QR",
+      "fcHint": "across {{count}} costed dishes",
+      "linked": "Linked to a recipe",
+      "linkedHint": "Link recipes →",
+      "sections": "Sections",
+      "bulkLink": "Link recipes in bulk",
+      "transfer": "Move or copy to another menu",
+      "noRecipe": "No recipe",
+      "editRecipe": "Edit recipe",
+      "fromLibrary": "From library"
     }
   },
   "language": {
@@ -1241,6 +1428,10 @@
       "title": "No purchase orders yet",
       "description": "Create orders to send to your suppliers.",
       "cta": "Create first order"
+    },
+    "v2": {
+      "invoiceHint": "Upload a PDF or photo. Lines are matched to your stock.",
+      "chooseFile": "Choose file"
     }
   },
   "timeclock": {
@@ -1256,7 +1447,10 @@
     "stillIn": "still in",
     "entries": "Time entries",
     "noEntries": "No entries for this day.",
-    "erganiExport": "Ergani E8"
+    "erganiExport": "Ergani E8",
+    "v2": {
+      "people": "Who is on shift"
+    }
   },
   "reservations": {
     "title": "Reservations",
@@ -1277,65 +1471,76 @@
       "cancelled": "Cancelled"
     }
   },
-  "kds": {
-    "tabPrep": "Prep",
-    "tabOrders": "Orders",
-    "noOrders": "No active orders"
-  },
   "staffPerf": {
     "title": "Staff Performance",
     "subtitle": "Hours worked, punctuality and overtime per team member, based on timeclock and shift data.",
-    "period7d":  "7 days",
+    "period7d": "7 days",
     "period30d": "30 days",
     "periodMtd": "This month",
-    "totalHours":   "Total hours worked",
+    "totalHours": "Total hours worked",
     "lateArrivals": "Late arrivals",
-    "totalOvertime":"Total overtime",
-    "worked":    "worked",
+    "totalOvertime": "Total overtime",
+    "worked": "worked",
     "scheduled": "scheduled",
     "punctuality": "Punctuality",
-    "attendance":  "Attendance",
-    "days":        "days",
-    "late":        "late",
-    "noShow":      "No show",
-    "date":     "Date",
-    "clockIn":  "Clock in",
+    "attendance": "Attendance",
+    "days": "days",
+    "late": "late",
+    "noShow": "No show",
+    "date": "Date",
+    "clockIn": "Clock in",
     "clockOut": "Clock out",
-    "hours":    "Hours",
-    "status":   "Status",
+    "hours": "Hours",
+    "status": "Status",
     "avgPerDay": "Avg / day",
-    "overtime":  "Overtime",
+    "overtime": "Overtime",
     "empty": {
       "title": "No timeclock data yet",
       "description": "Team members need to clock in and out to see performance metrics."
+    },
+    "v2": {
+      "person": "Person",
+      "hoursVsScheduled": "Hours / scheduled"
     }
   },
   "pl": {
     "title": "Profit & Loss",
     "subtitle": "Revenue vs costs overview. Revenue from completed online orders, costs from received purchase orders and waste.",
-    "period7d":  "7 days",
+    "period7d": "7 days",
     "period30d": "30 days",
     "period90d": "90 days",
     "periodMtd": "This month",
     "periodYtd": "This year",
-    "revenue":        "Revenue",
-    "purchases":      "Purchases",
-    "waste":          "Waste cost",
-    "grossProfit":    "Gross profit",
-    "gpPct":          "GP %",
+    "revenue": "Revenue",
+    "purchases": "Purchases",
+    "waste": "Waste cost",
+    "grossProfit": "Gross profit",
+    "gpPct": "GP %",
     "fromOnlineOrders": "Completed online orders",
-    "receivedOrders":   "Received purchase orders",
-    "wastedIngredients":"Waste log entries",
-    "revenueMinusCosts":"Revenue − purchases − waste",
-    "gpBenchmark":      "Target: ≥ 60%",
-    "weeklyTrend":      "Weekly revenue vs costs",
-    "weeklyTrendHint":  "Green = revenue · Red = total costs · Number = gross profit for that week",
-    "costs":            "Costs",
-    "costBreakdown":    "Cost breakdown",
-    "ofRevenue":        "of revenue",
+    "receivedOrders": "Received purchase orders",
+    "wastedIngredients": "Waste log entries",
+    "revenueMinusCosts": "Revenue − purchases − waste",
+    "gpBenchmark": "Target: ≥ 60%",
+    "weeklyTrend": "Weekly revenue vs costs",
+    "weeklyTrendHint": "Green = revenue · Red = total costs · Number = gross profit for that week",
+    "costs": "Costs",
+    "costBreakdown": "Cost breakdown",
+    "ofRevenue": "of revenue",
     "empty": {
       "title": "No data yet",
       "description": "Complete online orders and receive purchase orders to see your P&L."
+    },
+    "v2": {
+      "statement": "Income statement",
+      "idealVsActual": "Ideal vs actual food cost",
+      "idealOnlineOnly": "Ideal: online orders only",
+      "ideal": "Ideal food cost",
+      "actual": "Actual food cost",
+      "variance": "Variance",
+      "overuse": "Overuse or waste",
+      "belowIdeal": "Below ideal",
+      "onTarget": "On target",
+      "idealExplain": "Ideal = theoretical cost from recipes × sales. Actual = consumption from stock. A positive variance means waste or oversized portions."
     }
   },
   "priceTracking": {
@@ -1355,34 +1560,53 @@
     "empty": {
       "title": "No price data yet",
       "description": "Upload invoices with unit prices to start tracking price changes over time."
+    },
+    "v2": {
+      "tracked": "Items with history",
+      "trackedHint": "from deliveries and invoices",
+      "alerts": "Increases",
+      "alertsHint": "above {{pct}}%",
+      "cheaper": "Cheaper",
+      "cheaperHint": "down more than 2%",
+      "avgChange": "Average change",
+      "avgChangeHint": "since first record"
     }
   },
   "menuEng": {
     "title": "Menu Engineering",
     "subtitle": "Classify your dishes by popularity and margin — last 30 days of completed orders.",
-    "star":      "Star",
+    "star": "Star",
     "plowhorse": "Plowhorse",
-    "puzzle":    "Puzzle",
-    "dog":       "Dog",
-    "starDesc":      "High popularity · High margin",
+    "puzzle": "Puzzle",
+    "dog": "Dog",
+    "starDesc": "High popularity · High margin",
     "plowhorseDesc": "High popularity · Low margin",
-    "puzzleDesc":    "Low popularity · High margin",
-    "dogDesc":       "Low popularity · Low margin",
-    "starHint":      "Keep promoting. Your best performers.",
+    "puzzleDesc": "Low popularity · High margin",
+    "dogDesc": "Low popularity · Low margin",
+    "starHint": "Keep promoting. Your best performers.",
     "plowhorseHint": "Popular but thin margin. Consider raising price or reducing cost.",
-    "puzzleHint":    "Good margin but needs more visibility. Feature it more.",
-    "dogHint":       "Low sales and low margin. Consider removing from menu.",
-    "item":      "Item",
-    "quadrant":  "Category",
+    "puzzleHint": "Good margin but needs more visibility. Feature it more.",
+    "dogHint": "Low sales and low margin. Consider removing from menu.",
+    "item": "Item",
+    "quadrant": "Category",
     "unitsSold": "Sold",
-    "revenue":   "Revenue",
-    "margin":    "Gross margin",
-    "avgPrice":  "Avg. price",
-    "items":     "items",
-    "more":      "more",
+    "revenue": "Revenue",
+    "margin": "Gross margin",
+    "avgPrice": "Avg. price",
+    "items": "items",
+    "more": "more",
     "empty": {
       "title": "No sales data yet",
       "description": "Complete some online orders to see menu engineering analysis."
+    },
+    "v2": {
+      "window": "Last 30 days",
+      "dishes": "Dishes sold",
+      "unitsTotal": "{{count}} portions in total",
+      "matrix": "Popularity × margin",
+      "marginAxis": "Margin",
+      "popularityAxis": "Popularity",
+      "allDishes": "All dishes"
     }
   },
   "journal": {
@@ -1467,7 +1691,11 @@
     "starter1": "Which of my recipes has the highest food cost %?",
     "starter2": "What can I cook tonight with what's in stock?",
     "starter3": "Suggest a vegan variation of one of my main courses.",
-    "starter4": "Which items are low in stock and should I reorder?"
+    "starter4": "Which items are low in stock and should I reorder?",
+    "v2": {
+      "knows": "What Copilot knows",
+      "try": "Try asking"
+    }
   },
   "culinaryTools": {
     "title": "Kitchen Reference Tools",
@@ -1692,7 +1920,10 @@
     "previewHint": "Showing first 3 labels",
     "previewEmpty": "Select recipes to see a preview",
     "print": "Print {{count}} Label(s)",
-    "noRecipes": "No recipes found"
+    "noRecipes": "No recipes found",
+    "v2": {
+      "settings": "Label settings"
+    }
   },
   "stocktake": {
     "title": "Stocktake",
@@ -1709,7 +1940,17 @@
     "noItems": "No inventory items found",
     "changesOnly": "Changed only",
     "allItems": "All items",
-    "reason": "stocktake"
+    "reason": "stocktake",
+    "v2": {
+      "items": "Items",
+      "itemsHint": "on the count sheet",
+      "changed": "With a difference",
+      "changedHint": "will be saved as movements",
+      "surplus": "Surplus",
+      "surplusHint": "counted more than expected",
+      "shortage": "Shortage",
+      "shortageHint": "counted less than expected"
+    }
   },
   "costing": {
     "title": "Food Costing",
@@ -1736,7 +1977,19 @@
     "noRecipes": "No recipes found",
     "noIngredients": "No ingredients with cost data",
     "warningHigh": "High food cost",
-    "warningLow": "Low margin"
+    "warningLow": "Low margin",
+    "v2": {
+      "event": "Event costing",
+      "target": "target {{target}}%",
+      "aboveTarget": "Above target",
+      "optimizeHint": "Optimise prices →",
+      "allOnTarget": "all on target",
+      "missingCost": "Ingredients without cost",
+      "optimize": "Optimise ({{count}})",
+      "optimizerTitle": "{{count}} recipes above {{target}}%",
+      "optimizerHint": "Choose which ones get the suggested selling price.",
+      "applyPrices": "Apply prices"
+    }
   },
   "buffetPulse": {
     "title": "Buffet Live Pulse",
@@ -1807,6 +2060,11 @@
       "scheduleSub": "Delivery calendar",
       "importExcel": "Import Excel",
       "importExcelSub": "Bulk import"
+    },
+    "v2": {
+      "overview": "All tools",
+      "transfers": "Transfers",
+      "transfersSub": "Internal stock transfers"
     }
   },
   "haccpLogbook": {
@@ -1841,7 +2099,13 @@
     "outOfRangeWarning": "⚠️ Out-of-range temperatures detected — corrective action required",
     "errorInvalidTemps": "Temperatures are not valid.",
     "errorTaskName": "Please enter a task name.",
-    "drawerTitle": "HACCP Logbook Settings"
+    "drawerTitle": "HACCP Logbook Settings",
+    "v2": {
+      "title": "Digital HACCP logbook",
+      "thisShift": "temperature records",
+      "completion": "Day completion",
+      "completionHint": "temperatures and cleaning"
+    }
   },
   "tempLog": {
     "acceptable": "Acceptable:",
@@ -1916,5 +2180,52 @@
     "ingredients": "ingredients",
     "ingredientsNeeded": "Ingredients needed",
     "allergens": "Allergens"
+  },
+  "home": {
+    "kicker": "Today in the kitchen",
+    "needsAttention": "Needs attention",
+    "allClear": "All clear, nothing is waiting.",
+    "lowStockItem": "{{name}}: {{qty}} {{unit}}, minimum {{min}}",
+    "prepPending": "{{count}} prep tasks waiting",
+    "ordersPending": "{{count}} new online orders",
+    "prepToday": "Today’s prep",
+    "prepEmpty": "No prep tasks for today",
+    "prepDone": "{{done}} of {{total}} done",
+    "lowStock": "Low stock",
+    "lowStockNone": "Everything above minimum",
+    "reservations": "Reservations today",
+    "guests": "{{count}} guests",
+    "orders": "Online orders",
+    "ordersBreakdown": "{{pending}} new · {{preparing}} preparing · {{ready}} ready",
+    "recipes": "Recipes",
+    "teamMembers": "team members",
+    "nextUp": "Next reservations",
+    "noReservations": "No reservations today",
+    "openKds": "Open KDS",
+    "buffetMonitor": "Buffet Monitor",
+    "everything": "Your whole kitchen",
+    "copilotTitle": "Ask Chef Copilot",
+    "copilotBody": "It knows your team’s stock, recipes and costs.",
+    "copilotCta": "Start a chat",
+    "sectionDesc": {
+      "recipes": "Library, menus, dish cost, labels",
+      "stock": "Stock, counts, suppliers, orders",
+      "finance": "Food cost, P&L, analytics, POS",
+      "kitchen": "KDS, prep, HACCP, waste, handover",
+      "buffet": "Live dish status and floor map",
+      "team": "Shifts, timeclock, performance, bookings",
+      "comms": "Chat, walkie-talkie, Copilot, journal",
+      "library": "Techniques, ingredients, spices, seasons"
+    }
+  },
+  "auth": {
+    "v2": {
+      "headline": "Your whole kitchen, in one place.",
+      "f1": "Recipes, menus and costing",
+      "f2": "Stock and purchase orders",
+      "f3": "KDS, prep and HACCP",
+      "f4": "Team, shifts and comms",
+      "footer": "ChefSuite · Built for professional kitchens"
+    }
   }
 }

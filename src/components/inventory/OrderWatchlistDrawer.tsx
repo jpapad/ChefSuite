@@ -99,7 +99,7 @@ function AddForm({
       <button
         type="submit"
         disabled={saving || !ingredientId || !qty}
-        className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-orange hover:bg-brand-orange/80 disabled:opacity-40 py-2.5 text-sm font-bold text-white transition-colors"
+        className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-orange hover:bg-brand-orange/80 disabled:opacity-40 py-2.5 text-sm font-bold text-on-accent transition-colors"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         Προσθήκη στο Watchlist

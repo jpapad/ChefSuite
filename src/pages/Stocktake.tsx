@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClipboardCheck, Search, Save, ArrowUp, ArrowDown, Minus } from 'lucide-react'
+import { ClipboardCheck, Save, ArrowUp, ArrowDown, Minus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
-import { Button } from '../components/ui/Button'
+import { Page, PageHeader, PillButton, StatRow, StatTile, SearchField, Segmented, Panel } from '../components/ui/page'
 import { ErrorState } from '../components/ui/ErrorState'
 
 interface StockItem {
@@ -108,133 +108,107 @@ export default function Stocktake() {
     }
   }
 
+  const deltas = changedItems.map((i) => getDelta(i) ?? 0)
+  const surplus = deltas.filter((d) => d > 0).length
+  const shortage = deltas.filter((d) => d < 0).length
+
   return (
-    <div className="p-6 flex flex-col gap-5 h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange/15">
-            <ClipboardCheck className="h-5 w-5 text-brand-orange" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold leading-none">{t('stocktake.title')}</h1>
-            <p className="text-xs text-white/40 mt-0.5">{t('stocktake.subtitle')}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {savedAt && (
-            <span className="text-xs text-green-400">
-              ✓ {t('stocktake.saved')} · {savedAt.toLocaleTimeString()}
-            </span>
-          )}
-          <Button
-            onClick={handleSave}
-            disabled={saving || changedItems.length === 0}
-            className="gap-2"
-          >
-            <Save className="h-4 w-4" />
-            {saving
-              ? t('stocktake.saving')
-              : `${t('stocktake.save')}${changedItems.length > 0 ? ` (${changedItems.length})` : ''}`}
-          </Button>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        title={t('stocktake.title')}
+        subtitle={t('stocktake.subtitle')}
+        actions={
+          <>
+            {savedAt && (
+              <span className="rounded-full bg-emerald-500/12 px-3 py-1.5 text-xs font-medium text-emerald-500">
+                ✓ {t('stocktake.saved')} · {savedAt.toLocaleTimeString()}
+              </span>
+            )}
+            <PillButton icon={Save} variant="primary" onClick={() => void handleSave()} disabled={saving || changedItems.length === 0}>
+              {saving ? t('stocktake.saving') : `${t('stocktake.save')}${changedItems.length > 0 ? ` (${changedItems.length})` : ''}`}
+            </PillButton>
+          </>
+        }
+      />
 
       {error && <ErrorState message={error} onRetry={load} />}
 
-      {/* Toolbar */}
-      <div className="flex gap-3 items-center flex-wrap">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('stocktake.search')}
-            className="w-full rounded-xl bg-white-fixed/55 border border-white/50 text-white text-sm pl-9 pr-3 py-2 placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/40"
-          />
-        </div>
-        <div className="flex gap-1.5">
-          {[false, true].map((v) => (
-            <button
-              key={String(v)}
-              type="button"
-              onClick={() => setChangesOnly(v)}
-              className={cn(
-                'rounded-xl px-3 py-2 text-sm font-medium transition-all',
-                changesOnly === v ? 'bg-brand-orange text-white-fixed' : 'glass text-white/55 hover:text-white/80',
-              )}
-            >
-              {v ? `${t('stocktake.changesOnly')} ${changedItems.length > 0 ? `(${changedItems.length})` : ''}` : t('stocktake.allItems')}
-            </button>
-          ))}
-        </div>
+      <StatRow>
+        <StatTile tone="ink" label={t('stocktake.v2.items')} value={items.length} hint={t('stocktake.v2.itemsHint')} />
+        <StatTile label={t('stocktake.v2.changed')} value={changedItems.length} tone={changedItems.length ? 'warn' : 'default'} hint={t('stocktake.v2.changedHint')} onClick={() => setChangesOnly(true)} />
+        <StatTile label={t('stocktake.v2.surplus')} value={surplus} tone={surplus ? 'good' : 'default'} hint={t('stocktake.v2.surplusHint')} />
+        <StatTile label={t('stocktake.v2.shortage')} value={shortage} tone={shortage ? 'bad' : 'default'} hint={t('stocktake.v2.shortageHint')} />
+      </StatRow>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchField value={search} onChange={setSearch} placeholder={t('stocktake.search')} className="flex-1 max-w-md" />
+        <Segmented
+          value={changesOnly ? 'changes' : 'all'}
+          onChange={(v) => setChangesOnly(v === 'changes')}
+          options={[
+            { value: 'all', label: t('stocktake.allItems') },
+            { value: 'changes', label: `${t('stocktake.changesOnly')}${changedItems.length > 0 ? ` (${changedItems.length})` : ''}` },
+          ]}
+        />
       </div>
 
-      {/* Table */}
-      <div className="glass gradient-border rounded-2xl overflow-hidden flex-1">
+      <Panel padded={false}>
         {loading ? (
-          <div className="p-8 space-y-2">
-            {[...Array(8)].map((_, i) => <div key={i} className="h-10 glass rounded-xl animate-pulse" />)}
+          <div className="flex flex-col gap-2 p-6">
+            {[...Array(8)].map((_, i) => <div key={i} className="h-11 rounded-2xl bg-white/[0.05] animate-pulse" />)}
           </div>
         ) : displayed.length === 0 ? (
-          <div className="p-12 text-center">
-            <ClipboardCheck className="h-12 w-12 mx-auto mb-3 text-white/20" />
-            <p className="text-white/40">{t('stocktake.noItems')}</p>
+          <div className="flex flex-col items-center gap-3 p-12 text-center">
+            <ClipboardCheck className="h-10 w-10 text-white/25" />
+            <p className="text-sm text-white/55">{t('stocktake.noItems')}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto p-2">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="border-b border-white/8">
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40">{t('stocktake.item')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-32">{t('stocktake.systemQty')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-40">{t('stocktake.countedQty')}</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-32">{t('stocktake.delta')}</th>
+                <tr className="text-xs text-white/50">
+                  <th className="px-4 py-3 text-left font-medium">{t('stocktake.item')}</th>
+                  <th className="w-32 px-4 py-3 text-right font-medium">{t('stocktake.systemQty')}</th>
+                  <th className="w-44 px-4 py-3 text-right font-medium">{t('stocktake.countedQty')}</th>
+                  <th className="w-32 px-4 py-3 text-right font-medium">{t('stocktake.delta')}</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/[0.06]">
                 {displayed.map((item) => {
                   const delta = getDelta(item)
                   const hasChange = delta !== null && delta !== 0
                   return (
-                    <tr
-                      key={item.id}
-                      className={cn(
-                        'border-b border-white/5 transition-colors',
-                        hasChange ? 'bg-brand-orange/5' : 'hover:bg-white/3',
-                      )}
-                    >
-                      <td className="px-4 py-3 font-medium text-white/90">{item.name}</td>
-                      <td className="px-4 py-3 text-right text-white/50 tabular-nums">
-                        {item.quantity} <span className="text-white/30 text-xs">{item.unit}</span>
+                    <tr key={item.id} className={cn(hasChange && 'bg-lime/15')}>
+                      <td className="px-4 py-2.5 font-medium">{item.name}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-white/55">
+                        {item.quantity} <span className="text-xs text-white/40">{item.unit}</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-4 py-2.5 text-right">
+                        <span className="inline-flex items-center justify-end gap-2">
                           <input
                             type="number"
                             step="any"
                             min="0"
+                            aria-label={`${item.name} ${t('stocktake.countedQty')}`}
                             value={counted[item.id] ?? ''}
                             onChange={(e) => setCounted((prev) => ({ ...prev, [item.id]: e.target.value }))}
                             className={cn(
-                              'w-24 rounded-lg text-right text-sm px-2 py-1.5 outline-none transition-all',
-                              hasChange
-                                ? 'bg-brand-orange/20 border border-brand-orange/50 text-white focus:ring-1 focus:ring-brand-orange/60'
-                                : 'bg-white-fixed/55 border border-white/40 text-white focus:ring-1 focus:ring-brand-orange/40',
+                              'h-10 w-28 rounded-full px-4 text-right text-sm tabular-nums outline-none transition focus:ring-2 focus:ring-brand-orange/40',
+                              hasChange ? 'bg-ink text-white-fixed' : 'bg-white/[0.06]',
                             )}
                           />
-                          <span className="text-white/30 text-xs w-8">{item.unit}</span>
-                        </div>
+                          <span className="w-8 text-left text-xs text-white/45">{item.unit}</span>
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      <td className="px-4 py-2.5 text-right tabular-nums">
                         {delta === null || delta === 0 ? (
-                          <span className="text-white/20"><Minus className="h-3.5 w-3.5 inline" /></span>
+                          <Minus className="inline h-4 w-4 text-white/25" />
                         ) : delta > 0 ? (
-                          <span className="flex items-center justify-end gap-1 text-green-400 font-semibold">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2.5 py-1 text-xs font-semibold text-emerald-500">
                             <ArrowUp className="h-3.5 w-3.5" />+{delta.toFixed(2)}
                           </span>
                         ) : (
-                          <span className="flex items-center justify-end gap-1 text-red-400 font-semibold">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-500">
                             <ArrowDown className="h-3.5 w-3.5" />{delta.toFixed(2)}
                           </span>
                         )}
@@ -246,7 +220,7 @@ export default function Stocktake() {
             </table>
           </div>
         )}
-      </div>
-    </div>
+      </Panel>
+    </Page>
   )
 }

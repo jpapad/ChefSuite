@@ -5,9 +5,8 @@ import { StockCountView } from '../components/inventory/StockCountView'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, ActionMenu, StatRow, StatTile, Segmented, SearchField, Chip, ChipRow, Panel, EmptyState, Notice } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
 import { Drawer } from '../components/ui/Drawer'
 import { InventoryList } from '../components/inventory/InventoryList'
 import { InventoryMovementsDrawer } from '../components/inventory/InventoryMovementsDrawer'
@@ -51,13 +50,12 @@ export default function Inventory() {
   const [newLocName, setNewLocName] = useState('')
   const [locSaving, setLocSaving] = useState(false)
   const [locError, setLocError] = useState<string | null>(null)
-  const [showReorder, setShowReorder] = useState(false)
+  const [view, setView] = useState<'stock' | 'reorder' | 'checklist'>('stock')
   const [orderCopied, setOrderCopied] = useState(false)
   const [creatingOrder, setCreatingOrder] = useState<string | null>(null)
   const [forecast, setForecast] = useState<ForecastItem[]>([])
   const [scanMode, setScanMode] = useState<'check' | 'receive' | null>(null)
   const [viewingSuppliers, setViewingSuppliers] = useState<InventoryItem | null>(null)
-  const [showChecklist, setShowChecklist] = useState(false)
   const [showImportWizard, setShowImportWizard] = useState(false)
   const [showWatchlist, setShowWatchlist] = useState(false)
   const [countMode, setCountMode] = useState(false)
@@ -274,284 +272,205 @@ export default function Inventory() {
     )
   }
 
+  const stockValue = items.reduce((sum, i) => sum + (i.cost_per_unit ?? 0) * Math.max(0, i.quantity), 0)
+  const urgent = forecast.filter((f) => f.daysLeft <= 3).length
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('inventory.title')}</h1>
-          <p className="text-white/60 mt-1">{t('inventory.subtitle')}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant="secondary"
-            leftIcon={<ClipboardCheck className="h-5 w-5" />}
-            onClick={() => setCountMode(true)}
-          >
-            Απογραφή
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<ClipboardList className="h-5 w-5" />}
-            onClick={() => setShowWatchlist(true)}
-          >
-            Watchlist{watchlistTotal > 0 ? ` (${watchlistTotal})` : ''}
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<FileSpreadsheet className="h-5 w-5" />}
-            onClick={() => setShowImportWizard(true)}
-          >
-            Import Excel
-          </Button>
-          <Button
-            variant={showChecklist ? 'primary' : 'secondary'}
-            leftIcon={<CalendarClock className="h-5 w-5" />}
-            onClick={() => setShowChecklist((v) => !v)}
-          >
-            Daily Checklist
-          </Button>
-          {lowStockItems.length > 0 && (
-            <Button
-              variant={showReorder ? 'primary' : 'secondary'}
-              leftIcon={<ShoppingCart className="h-5 w-5" />}
-              onClick={() => setShowReorder((v) => !v)}
-            >
-              {t('inventory.reorder.button', { count: lowStockItems.length })}
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            leftIcon={<ScanLine className="h-4 w-4" />}
-            onClick={() => setScanMode('check')}
-            title={t('inventory.scanCheck')}
-          >
-            {t('inventory.scanCheck')}
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<PackagePlus className="h-4 w-4" />}
-            onClick={() => setScanMode('receive')}
-            title={t('inventory.scanReceive')}
-          >
-            {t('inventory.scanReceive')}
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<Settings2 className="h-5 w-5" />}
-            onClick={() => setLocDrawerOpen(true)}
-          >
-            {t('inventory.locations')}
-          </Button>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-            {t('inventory.addItem')}
-          </Button>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        title={t('inventory.title')}
+        subtitle={t('inventory.subtitle')}
+        actions={
+          <>
+            <ActionMenu
+              label={t('inventory.v2.scan')}
+              icon={ScanLine}
+              actions={[
+                { label: t('inventory.scanReceive'), hint: t('inventory.v2.receiveHint'), icon: PackagePlus, onClick: () => setScanMode('receive') },
+                { label: t('inventory.scanCheck'), hint: t('inventory.v2.checkHint'), icon: ScanLine, onClick: () => setScanMode('check') },
+              ]}
+            />
+            <ActionMenu
+              label={t('inventory.v2.tools')}
+              icon={Settings2}
+              actions={[
+                { label: t('inventory.v2.count'), hint: t('inventory.v2.countHint'), icon: ClipboardCheck, onClick: () => setCountMode(true) },
+                { label: `Watchlist${watchlistTotal > 0 ? ` (${watchlistTotal})` : ''}`, hint: t('inventory.v2.watchlistHint'), icon: ClipboardList, onClick: () => setShowWatchlist(true) },
+                { label: t('inventory.v2.importExcel'), icon: FileSpreadsheet, onClick: () => setShowImportWizard(true) },
+                { label: t('inventory.locations'), icon: MapPin, onClick: () => setLocDrawerOpen(true) },
+              ]}
+            />
+            <PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('inventory.addItem')}</PillButton>
+          </>
+        }
+      />
 
-      {error && (
-        <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>
-      )}
+      {error && <Notice>{error}</Notice>}
 
-      {/* ── Daily Ordering Checklist ── */}
-      {showChecklist && (
-        <GlassCard className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-semibold text-lg flex items-center gap-2">
-                <CalendarClock className="h-5 w-5 text-brand-orange" />
-                Daily Ordering Checklist
-              </h2>
-              <p className="text-sm text-white/50">Παραγγελίες που πρέπει να φύγουν σήμερα</p>
-            </div>
-          </div>
-          <OrderingChecklist />
-        </GlassCard>
-      )}
-
-      {/* ── Reorder panel ── */}
-      {showReorder && (
-        <GlassCard className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-semibold text-lg">{t('inventory.reorder.title')}</h2>
-              <p className="text-sm text-white/50">{t('inventory.reorder.subtitle', { count: lowStockItems.length })}</p>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={orderCopied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-              onClick={() => void copyReorderList()}
-            >
-              {orderCopied ? t('inventory.reorder.copied') : t('inventory.reorder.copyList')}
-            </Button>
-          </div>
-          <div className="space-y-4">
-            {reorderBySupplier.map((group) => {
-              const supplierId = suppliers.find((s) => s.name === group.supplierName)?.id ?? '__none__'
-              return (
-              <div key={group.supplierName}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-white/40">{group.supplierName}</p>
-                  <button type="button" disabled={!!creatingOrder}
-                    onClick={() => void createAutoOrder(supplierId, group.supplierName, group.items)}
-                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-brand-orange/15 text-brand-orange hover:bg-brand-orange/25 transition disabled:opacity-50">
-                    <Zap className="h-3 w-3" />
-                    {creatingOrder === supplierId ? t('common.saving') : t('inventory.autoOrder')}
-                  </button>
-                </div>
-                <div className="rounded-xl border border-glass-border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <tbody>
-                      {group.items.map((item) => {
-                        const needed = Math.max(0, item.min_stock_level - item.quantity)
-                        return (
-                          <tr key={item.id} className="border-b border-glass-border/50 last:border-0">
-                            <td className="px-4 py-2.5 font-medium">{item.name}</td>
-                            <td className="px-4 py-2.5 text-white/50 text-xs">
-                              {t('inventory.reorder.has', { qty: item.quantity, unit: item.unit })}
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-400/15 border border-amber-400/30 px-2 py-0.5 text-xs font-semibold text-amber-400">
-                                {t('inventory.reorder.need', { qty: needed, unit: item.unit })}
-                              </span>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )})}
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Stockout forecast */}
-      {forecast.length > 0 && (
-        <GlassCard className="border border-amber-500/20">
-          <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-amber-400" />
-            {t('inventory.forecast.title')}
-          </h2>
-          <div className="space-y-2">
-            {forecast.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 text-sm">
-                <div className={cn('flex h-7 w-14 shrink-0 items-center justify-center rounded-lg text-xs font-bold',
-                  f.daysLeft <= 0 ? 'bg-red-500/20 text-red-400'
-                  : f.daysLeft <= 3 ? 'bg-red-500/15 text-red-400'
-                  : f.daysLeft <= 7 ? 'bg-amber-500/15 text-amber-400'
-                  : 'bg-white/10 text-white/60')}>
-                  {f.daysLeft <= 0 ? t('inventory.forecast.now') : `${f.daysLeft}d`}
-                </div>
-                <span className="flex-1 truncate">{f.name}</span>
-                <span className="text-white/40 text-xs shrink-0">{f.quantity.toFixed(1)} {f.unit} · {f.avgDaily.toFixed(1)}/day</span>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
+      {items.length > 0 && (
+        <StatRow>
+          <StatTile tone="ink" label={t('inventory.v2.items')} value={items.length} hint={t('inventory.v2.locationsCount', { count: locations.length })} />
+          <StatTile
+            label={t('inventory.v2.low')}
+            value={lowCount}
+            tone={lowCount ? 'warn' : 'good'}
+            hint={lowCount ? t('inventory.v2.lowHint') : t('home.lowStockNone')}
+            onClick={() => { setView('stock'); setOnlyLow((v) => !v) }}
+          />
+          <StatTile label={t('inventory.v2.value')} value={`€${stockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} hint={t('inventory.v2.valueHint')} />
+          <StatTile tone="lime" label={t('inventory.v2.urgent')} value={urgent} hint={t('inventory.v2.urgentHint')} onClick={lowStockItems.length ? () => setView('reorder') : undefined} />
+        </StatRow>
       )}
 
       {items.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-[220px] max-w-md">
-              <Input
-                name="search"
-                placeholder={t('inventory.searchPlaceholder')}
-                leftIcon={<Search className="h-5 w-5" />}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <Button
-              variant={onlyLow ? 'primary' : 'secondary'}
-              leftIcon={<AlertTriangle className="h-5 w-5" />}
-              onClick={() => setOnlyLow((v) => !v)}
-            >
-              {t('inventory.lowStock', { count: lowCount })}
-            </Button>
-          </div>
-
-          {locations.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setLocationFilter(null)}
-                className={cn(
-                  'px-3 py-1.5 rounded-full text-sm font-medium transition',
-                  locationFilter === null
-                    ? 'bg-brand-orange text-white-fixed'
-                    : 'bg-white/10 text-white/70 hover:bg-white/15',
-                )}
-              >
-                {t('inventory.all', { count: items.length })}
-              </button>
-              {locations.map((loc) => {
-                const count = items.filter((i) => i.location_id === loc.id).length
-                return (
-                  <button
-                    key={loc.id}
-                    type="button"
-                    onClick={() => setLocationFilter(loc.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition',
-                      locationFilter === loc.id
-                        ? 'bg-brand-orange text-white-fixed'
-                        : 'bg-white/10 text-white/70 hover:bg-white/15',
-                    )}
-                  >
-                    <MapPin className="h-3.5 w-3.5" />
-                    {loc.name} ({count})
-                  </button>
-                )
-              })}
-              {unassignedCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setLocationFilter('__unassigned__')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-full text-sm font-medium transition',
-                    locationFilter === '__unassigned__'
-                      ? 'bg-brand-orange text-white-fixed'
-                      : 'bg-white/10 text-white/70 hover:bg-white/15',
-                  )}
-                >
-                  {t('inventory.unassigned', { count: unassignedCount })}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        <Segmented
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'stock', label: t('inventory.v2.stock'), icon: Package },
+            { value: 'reorder', label: t('inventory.reorder.button', { count: lowStockItems.length }), icon: ShoppingCart },
+            { value: 'checklist', label: t('inventory.v2.daily'), icon: CalendarClock },
+          ]}
+        />
       )}
 
-      {loading ? (
-        <GlassCard><p className="text-white/60">{t('inventory.loadingInventory')}</p></GlassCard>
-      ) : items.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <Package className="h-7 w-7" />
+      {/* ── Daily ordering checklist ── */}
+      {view === 'checklist' && (
+        <Panel title={t('inventory.v2.daily')} actions={<span className="text-sm text-white/55">{t('inventory.v2.dailyHint')}</span>}>
+          <OrderingChecklist />
+        </Panel>
+      )}
+
+      {/* ── Reorder ── */}
+      {view === 'reorder' && (
+        <Panel
+          title={t('inventory.reorder.title')}
+          actions={
+            <PillButton icon={orderCopied ? Check : Copy} onClick={() => void copyReorderList()}>
+              {orderCopied ? t('inventory.reorder.copied') : t('inventory.reorder.copyList')}
+            </PillButton>
+          }
+        >
+          <p className="-mt-2 text-sm text-white/55">{t('inventory.reorder.subtitle', { count: lowStockItems.length })}</p>
+          {reorderBySupplier.length === 0 ? (
+            <p className="py-8 text-center text-sm text-white/55">{t('home.lowStockNone')}</p>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {reorderBySupplier.map((group) => {
+                const supplierId = suppliers.find((s) => s.name === group.supplierName)?.id ?? '__none__'
+                return (
+                  <div key={group.supplierName} className="flex flex-col gap-2 rounded-2xl bg-white/[0.04] p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium">{group.supplierName}</p>
+                      <button
+                        type="button"
+                        disabled={!!creatingOrder}
+                        onClick={() => void createAutoOrder(supplierId, group.supplierName, group.items)}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-brand-orange px-3.5 py-1.5 text-xs font-medium text-on-accent disabled:opacity-50"
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                        {creatingOrder === supplierId ? t('common.saving') : t('inventory.autoOrder')}
+                      </button>
+                    </div>
+                    <ul className="divide-y divide-white/[0.06]">
+                      {group.items.map((item) => {
+                        const needed = Math.max(0, item.min_stock_level - item.quantity)
+                        return (
+                          <li key={item.id} className="flex items-center gap-3 py-2 text-sm">
+                            <span className="flex-1 truncate font-medium">{item.name}</span>
+                            <span className="text-xs text-white/50">{t('inventory.reorder.has', { qty: item.quantity, unit: item.unit })}</span>
+                            <span className="rounded-full bg-amber-500/12 px-2.5 py-0.5 text-xs font-medium text-amber-500">
+                              {t('inventory.reorder.need', { qty: needed, unit: item.unit })}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Panel>
+      )}
+
+      {/* ── Stock ── */}
+      {view === 'stock' && (
+        <div className={cn('grid items-start gap-4', forecast.length > 0 && 'xl:grid-cols-[minmax(0,1fr)_320px]')}>
+          <div className="flex min-w-0 flex-col gap-4">
+            {items.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <SearchField value={query} onChange={setQuery} placeholder={t('inventory.searchPlaceholder')} className="flex-1 max-w-md" />
+                  <Chip active={onlyLow} onClick={() => setOnlyLow((v) => !v)}>
+                    <AlertTriangle className="h-4 w-4" />{t('inventory.lowStock', { count: lowCount })}
+                  </Chip>
+                </div>
+                {locations.length > 0 && (
+                  <ChipRow>
+                    <Chip active={locationFilter === null} onClick={() => setLocationFilter(null)} count={items.length}>{t('recipes.v2.all')}</Chip>
+                    {locations.map((loc) => (
+                      <Chip key={loc.id} active={locationFilter === loc.id} onClick={() => setLocationFilter(loc.id)} count={items.filter((i) => i.location_id === loc.id).length}>
+                        <MapPin className="h-3.5 w-3.5" />{loc.name}
+                      </Chip>
+                    ))}
+                    {unassignedCount > 0 && (
+                      <Chip active={locationFilter === '__unassigned__'} onClick={() => setLocationFilter('__unassigned__')} count={unassignedCount}>
+                        {t('inventory.v2.unassigned')}
+                      </Chip>
+                    )}
+                  </ChipRow>
+                )}
+              </div>
+            )}
+
+            {loading ? (
+              <Panel><p className="text-white/55">{t('inventory.loadingInventory')}</p></Panel>
+            ) : items.length === 0 ? (
+              <EmptyState
+                icon={Package}
+                title={t('inventory.empty.title')}
+                body={t('inventory.empty.description')}
+                action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('inventory.empty.cta')}</PillButton>}
+              />
+            ) : filtered.length === 0 ? (
+              <EmptyState icon={Search} title={t('inventory.noMatch')} />
+            ) : (
+              <InventoryList
+                items={filtered}
+                locationMap={locationMap}
+                onEdit={openEdit}
+                onDelete={onDelete}
+                onRestock={onRestock}
+                onHistory={setViewingHistory}
+                onQR={setViewingQR}
+                onPrint={printLabel}
+                onSuppliers={setViewingSuppliers}
+              />
+            )}
           </div>
-          <h2 className="text-xl font-semibold">{t('inventory.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('inventory.empty.description')}</p>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-            {t('inventory.empty.cta')}
-          </Button>
-        </GlassCard>
-      ) : filtered.length === 0 ? (
-        <GlassCard><p className="text-white/60">{t('inventory.noMatch')}</p></GlassCard>
-      ) : (
-        <InventoryList
-          items={filtered}
-          locationMap={locationMap}
-          onEdit={openEdit}
-          onDelete={onDelete}
-          onRestock={onRestock}
-          onHistory={setViewingHistory}
-          onQR={setViewingQR}
-          onPrint={printLabel}
-          onSuppliers={setViewingSuppliers}
-        />
+
+          {forecast.length > 0 && (
+            <Panel title={<span className="flex items-center gap-2"><Clock className="h-4 w-4 text-amber-500" />{t('inventory.forecast.title')}</span>} className="xl:sticky xl:top-24">
+              <ul className="flex flex-col gap-2">
+                {forecast.map((f) => (
+                  <li key={f.id} className="flex items-center gap-3 text-sm">
+                    <span className={cn('flex h-8 w-14 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums',
+                      f.daysLeft <= 3 ? 'bg-red-500/10 text-red-500'
+                      : f.daysLeft <= 7 ? 'bg-amber-500/12 text-amber-500'
+                      : 'bg-white/[0.06] text-white/60')}>
+                      {f.daysLeft <= 0 ? t('inventory.forecast.now') : `${f.daysLeft}d`}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{f.name}</span>
+                      <span className="block text-xs text-white/50 tabular-nums">{f.quantity.toFixed(1)} {f.unit} · {f.avgDaily.toFixed(1)}/day</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
+        </div>
       )}
 
       {/* Scan — Check stock */}
@@ -691,6 +610,6 @@ export default function Inventory() {
         item={viewingQR}
         onClose={() => setViewingQR(null)}
       />
-    </div>
+    </Page>
   )
 }

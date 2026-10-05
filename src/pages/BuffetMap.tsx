@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Map, Plus, Trash2, Save, ChefHat, LayoutGrid, QrCode,
+  Plus, Trash2, Save, ChefHat, LayoutGrid, QrCode,
   Undo2, Redo2, Grid3x3, Copy, Download, Image, AlignLeft,
   AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Camera, Wand2, Activity, ScanLine, BarChart2, ClipboardList, Loader2,
@@ -9,6 +9,7 @@ import QRCodeLib from 'qrcode'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, Segmented } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { cn } from '../lib/cn'
@@ -1046,40 +1047,30 @@ export default function BuffetMap() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold flex items-center gap-2">
-            <Map className="h-7 w-7 text-brand-orange" />Χάρτης Μπουφέ
-          </h1>
-          <p className="text-white/60 mt-1">Σχεδίασε τον χώρο σου και τοποθέτησε τα φαγητά</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" leftIcon={<QrCode className="h-4 w-4" />} onClick={openQr}>QR Χάρτη</Button>
-          <Button leftIcon={<Save className="h-4 w-4" />} onClick={() => void saveLayout()} disabled={saving}>
-            {saved ? '✓ Αποθηκεύτηκε' : saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
-          </Button>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        title="Χάρτης buffet"
+        subtitle="Σχεδίασε τον χώρο, τοποθέτησε τα πιάτα και παρακολούθησε ζωντανά την κατάσταση."
+        actions={
+          <>
+            <PillButton icon={QrCode} onClick={openQr}>QR χάρτη</PillButton>
+            <PillButton icon={Save} variant="primary" onClick={() => void saveLayout()} disabled={saving}>
+              {saved ? '✓ Αποθηκεύτηκε' : saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
+            </PillButton>
+          </>
+        }
+      />
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-white/5 w-fit flex-wrap">
-        {(['design', 'assign', 'live', 'analytics'] as const).map((t) => (
-          <button key={t} onClick={() => { setTab(t); setLivePopup(null) }} className={cn(
-            'px-4 py-1.5 rounded-lg text-sm font-medium transition',
-            tab === t ? 'bg-brand-orange text-white' : 'text-white/60 hover:text-white',
-          )}>
-            {t === 'design'
-              ? <span className="flex items-center gap-1.5"><LayoutGrid className="h-3.5 w-3.5" />Σχεδιασμός</span>
-              : t === 'assign'
-              ? <span className="flex items-center gap-1.5"><ChefHat className="h-3.5 w-3.5" />Διάταξη Φαγητών</span>
-              : t === 'live'
-              ? <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" />Ζωντανά</span>
-              : <span className="flex items-center gap-1.5"><BarChart2 className="h-3.5 w-3.5" />Αναλυτικά</span>}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        value={tab}
+        onChange={(v) => { setTab(v); setLivePopup(null) }}
+        options={[
+          { value: 'design', label: 'Σχεδιασμός', icon: LayoutGrid },
+          { value: 'assign', label: 'Διάταξη φαγητών', icon: ChefHat },
+          { value: 'live', label: 'Ζωντανά', icon: Activity },
+          { value: 'analytics', label: 'Αναλυτικά', icon: BarChart2 },
+        ]}
+      />
 
       <div className="flex gap-4 items-start">
         {/* ── Analytics tab full-width panel ─────────────────────────────────── */}
@@ -1120,7 +1111,7 @@ export default function BuffetMap() {
                           <div key={name} className="flex items-center gap-2">
                             <span className="text-xs text-white/60 w-32 truncate shrink-0">{name}</span>
                             <div className="flex-1 h-5 bg-white/5 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full bg-red-500/60 transition-all"
+                              <div className="h-full rounded-full bg-ink transition-all"
                                 style={{ width: `${(count / maxC) * 100}%` }} />
                             </div>
                             <span className="text-xs font-bold text-red-400 w-4 text-right shrink-0">{count}</span>
@@ -1139,7 +1130,7 @@ export default function BuffetMap() {
                       const maxH = Math.max(...analyticsData.byHour.map(b => b.count), 1)
                       return (
                         <div key={hour} className="flex-1 flex flex-col items-center gap-0.5">
-                          <div className="w-full rounded-t-sm bg-teal-500/50 transition-all"
+                          <div className="w-full rounded-t-sm bg-ink transition-all"
                             style={{ height: `${(count / maxH) * 64}px`, minHeight: count > 0 ? 3 : 0 }} />
                           <span className="text-[8px] text-white/25 tabular-nums">{hour}</span>
                         </div>
@@ -1311,7 +1302,7 @@ export default function BuffetMap() {
             {/* Pending station name popup */}
             {pendingRect && (
               <div className="absolute inset-0 z-20 flex items-center justify-center">
-                <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 260 }}>
+                <div className="bg-bg-card border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 260 }}>
                   <p className="text-sm font-semibold text-white">Όνομα σταθμού</p>
                   <input autoFocus value={pendingName}
                     onChange={(e) => setPendingName(e.target.value)}
@@ -1320,7 +1311,7 @@ export default function BuffetMap() {
                     className="w-full rounded-lg px-3 py-2 bg-white/10 border border-white/20 text-white text-sm focus:outline-none focus:border-brand-orange/60"/>
                   <div className="flex gap-2">
                     <button onClick={confirmPendingStation} disabled={!pendingName.trim()}
-                      className="flex-1 py-1.5 rounded-lg bg-brand-orange text-white text-sm font-medium disabled:opacity-40 transition hover:bg-brand-orange/90">
+                      className="flex-1 py-1.5 rounded-lg bg-brand-orange text-on-accent text-sm font-medium disabled:opacity-40 transition hover:bg-brand-orange/90">
                       Προσθήκη
                     </button>
                     <button onClick={() => setPendingRect(null)}
@@ -1341,7 +1332,7 @@ export default function BuffetMap() {
               const isUploading = livePhotoUploading && livePhotoTarget?.menuItemId === livePopup.menuItemId
               return (
                 <div className="absolute inset-0 z-20 flex items-center justify-center">
-                  <div className="bg-[#0d1520] border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 268 }}>
+                  <div className="bg-bg-card border border-white/20 rounded-xl p-4 space-y-3 shadow-2xl" style={{ width: 268 }}>
                     {/* Title + close */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -1417,7 +1408,7 @@ export default function BuffetMap() {
             >
               <defs>
                 <pattern id="grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse">
-                  <path d={`M ${GRID} 0 L 0 0 0 ${GRID}`} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5"/>
+                  <path d={`M ${GRID} 0 L 0 0 0 ${GRID}`} fill="none" style={{ stroke: 'rgb(var(--app-white) / 0.04)' }} strokeWidth="0.5"/>
                 </pattern>
                 {stations.map((s) => (
                   <filter key={s.id} id={`glow-${s.id}`} x="-20%" y="-20%" width="140%" height="140%">
@@ -1591,10 +1582,10 @@ export default function BuffetMap() {
 
               {stations.length === 0 && (
                 <g>
-                  <text x={SVG_W/2} y={SVG_H/2 - 14} textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="14">
+                  <text x={SVG_W/2} y={SVG_H/2 - 14} textAnchor="middle" style={{ fill: 'rgb(var(--app-white) / 0.2)' }} fontSize="14">
                     Δεν υπάρχουν σταθμοί ακόμα
                   </text>
-                  <text x={SVG_W/2} y={SVG_H/2 + 10} textAnchor="middle" fill="rgba(255,255,255,0.1)" fontSize="11">
+                  <text x={SVG_W/2} y={SVG_H/2 + 10} textAnchor="middle" style={{ fill: 'rgb(var(--app-white) / 0.1)' }} fontSize="11">
                     Πάτα «Νέος Σταθμός» για να αρχίσεις
                   </text>
                 </g>
@@ -1640,7 +1631,7 @@ export default function BuffetMap() {
                   {(['rect', 'circle'] as const).map((sh) => (
                     <button key={sh} onClick={() => { updateSelected({ shape: sh }); commit(latestRef.current.stations) }}
                       className={cn('flex-1 py-1.5 rounded-lg text-xs font-medium transition border',
-                        selected.shape === sh ? 'bg-brand-orange border-brand-orange text-white' : 'border-white/15 text-white/50 hover:text-white hover:bg-white/5')}>
+                        selected.shape === sh ? 'bg-brand-orange border-brand-orange text-on-accent' : 'border-white/15 text-white/50 hover:text-white hover:bg-white/5')}>
                       {sh === 'rect' ? '▭ Ορθ.' : '⬤ Κύκλος'}
                     </button>
                   ))}
@@ -1815,7 +1806,7 @@ export default function BuffetMap() {
               {(['rect', 'circle'] as const).map((sh) => (
                 <button key={sh} onClick={() => setNewShape(sh)}
                   className={cn('flex-1 py-2 rounded-xl text-sm font-medium transition border',
-                    newShape === sh ? 'bg-brand-orange border-brand-orange text-white' : 'border-white/15 text-white/60 hover:text-white hover:bg-white/5')}>
+                    newShape === sh ? 'bg-brand-orange border-brand-orange text-on-accent' : 'border-white/15 text-white/60 hover:text-white hover:bg-white/5')}>
                   {sh === 'rect' ? '▭ Ορθογώνιο' : '⬤ Κύκλος/Island'}
                 </button>
               ))}
@@ -1839,7 +1830,7 @@ export default function BuffetMap() {
               {[2,3,4,5,6,8].map((n) => (
                 <button key={n} onClick={() => setNewSlots(n)}
                   className={cn('h-9 w-9 rounded-xl text-sm font-medium transition border',
-                    newSlots === n ? 'bg-brand-orange border-brand-orange text-white' : 'border-white/15 text-white/60 hover:text-white hover:bg-white/5')}>
+                    newSlots === n ? 'bg-brand-orange border-brand-orange text-on-accent' : 'border-white/15 text-white/60 hover:text-white hover:bg-white/5')}>
                   {n}
                 </button>
               ))}
@@ -1957,7 +1948,7 @@ export default function BuffetMap() {
               {advScanStep === 'video' && (
                 <div className="absolute bottom-28 left-0 right-0 flex justify-center pointer-events-none">
                   <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90">
-                    <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4"/>
+                    <circle cx="32" cy="32" r="28" fill="none" style={{ stroke: 'rgb(var(--app-white) / 0.12)' }} strokeWidth="4"/>
                     <circle cx="32" cy="32" r="28" fill="none" stroke="#ef4444" strokeWidth="4"
                       strokeDasharray={`${2 * Math.PI * 28}`}
                       strokeDashoffset={`${2 * Math.PI * 28 * (1 - advCountdown / 5)}`}
@@ -2161,6 +2152,6 @@ export default function BuffetMap() {
           </div>
         </div>
       </Drawer>
-    </div>
+    </Page>
   )
 }

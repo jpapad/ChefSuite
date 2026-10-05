@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  Flame, Users, ChefHat, Compass,
+  Users, ChefHat, Compass, BookOpen, Package, MonitorPlay,
   CheckCircle2, ArrowRight, Copy, Check,
   Mail, UserPlus,
 } from 'lucide-react'
+import { AuthShell } from '../components/layout/AuthShell'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
@@ -19,14 +20,12 @@ const STEPS: Step[] = ['invite', 'recipe', 'explore']
 interface StepMeta {
   key: Step
   icon: typeof Users
-  color: string
-  bg: string
 }
 
 const STEP_META: StepMeta[] = [
-  { key: 'invite',  icon: Users,     color: 'text-sky-400',          bg: 'bg-sky-400/15'         },
-  { key: 'recipe',  icon: ChefHat,   color: 'text-brand-orange',     bg: 'bg-brand-orange/15'    },
-  { key: 'explore', icon: Compass,   color: 'text-emerald-400',      bg: 'bg-emerald-400/15'     },
+  { key: 'invite',  icon: Users },
+  { key: 'recipe',  icon: ChefHat },
+  { key: 'explore', icon: Compass },
 ]
 
 export default function Welcome() {
@@ -120,186 +119,126 @@ export default function Welcome() {
   const meta = STEP_META[currentStep]
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-chef-dark p-4">
-      <div className="w-full max-w-lg">
-
-        {/* Logo + greeting */}
-        <div className="flex items-center gap-3 mb-8">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-orange shrink-0">
-            <Flame className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold leading-none">{t('welcome.title')}</h1>
-            <p className="text-sm text-white/45 mt-0.5">{t('welcome.subtitle', { team: teamName })}</p>
-          </div>
-        </div>
-
-        {/* Step indicators */}
-        <div className="flex items-center gap-2 mb-6">
-          {STEPS.map((s, i) => {
-            const done = i < currentStep || (i === currentStep && (step === 'recipe' ? recipeSaved : step === 'invite' ? !!inviteLink : false))
-            const active = i === currentStep
-            return (
-              <div key={s} className="flex items-center gap-2 flex-1">
-                <div className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold shrink-0 transition-all',
-                  done ? 'bg-green-500 text-white' : active ? 'bg-brand-orange text-white' : 'bg-white/10 text-white/30',
-                )}>
-                  {done ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+    <AuthShell>
+      <div className="flex flex-col gap-4">
+        {/* Greeting + progress */}
+        <div className="rounded-3xl bg-ink p-6 text-white-fixed">
+          <p className="text-sm text-white-fixed/55">{t('welcome.subtitle', { team: teamName })}</p>
+          <h2 className="mt-1 text-3xl font-medium tracking-[-0.03em]">{t('welcome.title')}</h2>
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            {STEPS.map((s, i) => {
+              const done = i < currentStep || (i === currentStep && (step === 'recipe' ? recipeSaved : step === 'invite' ? !!inviteLink : false))
+              const active = i === currentStep
+              return (
+                <div key={s} className="flex flex-col gap-2">
+                  <span className={cn('h-1.5 rounded-full', done || active ? 'bg-lime' : 'bg-white-fixed/15')} />
+                  <span className={cn('flex items-center gap-1 text-xs', active ? 'text-white-fixed' : 'text-white-fixed/45')}>
+                    {done && <CheckCircle2 className="h-3.5 w-3.5 text-lime" />}
+                    {t(`welcome.steps.${s}`)}
+                  </span>
                 </div>
-                <span className={cn('text-xs font-medium truncate', active ? 'text-white' : 'text-white/30')}>
-                  {t(`welcome.steps.${s}`)}
-                </span>
-                {i < STEPS.length - 1 && <div className="h-px flex-1 bg-white/10" />}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
 
         {/* Step card */}
-        <div className="glass gradient-border rounded-3xl p-6 space-y-5">
-
-          {/* Step header */}
+        <div className="flex flex-col gap-5 rounded-3xl bg-bg-card p-6 shadow-card">
           <div className="flex items-center gap-3">
-            <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl shrink-0', meta.bg)}>
-              <meta.icon className={cn('h-5 w-5', meta.color)} />
-            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lime text-ink">
+              <meta.icon className="h-5 w-5" />
+            </span>
             <div>
-              <h2 className="font-semibold leading-none">{t(`welcome.${step}.title`)}</h2>
-              <p className="text-xs text-white/45 mt-0.5">{t(`welcome.${step}.desc`)}</p>
+              <h3 className="text-lg font-medium leading-tight">{t(`welcome.${step}.title`)}</h3>
+              <p className="text-sm text-white/55">{t(`welcome.${step}.desc`)}</p>
             </div>
           </div>
 
           {/* --- INVITE STEP --- */}
           {step === 'invite' && (
-            <div className="space-y-4">
-              {inviteLink ? (
-                <div className="space-y-3">
-                  <div className="glass rounded-xl p-3 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
-                    <span className="text-sm text-white/70 flex-1 truncate">{inviteLink}</span>
-                    <button
-                      type="button"
-                      onClick={copyLink}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/8 hover:bg-white/15 transition shrink-0"
-                    >
-                      {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5 text-white/60" />}
+            inviteLink ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 rounded-2xl bg-bg-input p-2 pl-4">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                  <span className="flex-1 truncate text-sm text-white/70">{inviteLink}</span>
+                  <button type="button" onClick={copyLink}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-card shadow-card">
+                    {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-white/60" />}
+                  </button>
+                </div>
+                <button type="button" onClick={() => { setInviteLink(null) }}
+                  className="flex items-center gap-1.5 self-start text-sm font-medium underline-offset-4 hover:underline">
+                  <UserPlus className="h-4 w-4" />{t('welcome.invite.inviteAnother')}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                  <input type="email" placeholder={t('welcome.invite.emailPlaceholder')} value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && void sendInvite()}
+                    className="w-full h-12 rounded-2xl bg-bg-input px-4 text-[15px] outline-none placeholder:text-white/35 focus:ring-2 focus:ring-brand-orange/40 pl-10" />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(['head_chef', 'sous_chef', 'cook', 'staff'] as UserRole[]).map((r) => (
+                    <button key={r} type="button" onClick={() => setRole(r)}
+                      className={cn('h-9 rounded-full px-4 text-sm font-medium transition',
+                        role === r ? 'bg-ink text-white-fixed' : 'bg-bg-input text-white/65 hover:text-white')}>
+                      {t(`team.roles.${r}`)}
                     </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setInviteLink(null) }}
-                    className="text-xs text-brand-orange hover:text-brand-orange/80 transition flex items-center gap-1"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    {t('welcome.invite.inviteAnother')}
-                  </button>
+                  ))}
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-                    <input
-                      type="email"
-                      placeholder={t('welcome.invite.emailPlaceholder')}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && void sendInvite()}
-                      className="w-full rounded-xl bg-white-fixed/55 border border-white/50 text-white text-sm pl-10 pr-3 py-2.5 placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/40"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {(['head_chef', 'sous_chef', 'cook', 'staff'] as UserRole[]).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setRole(r)}
-                        className={cn(
-                          'rounded-xl px-2 py-2 text-[11px] font-medium transition-all',
-                          role === r ? 'bg-brand-orange text-white-fixed' : 'glass text-white/55 hover:text-white/80',
-                        )}
-                      >
-                        {t(`team.roles.${r}`)}
-                      </button>
-                    ))}
-                  </div>
-                  {inviteError && (
-                    <p className="text-xs text-red-400">{inviteError}</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => void sendInvite()}
-                    disabled={!email.trim() || inviteSending}
-                    className="w-full rounded-xl bg-brand-orange/20 text-brand-orange hover:bg-brand-orange/30 disabled:opacity-40 transition py-2.5 text-sm font-medium flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    {inviteSending ? t('welcome.invite.sending') : t('welcome.invite.sendInvite')}
-                  </button>
-                </div>
-              )}
-            </div>
+                {inviteError && <p className="text-sm text-red-500">{inviteError}</p>}
+                <button type="button" onClick={() => void sendInvite()} disabled={!email.trim() || inviteSending}
+                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-lime text-[15px] font-medium text-ink transition hover:brightness-95 disabled:opacity-40">
+                  <UserPlus className="h-4 w-4" />
+                  {inviteSending ? t('welcome.invite.sending') : t('welcome.invite.sendInvite')}
+                </button>
+              </div>
+            )
           )}
 
           {/* --- RECIPE STEP --- */}
           {step === 'recipe' && (
-            <div className="space-y-3">
-              {recipeSaved ? (
-                <div className="glass rounded-xl p-3 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
-                  <span className="text-sm text-white/70">{t('welcome.recipe.saved', { title: recipeTitle })}</span>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    placeholder={t('welcome.recipe.titlePlaceholder')}
-                    value={recipeTitle}
-                    onChange={(e) => setRecipeTitle(e.target.value)}
-                    className="w-full rounded-xl bg-white-fixed/55 border border-white/50 text-white text-sm px-3 py-2.5 placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/40"
-                  />
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-white/45 shrink-0">{t('welcome.recipe.servings')}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={recipeServings}
-                      onChange={(e) => setRecipeServings(e.target.value)}
-                      className="w-20 rounded-xl bg-white-fixed/55 border border-white/50 text-white text-sm px-3 py-2 outline-none focus:ring-1 focus:ring-brand-orange/40"
-                    />
-                  </div>
-                  {recipeError && <p className="text-xs text-red-400">{recipeError}</p>}
-                  <button
-                    type="button"
-                    onClick={() => void saveRecipe()}
-                    disabled={!recipeTitle.trim() || recipeSaving}
-                    className="w-full rounded-xl bg-brand-orange/20 text-brand-orange hover:bg-brand-orange/30 disabled:opacity-40 transition py-2.5 text-sm font-medium flex items-center justify-center gap-2"
-                  >
-                    <ChefHat className="h-4 w-4" />
-                    {recipeSaving ? t('welcome.recipe.saving') : t('welcome.recipe.save')}
-                  </button>
-                </>
-              )}
-            </div>
+            recipeSaved ? (
+              <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-3">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                <span className="text-sm">{t('welcome.recipe.saved', { title: recipeTitle })}</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <input type="text" placeholder={t('welcome.recipe.titlePlaceholder')} value={recipeTitle}
+                  onChange={(e) => setRecipeTitle(e.target.value)} className="w-full h-12 rounded-2xl bg-bg-input px-4 text-[15px] outline-none placeholder:text-white/35 focus:ring-2 focus:ring-brand-orange/40" />
+                <label className="flex items-center gap-3">
+                  <span className="text-sm text-white/55">{t('welcome.recipe.servings')}</span>
+                  <input type="number" min="1" max="999" value={recipeServings}
+                    onChange={(e) => setRecipeServings(e.target.value)}
+                    className="h-11 w-24 rounded-2xl bg-bg-input px-4 text-[15px] outline-none focus:ring-2 focus:ring-brand-orange/40" />
+                </label>
+                {recipeError && <p className="text-sm text-red-500">{recipeError}</p>}
+                <button type="button" onClick={() => void saveRecipe()} disabled={!recipeTitle.trim() || recipeSaving}
+                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-lime text-[15px] font-medium text-ink transition hover:brightness-95 disabled:opacity-40">
+                  <ChefHat className="h-4 w-4" />
+                  {recipeSaving ? t('welcome.recipe.saving') : t('welcome.recipe.save')}
+                </button>
+              </div>
+            )
           )}
 
           {/* --- EXPLORE STEP --- */}
           {step === 'explore' && (
             <div className="grid grid-cols-2 gap-2">
               {[
-                { to: '/recipes',   label: t('nav.recipes'),   emoji: '🍳' },
-                { to: '/inventory', label: t('nav.inventory'), emoji: '📦' },
-                { to: '/team',      label: t('nav.team'),      emoji: '👥' },
-                { to: '/kds',       label: t('nav.kds'),       emoji: '🖥️' },
-              ].map(({ to, label, emoji }) => (
-                <button
-                  key={to}
-                  type="button"
-                  onClick={() => navigate(to)}
-                  className="glass rounded-2xl p-3 text-left hover:bg-white/8 transition-all active:scale-95 flex items-center gap-2.5"
-                >
-                  <span className="text-xl">{emoji}</span>
-                  <span className="text-sm font-medium text-white/80">{label}</span>
+                { to: '/recipes',   label: t('nav.recipes'),   icon: BookOpen },
+                { to: '/inventory', label: t('nav.inventory'), icon: Package },
+                { to: '/team',      label: t('nav.team'),      icon: Users },
+                { to: '/kds',       label: t('nav.kds'),       icon: MonitorPlay },
+              ].map(({ to, label, icon: Icon }) => (
+                <button key={to} type="button" onClick={() => navigate(to)}
+                  className="flex flex-col items-start gap-6 rounded-2xl bg-bg-input p-4 text-left transition hover:bg-white/[0.08] active:scale-[0.98]">
+                  <Icon className="h-5 w-5" />
+                  <span className="text-sm font-medium">{label}</span>
                 </button>
               ))}
             </div>
@@ -307,27 +246,19 @@ export default function Welcome() {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between">
           {currentStep < STEPS.length - 1 && !skipped.has(currentStep) ? (
-            <button
-              type="button"
-              onClick={skip}
-              className="text-sm text-white/35 hover:text-white/60 transition"
-            >
+            <button type="button" onClick={skip} className="px-2 text-sm text-white/50 hover:text-white">
               {t('welcome.skip')}
             </button>
           ) : <div />}
-
-          <button
-            type="button"
-            onClick={next}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-orange text-white-fixed px-5 py-2.5 text-sm font-medium hover:bg-brand-orange/90 transition-all"
-          >
+          <button type="button" onClick={next}
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-brand-orange px-6 text-[15px] font-medium text-on-accent hover:bg-brand-orange/85">
             {currentStep < STEPS.length - 1 ? t('welcome.next') : t('welcome.finish')}
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
       </div>
-    </div>
+    </AuthShell>
   )
 }

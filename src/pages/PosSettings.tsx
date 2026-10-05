@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditCard, Copy, Check, RefreshCw, Zap, ExternalLink, ShieldCheck, AlertCircle } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, Panel } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { useAuth } from '../contexts/AuthContext'
@@ -108,58 +109,44 @@ export default function PosSettings() {
   }
 
   if (loading) return (
-    <div className="space-y-6 max-w-2xl">
-      <header>
-        <h1 className="text-3xl font-semibold">{t('pos.title')}</h1>
-      </header>
-      <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
-    </div>
-  )
+    <Page className="max-w-4xl">
+      <PageHeader title={t('pos.title')} subtitle={t('pos.subtitle')} />
 
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <header>
-        <h1 className="text-3xl font-semibold flex items-center gap-3">
-          <CreditCard className="h-8 w-8 text-brand-orange" />
-          {t('pos.title')}
-        </h1>
-        <p className="text-white/60 mt-1">{t('pos.subtitle')}</p>
-      </header>
-
-      {/* How it works */}
-      <GlassCard>
-        <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">{t('pos.howItWorks')}</h2>
-        <ol className="space-y-2 text-sm text-white/70">
-          <li className="flex gap-2"><span className="text-brand-orange font-bold shrink-0">1.</span>{t('pos.step1')}</li>
-          <li className="flex gap-2"><span className="text-brand-orange font-bold shrink-0">2.</span>{t('pos.step2')}</li>
-          <li className="flex gap-2"><span className="text-brand-orange font-bold shrink-0">3.</span>{t('pos.step3')}</li>
+      {/* How it works — three steps */}
+      <section className="rounded-3xl bg-ink p-6 text-white-fixed">
+        <p className="mb-4 text-sm text-[#C9CEC8]">{t('pos.howItWorks')}</p>
+        <ol className="grid gap-4 sm:grid-cols-3">
+          {[t('pos.step1'), t('pos.step2'), t('pos.step3')].map((step, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime text-sm font-semibold text-ink">{i + 1}</span>
+              <span className="text-sm leading-relaxed">{step}</span>
+            </li>
+          ))}
         </ol>
-      </GlassCard>
+      </section>
 
       {/* Provider selection */}
-      <GlassCard>
-        <h2 className="text-lg font-semibold mb-4">{t('pos.provider')}</h2>
-        <div className="flex gap-3">
+      <Panel title={t('pos.provider')}>
+        <div className="grid grid-cols-2 gap-3">
           {(['viva', 'square'] as Provider[]).map((p) => (
             <button
               key={p}
               type="button"
+              aria-pressed={provider === p}
               onClick={() => setProvider(p)}
               className={cn(
-                'flex-1 flex flex-col items-center gap-2 rounded-xl border p-4 transition',
-                provider === p
-                  ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
-                  : 'border-white/10 text-white/50 hover:border-white/25 hover:bg-white/5',
+                'flex items-center gap-3 rounded-2xl p-4 text-left transition',
+                provider === p ? 'bg-brand-orange text-on-accent' : 'bg-white/[0.04] hover:bg-white/[0.07]',
               )}
             >
-              <span className="text-2xl">{p === 'viva' ? '🇬🇷' : '🟦'}</span>
-              <span className="text-sm font-semibold">
-                {p === 'viva' ? 'Viva Wallet' : 'Square'}
+              <span className={cn('flex h-10 w-10 items-center justify-center rounded-full', provider === p ? 'bg-lime text-ink' : 'bg-white/[0.06]')}>
+                <CreditCard className="h-5 w-5" />
               </span>
+              <span className="font-medium">{p === 'viva' ? 'Viva Wallet' : 'Square'}</span>
             </button>
           ))}
         </div>
-      </GlassCard>
+      </Panel>
 
       {/* Webhook URL card — shown once settings exist */}
       {settings && (
@@ -284,6 +271,6 @@ export default function PosSettings() {
           </a>
         </div>
       </GlassCard>
-    </div>
+    </Page>
   )
 }

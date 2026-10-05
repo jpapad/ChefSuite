@@ -1,4 +1,6 @@
-import { Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, Mic, MicOff, ChevronLeft, ChevronRight, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus, MessageSquare, Trash2, Sparkles, Loader2, Activity, GitBranch } from 'lucide-react'
+import { Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, Mic, MicOff, ChevronLeft, ChevronRight, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus, MessageSquare, Trash2, Sparkles, Loader2, Activity, GitBranch, Check, Pencil, Play, MoreHorizontal, Timer, Send, AlertTriangle, Volume2 } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { ActionMenu, PillButton, StatTile } from '../ui/page'
 import { AllergenBadge } from '../ui/AllergenIcon'
 import { useEffect, useRef, useState } from 'react'
 import { printRecipe } from '../../lib/printRecipe'
@@ -23,8 +25,6 @@ interface SRInstance {
 }
 type SRCtor = new () => SRInstance
 import { useTranslation } from 'react-i18next'
-import { Drawer } from '../ui/Drawer'
-import { Button } from '../ui/Button'
 import type { InventoryItem, Recipe, RecipeIngredient } from '../../types/database.types'
 
 function splitSteps(text: string): string[] {
@@ -80,55 +80,62 @@ function HandsFreeMode({ steps, onClose }: { steps: string[]; onClose: () => voi
   useEffect(() => { speak(current) }, [])
   useEffect(() => () => { recogRef.current?.stop(); window.speechSynthesis.cancel() }, [])
 
+  const next = steps[idx + 1]
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-chef-dark" style={{ touchAction: 'manipulation' }}>
-      <div className="h-1 bg-white/10">
-        <div className="h-1 bg-brand-orange transition-all" style={{ width: `${progress}%` }} />
-      </div>
-      <div className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
-        <span className="text-white/50 text-sm">{t('recipes.detail.stepOf', { current: idx + 1, total: steps.length })}</span>
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={toggleVoice}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${listening ? 'bg-brand-orange text-white-fixed' : 'bg-white/10 text-white/60 hover:text-white'}`}>
-            {listening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            {listening ? t('recipes.detail.listening') : t('recipes.detail.voiceControl')}
-          </button>
-          <button type="button" onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/5">
-            <X className="h-5 w-5" />
-          </button>
+    <div className="theme-dark fixed inset-0 z-[60] flex flex-col bg-ink text-white" style={{ touchAction: 'manipulation' }}>
+      <div className="flex items-center gap-4 px-5 pt-5 sm:px-8">
+        <span className="rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink tabular-nums">
+          {t('recipes.detail.stepOf', { current: idx + 1, total: steps.length })}
+        </span>
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full rounded-full bg-lime transition-all" style={{ width: `${progress}%` }} />
         </div>
+        <button type="button" onClick={toggleVoice}
+          className={`flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition ${listening ? 'bg-lime text-ink' : 'bg-white/10 text-white/70 hover:text-white'}`}>
+          {listening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+          <span className="hidden sm:inline">{listening ? t('recipes.detail.listening') : t('recipes.detail.voiceControl')}</span>
+        </button>
+        <button type="button" onClick={onClose} aria-label="Close"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white/70 hover:text-white">
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <div className="flex-1 flex items-center justify-center px-8">
-        <p className="text-center text-2xl md:text-4xl font-medium leading-relaxed text-white max-w-3xl">
-          {current}
-        </p>
+
+      <div className="flex flex-1 flex-col justify-center gap-8 px-6 sm:px-12 lg:px-24">
+        <span className="text-[7rem] font-medium leading-none tracking-[-0.06em] text-lime tabular-nums sm:text-[10rem]">{idx + 1}</span>
+        <p className="max-w-4xl text-3xl font-medium leading-snug tracking-[-0.02em] md:text-5xl">{current}</p>
+        {next && (
+          <p className="max-w-3xl text-base text-white/45 md:text-lg">
+            <span className="mr-2 text-xs font-semibold uppercase tracking-wider text-white/35">{t('recipes.v3.upNext')}</span>
+            {next}
+          </p>
+        )}
       </div>
-      <div className="flex items-center justify-between gap-4 px-6 pb-8 pt-4 border-t border-glass-border">
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 pb-8 sm:px-8">
         <button type="button" onClick={goPrev} disabled={idx === 0}
-          className="flex items-center gap-2 rounded-2xl px-6 py-4 text-lg font-medium bg-white/10 text-white/70 hover:bg-white/15 disabled:opacity-30 transition min-w-[120px] justify-center">
+          className="flex h-16 items-center justify-center gap-2 rounded-full bg-white/10 text-lg font-medium text-white/80 transition hover:bg-white/15 disabled:opacity-30">
           <ChevronLeft className="h-6 w-6" /> {t('common.back')}
         </button>
-        <button type="button" onClick={reread}
-          className="rounded-2xl px-6 py-4 text-sm font-medium bg-white/5 text-white/50 hover:text-white transition">
-          {t('recipes.detail.repeatStep')}
+        <button type="button" onClick={reread} aria-label={t('recipes.detail.repeatStep')}
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.06] text-white/60 hover:text-white">
+          <Volume2 className="h-6 w-6" />
         </button>
         {idx < steps.length - 1 ? (
           <button type="button" onClick={goNext}
-            className="flex items-center gap-2 rounded-2xl px-6 py-4 text-lg font-medium bg-brand-orange text-white-fixed hover:bg-brand-orange/90 transition min-w-[120px] justify-center">
+            className="flex h-16 items-center justify-center gap-2 rounded-full bg-lime text-lg font-medium text-ink transition hover:brightness-95">
             {t('common.next')} <ChevronRight className="h-6 w-6" />
           </button>
         ) : (
           <button type="button" onClick={onClose}
-            className="rounded-2xl px-6 py-4 text-lg font-medium bg-emerald-500 text-white hover:bg-emerald-500/90 transition min-w-[120px] text-center">
-            {t('common.done')}
+            className="flex h-16 items-center justify-center gap-2 rounded-full bg-lime text-lg font-medium text-ink transition hover:brightness-95">
+            <CheckCheck className="h-6 w-6" /> {t('common.done')}
           </button>
         )}
       </div>
       {listening && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 text-xs text-white/40 text-center">
-          Say "next", "back", "repeat" or "stop"
-        </div>
+        <p className="absolute bottom-28 left-1/2 -translate-x-1/2 text-xs text-white/40">{t('recipes.v3.sayCommands')}</p>
       )}
     </div>
   )
@@ -153,11 +160,7 @@ function fmtMin(min: number) {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
-const DIFFICULTY_STYLE = {
-  easy:   'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
-  medium: 'border-amber-500/40  bg-amber-500/10  text-amber-300',
-  hard:   'border-red-500/40    bg-red-500/10    text-red-300',
-}
+const DIFFICULTY_DOTS = { easy: 1, medium: 2, hard: 3 } as const
 
 export function RecipeDetail({
   recipe,
@@ -319,413 +322,384 @@ export function RecipeDetail({
       ? (effectiveCost / recipe.selling_price) * 100
       : null
 
-  return (
+  // Checklists for mise en place / cooking — local to this viewing
+  const [checkedIng, setCheckedIng] = useState<Set<string>>(new Set())
+  const [doneSteps, setDoneSteps] = useState<Set<number>>(new Set())
+  useEffect(() => { setCheckedIng(new Set()); setDoneSteps(new Set()) }, [recipe?.id])
+  function toggleIn<T>(set: Set<T>, v: T) { const n = new Set(set); if (n.has(v)) n.delete(v); else n.add(v); return n }
+
+  // Overlay behaviour (was handled by Drawer)
+  useEffect(() => {
+    if (!recipe) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !handsFree) onClose() }
+    window.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [recipe, handsFree, onClose])
+
+  if (!recipe) return null
+
+  const missingCount = ingredients.filter((ing) => {
+    const item = inventory.find((i) => i.id === ing.inventory_item_id)
+    return !item || item.quantity < ing.quantity * portions
+  }).length
+  const fcTone = foodCostPct == null ? 'default' : foodCostPct <= 30 ? 'good' : foodCostPct <= 40 ? 'warn' : 'bad'
+  const nutrients = [
+    { label: t('recipes.detail.nutrients.calories'), value: recipe.calories, unit: 'kcal' },
+    { label: t('recipes.detail.nutrients.protein'),  value: recipe.protein_g, unit: 'g' },
+    { label: t('recipes.detail.nutrients.carbs'),    value: recipe.carbs_g,   unit: 'g' },
+    { label: t('recipes.detail.nutrients.fat'),      value: recipe.fat_g,     unit: 'g' },
+    { label: t('recipes.detail.nutrients.fiber'),    value: recipe.fiber_g,   unit: 'g' },
+    { label: t('recipes.detail.nutrients.sodium'),   value: recipe.sodium_mg, unit: 'mg' },
+  ].filter((n): n is { label: string; value: number; unit: string } => n.value != null)
+  const macroTotal = (recipe.protein_g ?? 0) + (recipe.carbs_g ?? 0) + (recipe.fat_g ?? 0)
+  const title = trTitle ?? recipe.title
+  const facts = [
+    recipe.prep_time != null && { icon: Clock, label: t('recipes.detail.prepTime'), value: fmtMin(recipe.prep_time) },
+    recipe.cook_time != null && { icon: Flame, label: t('recipes.detail.cookTime'), value: fmtMin(recipe.cook_time) },
+    recipe.prep_time != null && recipe.cook_time != null && { icon: Timer, label: t('recipes.detail.totalTime'), value: fmtMin(recipe.prep_time + recipe.cook_time) },
+    recipe.servings != null && { icon: Users, label: t('recipes.detail.servings'), value: String(recipe.servings) },
+  ].filter(Boolean) as { icon: typeof Clock; label: string; value: string }[]
+
+  return createPortal(
     <>
       {handsFree && steps.length > 0 && (
-        <HandsFreeMode steps={steps} onClose={() => setHandsFree(false)} />
+        <HandsFreeMode steps={trSteps.map((x, i) => x ?? steps[i])} onClose={() => setHandsFree(false)} />
       )}
-      <Drawer
-        open={!!recipe}
-        onClose={onClose}
-        title={trTitle ?? recipe?.title ?? ''}
-        footer={
-          recipe ? (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => { onClose(); onEdit(recipe) }} className="flex-1">
-                  {t('common.edit')}
-                </Button>
-                {steps.length > 0 && (
-                  <Button variant="secondary" leftIcon={<Mic className="h-4 w-4" />}
-                    onClick={() => setHandsFree(true)} className="flex-1">
-                    {t('recipes.detail.handsFree')}
-                  </Button>
-                )}
-                {ingredients.length > 0 && (
-                  <Button leftIcon={<UtensilsCrossed className="h-4 w-4" />}
-                    onClick={handleMake} disabled={consuming || !canMake} className="flex-1">
-                    {consuming ? t('recipes.detail.making') : t('recipes.detail.make')}
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" leftIcon={copied ? <CheckCheck className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-                  onClick={handleShare} className="flex-1">
-                  {copied ? t('recipes.detail.copied') : t('recipes.detail.share')}
-                </Button>
-                <Button variant="secondary" leftIcon={<Printer className="h-4 w-4" />}
-                  onClick={handlePrint} className="flex-1">
-                  {t('recipes.detail.print')}
-                </Button>
-                <div ref={pickerRef} className="relative flex-1">
-                  <Button
-                    variant="secondary"
-                    leftIcon={sentTo ? <CheckCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-                    onClick={() => setShowMemberPicker((v) => !v)}
-                    className="w-full"
-                  >
-                    {sentTo ? t('recipes.detail.sent') : t('recipes.detail.sendToMember')}
-                  </Button>
 
-                  {showMemberPicker && (
-                    <div className="absolute bottom-full mb-2 right-0 w-56 glass-strong border border-glass-border rounded-2xl shadow-xl z-50 overflow-hidden">
-                      <p className="px-3 py-2.5 text-xs font-semibold text-white/50 uppercase tracking-wider border-b border-glass-border">
-                        {t('recipes.detail.sendToMemberTitle')}
-                      </p>
-                      {otherMembers.length === 0 ? (
-                        <p className="px-4 py-4 text-sm text-white/40 text-center">
-                          {t('recipes.detail.noOtherMembers')}
-                        </p>
-                      ) : (
-                        <ul className="max-h-52 overflow-y-auto">
-                          {otherMembers.map((m) => (
-                            <li key={m.id}>
-                              <button
-                                type="button"
-                                onClick={() => void handleSendToMember(m)}
-                                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-white/5 transition text-left"
-                              >
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange/20 text-xs font-semibold text-brand-orange">
-                                  {(m.full_name ?? '?').charAt(0).toUpperCase()}
-                                </span>
-                                <span className="truncate">{m.full_name ?? t('common.unnamed')}</span>
-                                <span className="ml-auto text-[10px] text-white/30 shrink-0">{m.role}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null
-        }
-      >
-        {recipe && (
-          <div className="space-y-6">
-            {/* Hero image */}
-            {recipe.image_url && (
-              <div className="-mx-6 -mt-2">
-                <img
-                  src={recipe.image_url}
-                  alt={recipe.title}
-                  className="w-full h-52 object-cover"
-                />
-              </div>
+      <div role="dialog" aria-modal="true" aria-label={title}
+        className="fixed inset-0 z-50 overflow-y-auto bg-bg-surface">
+        {/* ── Top bar ── */}
+        <div className="sticky top-0 z-20 bg-bg-surface/85 px-3 py-3 backdrop-blur-md sm:px-6">
+          <div className="mx-auto flex max-w-7xl items-center gap-2">
+            <button type="button" onClick={onClose} aria-label={t('recipes.v3.back')}
+              className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-bg-card pl-3 pr-4 text-sm font-medium shadow-card hover:bg-white/[0.04]">
+              <ChevronLeft className="h-4 w-4" /><span className="hidden sm:inline">{t('recipes.v3.back')}</span>
+            </button>
+            <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-white/60">{title}</span>
+            <ActionMenu label={t('recipes.v3.more')} icon={MoreHorizontal} actions={[
+              { label: copied ? t('recipes.detail.copied') : t('recipes.detail.share'), icon: copied ? CheckCheck : Share2, onClick: () => void handleShare() },
+              { label: t('recipes.detail.print'), icon: Printer, onClick: handlePrint },
+              { label: sentTo ? t('recipes.detail.sent') : t('recipes.detail.sendToMemberTitle'), icon: UserPlus, onClick: () => setShowMemberPicker(true) },
+            ]} />
+            <PillButton icon={Pencil} onClick={() => { onClose(); onEdit(recipe) }} className="hidden sm:inline-flex">{t('common.edit')}</PillButton>
+            {steps.length > 0 && (
+              <PillButton variant="lime" icon={Play} onClick={() => setHandsFree(true)}>
+                <span className="hidden sm:inline">{t('recipes.v3.cookMode')}</span>
+              </PillButton>
             )}
+          </div>
+        </div>
 
-            {/* Category + description */}
-            {(recipe.category || recipe.description) && (
-              <div className="space-y-2">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-3 pb-28 sm:gap-4 sm:px-6">
+          {/* ── Hero ── */}
+          <section className={`grid gap-3 sm:gap-4 ${recipe.image_url ? 'lg:grid-cols-[1.15fr_1fr]' : ''}`}>
+            <div className="flex flex-col justify-between gap-8 rounded-[2rem] bg-ink p-6 text-white-fixed sm:p-8">
+              <div className="flex flex-wrap items-center gap-2">
                 {recipe.category && (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-2.5 py-1 text-xs text-white/50">
-                    <Tag className="h-3 w-3" />
-                    {t(`recipes.categories.${recipe.category}`)}
-                  </span>
-                )}
-                {recipe.description && (
-                  <p className="text-white/70 leading-relaxed">{trDescription ?? recipe.description}</p>
-                )}
-              </div>
-            )}
-
-            {/* Time / servings / difficulty */}
-            {(recipe.prep_time || recipe.cook_time || recipe.servings || recipe.difficulty) && (
-              <div className="flex flex-wrap gap-3 text-sm">
-                {recipe.prep_time != null && (
-                  <div className="flex items-center gap-1.5 text-white/70">
-                    <Clock className="h-4 w-4 text-white/40" />
-                    <span className="text-white/40 text-xs">{t('recipes.detail.prepTime')}</span>
-                    <span className="font-medium">{fmtMin(recipe.prep_time)}</span>
-                  </div>
-                )}
-                {recipe.cook_time != null && (
-                  <div className="flex items-center gap-1.5 text-white/70">
-                    <Flame className="h-4 w-4 text-white/40" />
-                    <span className="text-white/40 text-xs">{t('recipes.detail.cookTime')}</span>
-                    <span className="font-medium">{fmtMin(recipe.cook_time)}</span>
-                  </div>
-                )}
-                {recipe.prep_time != null && recipe.cook_time != null && (
-                  <div className="flex items-center gap-1.5 text-white/70">
-                    <span className="text-white/40 text-xs">{t('recipes.detail.totalTime')}</span>
-                    <span className="font-medium">{fmtMin(recipe.prep_time + recipe.cook_time)}</span>
-                  </div>
-                )}
-                {recipe.servings != null && (
-                  <div className="flex items-center gap-1.5 text-white/70">
-                    <Users className="h-4 w-4 text-white/40" />
-                    <span className="font-medium">{recipe.servings} {t('recipes.detail.servings')}</span>
-                  </div>
+                  <span className="rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink">{t(`recipes.categories.${recipe.category}`)}</span>
                 )}
                 {recipe.difficulty && (
-                  <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-medium ${DIFFICULTY_STYLE[recipe.difficulty]}`}>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white-fixed/10 px-3 py-1 text-xs">
+                    <span className="flex gap-0.5">
+                      {[1, 2, 3].map((d) => (
+                        <span key={d} className={`h-1.5 w-1.5 rounded-full ${d <= DIFFICULTY_DOTS[recipe.difficulty!] ? 'bg-lime' : 'bg-white-fixed/25'}`} />
+                      ))}
+                    </span>
                     {t(`recipes.form.difficulty${recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1)}`)}
                   </span>
                 )}
+                {recipe.variation_label && (
+                  <span className="rounded-full bg-white-fixed/10 px-3 py-1 text-xs">{recipe.variation_label}</span>
+                )}
               </div>
-            )}
-
-            {/* Metric badges */}
-            <div className="flex flex-wrap gap-2">
-              {ingredients.length > 0 && (
-                <span className={
-                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm border ' +
-                  (canMake
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                    : 'border-amber-500/40 bg-amber-500/10 text-amber-300')
-                }>
-                  {canMake ? <PackageCheck className="h-4 w-4" /> : <PackageX className="h-4 w-4" />}
-                  {canMake ? t('recipes.detail.inStock') : t('recipes.detail.missingIngredients')}
-                </span>
-              )}
-              {effectiveCost != null && (
-                <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm border border-glass-border text-white/70">
-                  <Euro className="h-4 w-4" />
-                  €{fmt(effectiveCost)} / {t('recipes.detail.portion')}
-                </span>
-              )}
-              {recipe.selling_price != null && (
-                <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm border border-glass-border text-white/70">
-                  <Euro className="h-4 w-4" />
-                  {t('recipes.detail.selling')} €{fmt(recipe.selling_price)}
-                </span>
-              )}
-              {foodCostPct != null && (
-                <span className={
-                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm border ' +
-                  (foodCostPct <= 30
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                    : foodCostPct <= 40
-                      ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-                      : 'border-red-500/40 bg-red-500/10 text-red-300')
-                }>
-                  <TrendingUp className="h-4 w-4" />
-                  {t('recipes.detail.foodCost')} {foodCostPct.toFixed(1)}%
-                </span>
-              )}
-              {recipe.allergens.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {recipe.allergens.map((a) => (
-                    <AllergenBadge key={a} allergen={a} size="md" />
+              <div>
+                <h1 className="text-4xl font-medium leading-[1.02] tracking-[-0.04em] sm:text-5xl lg:text-6xl">{title}</h1>
+                {recipe.description && (
+                  <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-white-fixed/65 sm:text-base">{trDescription ?? recipe.description}</p>
+                )}
+              </div>
+              {facts.length > 0 && (
+                <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {facts.map(({ icon: Icon, label, value }) => (
+                    <div key={label} className="rounded-2xl bg-white-fixed/[0.06] px-4 py-3">
+                      <dt className="flex items-center gap-1.5 text-xs text-white-fixed/50"><Icon className="h-3.5 w-3.5" />{label}</dt>
+                      <dd className="mt-1 text-2xl font-medium tabular-nums text-lime">{value}</dd>
+                    </div>
                   ))}
-                </div>
+                </dl>
               )}
             </div>
+            {recipe.image_url && (
+              <div className="relative min-h-[16rem] overflow-hidden rounded-[2rem] bg-bg-card-2">
+                <img src={recipe.image_url} alt={recipe.title} className="absolute inset-0 h-full w-full object-cover" />
+              </div>
+            )}
+          </section>
 
-            {/* Ingredients */}
+          {/* ── Numbers ── */}
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatTile label={t('recipes.v3.costPerPortion')} icon={Euro}
+              value={effectiveCost != null ? `€${fmt(effectiveCost)}` : '—'}
+              hint={effectiveCost != null && portions > 1 ? `${t('recipes.detail.totalCost')} €${fmt(effectiveCost * portions)}` : undefined} />
+            <StatTile label={t('recipes.v3.sellingPrice')} icon={Tag}
+              value={recipe.selling_price != null ? `€${fmt(recipe.selling_price)}` : '—'}
+              hint={effectiveCost != null && recipe.selling_price != null ? `${t('recipes.v3.margin')} €${fmt(recipe.selling_price - effectiveCost)}` : undefined} />
+            <StatTile label={t('recipes.detail.foodCost')} icon={TrendingUp} tone={fcTone}
+              value={foodCostPct != null ? `${foodCostPct.toFixed(1)}%` : '—'} hint={t('recipes.v3.fcTarget')} />
+            {ingredients.length > 0 ? (
+              <StatTile label={t('recipes.v3.stock')} icon={canMake ? PackageCheck : PackageX} tone={canMake ? 'lime' : 'warn'}
+                value={canMake ? t('recipes.v3.ready') : t('recipes.v3.missingN', { count: missingCount })}
+                hint={t('recipes.v3.forPortions', { count: portions })} />
+            ) : (
+              <StatTile label={t('recipes.v3.stock')} icon={Package} value="—" hint={t('recipes.v3.noIngredients')} />
+            )}
+          </section>
+
+          {recipe.allergens.length > 0 && (
+            <section className="flex flex-wrap items-center gap-2 rounded-3xl bg-bg-card px-5 py-4 shadow-card">
+              <span className="mr-2 flex items-center gap-1.5 text-sm font-medium text-white/60"><AlertTriangle className="h-4 w-4 text-amber-500" />{t('recipes.v3.allergens')}</span>
+              {recipe.allergens.map((a) => <AllergenBadge key={a} allergen={a} size="md" />)}
+            </section>
+          )}
+
+          {/* ── Ingredients + method ── */}
+          <section className="grid items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(320px,400px)_1fr]">
             {ingredients.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
-                    {t('recipes.detail.ingredients')}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/40">{t('recipes.detail.portions')}</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPortions((p) => Math.max(1, p - 1))}
-                        className="flex h-6 w-6 items-center justify-center rounded-lg border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
-                      <input
-                        type="number"
-                        min={1}
-                        value={portions}
-                        onChange={(e) => setPortions(Math.max(1, Math.round(Number(e.target.value) || 1)))}
-                        className="w-12 text-center rounded-lg border border-white/20 bg-white/5 py-0.5 text-sm text-white outline-none focus:ring-1 focus:ring-brand-orange"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setPortions((p) => p + 1)}
-                        className="flex h-6 w-6 items-center justify-center rounded-lg border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
-                    </div>
+              <div className="flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6 lg:sticky lg:top-20">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-medium">{t('recipes.detail.ingredients')}</h2>
+                    <p className="text-xs text-white/50">{t('recipes.v3.checked', { done: checkedIng.size, total: ingredients.length })}</p>
+                  </div>
+                  <div className="flex items-center rounded-full bg-bg-input p-1">
+                    <button type="button" onClick={() => setPortions((p) => Math.max(1, p - 1))} aria-label="−"
+                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-bg-card"><Minus className="h-3.5 w-3.5" /></button>
+                    <input type="number" min={1} value={portions}
+                      onChange={(e) => setPortions(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+                      className="w-10 bg-transparent text-center text-sm font-semibold tabular-nums outline-none" aria-label={t('recipes.detail.portions')} />
+                    <button type="button" onClick={() => setPortions((p) => p + 1)} aria-label="+"
+                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-bg-card"><Plus className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
-                <ul className="space-y-2">
+
+                <ul className="-mx-2 flex flex-col">
                   {ingredients.map((ing, idx) => {
                     const item = inventory.find((i) => i.id === ing.inventory_item_id)
                     const scaledQty = ing.quantity * portions
                     const enough = item ? item.quantity >= scaledQty : false
                     const displayName = trIngNames[idx] ?? item?.name ?? t('common.unknown')
+                    const done = checkedIng.has(ing.id)
                     return (
-                      <li key={ing.id} className="flex items-center justify-between gap-3 py-2 border-b border-glass-border last:border-0">
-                        <span className="flex items-center gap-2">
-                          <Package className={`h-4 w-4 shrink-0 ${enough ? 'text-white/40' : 'text-amber-400'}`} />
-                          <span className={item ? 'text-white' : 'text-white/50 italic'}>
-                            {displayName}
+                      <li key={ing.id}>
+                        <button type="button" onClick={() => setCheckedIng((s) => toggleIn(s, ing.id))}
+                          className="flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left hover:bg-white/[0.04]">
+                          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition ${done ? 'bg-ink text-lime' : 'border-2 border-white/15'}`}>
+                            {done && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                           </span>
-                        </span>
-                        <span className="text-white/60 text-sm shrink-0">
-                          {scaledQty % 1 === 0 ? scaledQty : scaledQty.toFixed(2)} {item?.unit ?? ''}
-                          {portions > 1 && (
-                            <span className="ml-1 text-white/30 text-xs">({ing.quantity} ×{portions})</span>
-                          )}
-                        </span>
+                          <span className={`min-w-0 flex-1 truncate text-[15px] ${done ? 'text-white/35 line-through' : item ? '' : 'italic text-white/50'}`}>{displayName}</span>
+                          <span className={`shrink-0 text-sm font-medium tabular-nums ${done ? 'text-white/30' : ''}`}>
+                            {scaledQty % 1 === 0 ? scaledQty : scaledQty.toFixed(2)} <span className="font-normal text-white/50">{item?.unit ?? ''}</span>
+                          </span>
+                          <span title={enough ? t('recipes.detail.inStock') : t('recipes.detail.missingIngredients')}
+                            className={`h-2 w-2 shrink-0 rounded-full ${enough ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        </button>
                       </li>
                     )
                   })}
                 </ul>
-                {effectiveCost != null && portions > 1 && (
-                  <p className="mt-3 text-sm text-white/50">
-                    {t('recipes.detail.totalCost')}: <span className="text-white font-medium">€{fmt(effectiveCost * portions)}</span>
-                  </p>
-                )}
-              </section>
+
+                <div className="flex gap-2">
+                  {checkedIng.size > 0 && (
+                    <button type="button" onClick={() => setCheckedIng(new Set())}
+                      className="h-11 rounded-full bg-bg-input px-4 text-sm font-medium text-white/70 hover:text-white">
+                      {t('recipes.v3.reset')}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => void handleMake()} disabled={consuming || !canMake}
+                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand-orange text-sm font-medium text-on-accent hover:bg-brand-orange/85 disabled:cursor-not-allowed disabled:opacity-40">
+                    <UtensilsCrossed className="h-4 w-4" />
+                    {consuming ? t('recipes.detail.making') : t('recipes.v3.makeDeduct')}
+                  </button>
+                </div>
+                {consumeError && <p className="rounded-2xl bg-red-500/10 px-4 py-2.5 text-sm text-red-500">{consumeError}</p>}
+              </div>
             )}
 
-            {/* Instructions — numbered steps */}
-            {steps.length > 0 && (
-              <section>
-                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
-                  {t('recipes.detail.instructions')}
-                </h3>
-                <ol className="space-y-3">
-                  {steps.map((step, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-orange/20 text-xs font-semibold text-brand-orange mt-0.5">
-                        {i + 1}
-                      </span>
-                      <p className="text-white/80 leading-relaxed pt-0.5">{trSteps[i] ?? step}</p>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            )}
-
-            {/* Nutrition info */}
-            {(recipe.calories != null || recipe.protein_g != null) ? (
-              <section>
-                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Activity className="h-4 w-4" />
-                  {t('recipes.detail.nutrition')}
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {[
-                    { label: t('recipes.detail.nutrients.calories'), value: recipe.calories, unit: 'kcal' },
-                    { label: t('recipes.detail.nutrients.protein'),  value: recipe.protein_g, unit: 'g' },
-                    { label: t('recipes.detail.nutrients.carbs'),    value: recipe.carbs_g,   unit: 'g' },
-                    { label: t('recipes.detail.nutrients.fat'),      value: recipe.fat_g,     unit: 'g' },
-                    { label: t('recipes.detail.nutrients.fiber'),    value: recipe.fiber_g,   unit: 'g' },
-                    { label: t('recipes.detail.nutrients.sodium'),   value: recipe.sodium_mg, unit: 'mg' },
-                  ].map(({ label, value, unit }) => value != null && (
-                    <div key={label} className="glass rounded-xl py-2.5 px-2">
-                      <div className="text-sm font-semibold text-white">{value % 1 === 0 ? value : value.toFixed(1)}<span className="text-xs text-white/40 ml-0.5">{unit}</span></div>
-                      <div className="text-[10px] text-white/50 mt-0.5">{label}</div>
+            <div className="flex flex-col gap-3 sm:gap-4">
+              {steps.length > 0 && (
+                <div className="flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-medium">{t('recipes.detail.instructions')}</h2>
+                      <p className="text-xs text-white/50">{t('recipes.v3.stepsDone', { done: doneSteps.size, total: steps.length })}</p>
                     </div>
-                  ))}
+                    <div className="h-1.5 w-28 overflow-hidden rounded-full bg-bg-input">
+                      <div className="h-full rounded-full bg-ink transition-all" style={{ width: `${(doneSteps.size / steps.length) * 100}%` }} />
+                    </div>
+                  </div>
+                  <ol className="flex flex-col gap-2">
+                    {steps.map((step, i) => {
+                      const done = doneSteps.has(i)
+                      return (
+                        <li key={i}>
+                          <button type="button" onClick={() => setDoneSteps((s) => toggleIn(s, i))}
+                            className={`flex w-full gap-4 rounded-2xl p-4 text-left transition ${done ? 'bg-bg-input/60' : 'bg-bg-input hover:bg-white/[0.07]'}`}>
+                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-semibold tabular-nums ${done ? 'bg-ink text-lime' : 'bg-bg-card shadow-card'}`}>
+                              {done ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}
+                            </span>
+                            <p className={`pt-2 text-[15px] leading-relaxed sm:text-base ${done ? 'text-white/40' : 'text-white/85'}`}>{trSteps[i] ?? step}</p>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ol>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void handleAnalyzeNutrition()}
-                  disabled={nutritionLoading}
-                  className="mt-2 flex items-center gap-1.5 text-xs text-white/40 hover:text-brand-orange transition disabled:opacity-50"
-                >
-                  {nutritionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                  {t('recipes.detail.reanalyzeNutrition')}
-                </button>
-                {nutritionError && <p className="mt-1 text-xs text-red-400">{nutritionError}</p>}
-              </section>
-            ) : (
-              <section>
-                <button
-                  type="button"
-                  onClick={() => void handleAnalyzeNutrition()}
-                  disabled={nutritionLoading}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-glass-border py-3 text-sm text-white/40 hover:text-brand-orange hover:border-brand-orange/40 transition disabled:opacity-50"
-                >
-                  {nutritionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  {t('recipes.detail.analyzeNutrition')}
-                </button>
-                {nutritionError && <p className="mt-1 text-xs text-red-400 text-center">{nutritionError}</p>}
-              </section>
-            )}
-
-            {/* Recipe variations */}
-            {variations.length > 0 && (
-              <section>
-                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <GitBranch className="h-4 w-4" />
-                  {t('recipes.detail.variations')}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {variations.map((v) => (
-                    <span key={v.id} className="inline-flex items-center gap-1.5 rounded-lg border border-glass-border px-3 py-1.5 text-sm text-white/70">
-                      <GitBranch className="h-3.5 w-3.5 text-white/30" />
-                      {v.title}
-                      {v.variation_label && <span className="text-xs text-brand-orange ml-1">({v.variation_label})</span>}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Comments */}
-            <section>
-              <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                {t('recipes.detail.comments')}
-                {comments.length > 0 && <span className="text-xs font-normal text-white/30">({comments.length})</span>}
-              </h3>
-              {comments.length > 0 && (
-                <ul className="space-y-3 mb-3">
-                  {comments.map((c) => (
-                    <li key={c.id} className="glass rounded-xl px-4 py-3 flex items-start gap-3">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange/20 text-xs font-semibold text-brand-orange">
-                        {(c.author_name ?? '?').charAt(0).toUpperCase()}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-xs font-medium text-white/70">{c.author_name ?? t('common.unknown')}</span>
-                          <span className="text-[10px] text-white/30">{new Date(c.created_at).toLocaleDateString()}</span>
-                        </div>
-                        <p className="text-sm text-white/80 mt-1 leading-relaxed">{c.content}</p>
-                      </div>
-                      {c.author_id === myProfile?.id && (
-                        <button
-                          type="button"
-                          onClick={() => void deleteComment(c.id)}
-                          className="shrink-0 rounded-lg p-1 text-white/20 hover:text-red-400 hover:bg-red-500/10 transition"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
               )}
-              <form onSubmit={(e) => void handleAddComment(e)} className="flex gap-2">
-                <input
-                  value={commentDraft}
-                  onChange={(e) => setCommentDraft(e.target.value)}
-                  placeholder={t('recipes.detail.addComment')}
-                  className="flex-1 rounded-xl border border-glass-border bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:ring-1 focus:ring-brand-orange"
-                />
-                <button
-                  type="submit"
-                  disabled={submittingComment || !commentDraft.trim()}
-                  className="rounded-xl bg-brand-orange/20 border border-brand-orange/40 px-3 py-2 text-sm font-medium text-brand-orange hover:bg-brand-orange/30 transition disabled:opacity-40"
-                >
-                  {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.send')}
-                </button>
-              </form>
-            </section>
 
-            {consumeError && (
-              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                {consumeError}
-              </p>
+              {/* Nutrition */}
+              <div className="flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="flex items-center gap-2 text-lg font-medium"><Activity className="h-4 w-4 text-white/50" />{t('recipes.detail.nutrition')}</h2>
+                  <button type="button" onClick={() => void handleAnalyzeNutrition()} disabled={nutritionLoading}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-violet-500/10 px-3.5 text-sm font-medium text-violet-500 hover:bg-violet-500/15 disabled:opacity-50">
+                    {nutritionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {nutrients.length > 0 ? t('recipes.detail.reanalyzeNutrition') : t('recipes.detail.analyzeNutrition')}
+                  </button>
+                </div>
+                {nutrients.length > 0 ? (
+                  <>
+                    {macroTotal > 0 && (
+                      <div className="flex h-2.5 overflow-hidden rounded-full bg-bg-input">
+                        <span className="bg-ink" style={{ width: `${((recipe.protein_g ?? 0) / macroTotal) * 100}%` }} />
+                        <span className="bg-lime" style={{ width: `${((recipe.carbs_g ?? 0) / macroTotal) * 100}%` }} />
+                        <span className="bg-amber-400" style={{ width: `${((recipe.fat_g ?? 0) / macroTotal) * 100}%` }} />
+                      </div>
+                    )}
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                      {nutrients.map(({ label, value, unit }) => (
+                        <div key={label} className="rounded-2xl bg-bg-input px-3 py-3">
+                          <div className="text-xl font-medium tabular-nums">{value % 1 === 0 ? value : value.toFixed(1)}<span className="ml-0.5 text-xs text-white/45">{unit}</span></div>
+                          <div className="mt-0.5 text-[11px] text-white/55">{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-white/50">{t('recipes.v3.noNutrition')}</p>
+                )}
+                {nutritionError && <p className="text-sm text-red-500">{nutritionError}</p>}
+              </div>
+
+              <div className={`grid gap-3 sm:gap-4 ${variations.length > 0 ? 'xl:grid-cols-[1fr_1.4fr]' : ''}`}>
+                {variations.length > 0 && (
+                  <div className="flex flex-col gap-3 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6">
+                    <h2 className="flex items-center gap-2 text-lg font-medium"><GitBranch className="h-4 w-4 text-white/50" />{t('recipes.detail.variations')}</h2>
+                    <ul className="flex flex-col gap-1.5">
+                      {variations.map((v) => (
+                        <li key={v.id} className="flex items-center justify-between gap-3 rounded-2xl bg-bg-input px-4 py-3 text-sm">
+                          <span className="truncate font-medium">{v.title}</span>
+                          {v.variation_label && <span className="shrink-0 rounded-full bg-lime px-2.5 py-0.5 text-[11px] font-semibold text-ink">{v.variation_label}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Team notes */}
+                <div className="flex flex-col gap-3 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6">
+                  <h2 className="flex items-center gap-2 text-lg font-medium">
+                    <MessageSquare className="h-4 w-4 text-white/50" />{t('recipes.detail.comments')}
+                    {comments.length > 0 && <span className="text-sm font-normal text-white/40">{comments.length}</span>}
+                  </h2>
+                  {comments.length > 0 && (
+                    <ul className="flex flex-col gap-3">
+                      {comments.map((c) => (
+                        <li key={c.id} className="group flex items-start gap-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-lime">
+                            {(c.author_name ?? '?').charAt(0).toUpperCase()}
+                          </span>
+                          <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md bg-bg-input px-4 py-2.5">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-xs font-medium">{c.author_name ?? t('common.unknown')}</span>
+                              <span className="text-[11px] text-white/40">{new Date(c.created_at).toLocaleDateString()}</span>
+                              {c.author_id === myProfile?.id && (
+                                <button type="button" onClick={() => void deleteComment(c.id)} aria-label="Delete"
+                                  className="ml-auto text-white/30 opacity-0 transition hover:text-red-500 group-hover:opacity-100">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-sm leading-relaxed text-white/80">{c.content}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <form onSubmit={(e) => void handleAddComment(e)} className="flex items-center gap-2 rounded-full bg-bg-input p-1 pl-4">
+                    <input value={commentDraft} onChange={(e) => setCommentDraft(e.target.value)}
+                      placeholder={t('recipes.detail.addComment')}
+                      className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/35" />
+                    <button type="submit" disabled={submittingComment || !commentDraft.trim()} aria-label={t('common.send')}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-lime disabled:opacity-30">
+                      {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Mobile action dock */}
+        <div className="fixed inset-x-3 bottom-3 z-20 flex gap-2 rounded-full bg-bg-card p-1.5 shadow-[0_12px_40px_-12px_rgba(15,18,16,0.35)] sm:hidden">
+          <button type="button" onClick={() => { onClose(); onEdit(recipe) }}
+            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-bg-input text-sm font-medium">
+            <Pencil className="h-4 w-4" />{t('common.edit')}
+          </button>
+          {steps.length > 0 && (
+            <button type="button" onClick={() => setHandsFree(true)}
+              className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-lime text-sm font-medium text-ink">
+              <Play className="h-4 w-4" />{t('recipes.v3.cookMode')}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Send-to-member sheet */}
+      {showMemberPicker && (
+        <div className="fixed inset-0 z-[55] flex items-end justify-center bg-ink/40 p-3 backdrop-blur-sm sm:items-center"
+          onClick={() => setShowMemberPicker(false)}>
+          <div ref={pickerRef} onClick={(e) => e.stopPropagation()}
+            className="flex w-full max-w-sm flex-col gap-2 rounded-[2rem] bg-bg-card p-3 shadow-card">
+            <div className="flex items-center justify-between px-3 pt-2">
+              <h2 className="text-lg font-medium">{t('recipes.detail.sendToMemberTitle')}</h2>
+              <button type="button" onClick={() => setShowMemberPicker(false)} aria-label="Close"
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/[0.05]"><X className="h-4 w-4" /></button>
+            </div>
+            {otherMembers.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-white/50">{t('recipes.detail.noOtherMembers')}</p>
+            ) : (
+              <ul className="flex max-h-72 flex-col overflow-y-auto">
+                {otherMembers.map((m) => (
+                  <li key={m.id}>
+                    <button type="button" onClick={() => void handleSendToMember(m)}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm hover:bg-white/[0.05]">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-lime">
+                        {(m.full_name ?? '?').charAt(0).toUpperCase()}
+                      </span>
+                      <span className="flex-1 truncate font-medium">{m.full_name ?? t('common.unnamed')}</span>
+                      <span className="shrink-0 text-xs text-white/45">{m.role}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-        )}
-      </Drawer>
-    </>
+        </div>
+      )}
+    </>,
+    document.body,
   )
 }

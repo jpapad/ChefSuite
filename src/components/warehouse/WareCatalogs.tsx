@@ -101,7 +101,7 @@ export function WareCatalogs() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-white hover:bg-brand-orange/90 transition"
+          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-on-accent hover:bg-brand-orange/90 transition"
         >
           <Plus className="h-4 w-4" /> Νέος
         </button>
@@ -181,7 +181,7 @@ export function WareCatalogs() {
                 'flex-1 rounded-xl py-2.5 text-sm font-semibold transition',
                 uploading || !file || !catalogName.trim()
                   ? 'bg-white/10 text-white/30 cursor-not-allowed'
-                  : 'bg-brand-orange text-white hover:bg-brand-orange/90',
+                  : 'bg-brand-orange text-on-accent hover:bg-brand-orange/90',
               )}
             >
               {uploading ? 'Μεταφόρτωση…' : 'Αποθήκευση'}

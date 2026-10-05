@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2, ChevronDown, ChevronUp, FileSearch, BarChart2 } from 'lucide-react'
+import { Plus, UtensilsCrossed, BookOpen, ChefHat, CalendarDays, Pencil, Trash2, ExternalLink, ToggleLeft, ToggleRight, Copy, LayoutTemplate, Sparkles, Sun, QrCode, Globe, CheckCircle2, FileSearch, BarChart2 } from 'lucide-react'
 import { translateMenuItems } from '../lib/gemini'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import QRCodeLib from 'qrcode'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, ActionMenu, StatRow, StatTile, Panel, EmptyState } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -18,17 +18,17 @@ import { cn } from '../lib/cn'
 import type { Menu, MenuType, PrintTemplate } from '../types/database.types'
 
 const TYPE_ICONS: Record<MenuType, React.ReactNode> = {
-  a_la_carte: <UtensilsCrossed className="h-5 w-5" />,
-  buffet:     <BookOpen className="h-5 w-5" />,
-  tasting:    <ChefHat className="h-5 w-5" />,
-  daily:      <CalendarDays className="h-5 w-5" />,
+  a_la_carte: <UtensilsCrossed className="h-4 w-4" />,
+  buffet:     <BookOpen className="h-4 w-4" />,
+  tasting:    <ChefHat className="h-4 w-4" />,
+  daily:      <CalendarDays className="h-4 w-4" />,
 }
 
 const TYPE_COLORS: Record<MenuType, string> = {
-  a_la_carte: 'bg-brand-orange/15 text-brand-orange',
-  buffet:     'bg-blue-400/15 text-blue-400',
-  tasting:    'bg-rose-400/15 text-rose-400',
-  daily:      'bg-emerald-400/15 text-emerald-400',
+  a_la_carte: 'bg-white/[0.06] text-white',
+  buffet:     'bg-sky-500/10 text-sky-500',
+  tasting:    'bg-violet-500/10 text-violet-500',
+  daily:      'bg-emerald-500/10 text-emerald-500',
 }
 
 interface MenuFormValues {
@@ -75,7 +75,6 @@ export default function Menus() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const [dailyMenuId, setDailyMenuId] = useState<string | null>(null)
   const [weeklySchedule, setWeeklySchedule] = useState<Record<number, string>>({})
-  const [weeklyOpen, setWeeklyOpen] = useState(false)
   const [todayQr, setTodayQr] = useState<{ url: string; dataUrl: string } | null>(null)
   const [todayQrOpen, setTodayQrOpen] = useState(false)
   const [scanAnalyticsOpen, setScanAnalyticsOpen] = useState(false)
@@ -259,263 +258,175 @@ export default function Menus() {
     return t(`menus.types.${type}`)
   }
 
+  const DAYS = t('menus.v2.days', { returnObjects: true }) as string[]
+  const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay()
+  const todayMenuId = weeklySchedule[todayDow] ?? dailyMenuId
+  const todayMenu = menus.find((m) => m.id === todayMenuId)
+  const activeCount = menus.filter((m) => m.active).length
+  const expiredCount = menus.filter((m) => isExpired(m.valid_to)).length
+  const iconBtn = 'flex h-9 w-9 items-center justify-center rounded-full text-white/55 hover:bg-white/[0.06] hover:text-white transition disabled:opacity-40'
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('menus.title')}</h1>
-          <p className="text-white/60 mt-1">{t('menus.subtitle')}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" leftIcon={<BarChart2 className="h-4 w-4" />} onClick={() => setScanAnalyticsOpen(true)}>
-            Scans
-          </Button>
-          {dailyMenuId && (
-            <Button variant="secondary" leftIcon={<QrCode className="h-4 w-4" />} onClick={openTodayQr}>
-              QR Μενού Ημέρας
-            </Button>
-          )}
-          <Button variant="secondary" leftIcon={<FileSearch className="h-4 w-4" />} onClick={() => setPdfImportOpen(true)}>
-            {t('menuPdf.buttonLabel')}
-          </Button>
-          <Button variant="secondary" leftIcon={<Sparkles className="h-4 w-4" />} onClick={() => setAiGeneratorOpen(true)}>
-            {t('menus.aiGenerator.button')}
-          </Button>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-            {t('menus.newMenu')}
-          </Button>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        title={t('menus.title')}
+        subtitle={t('menus.subtitle')}
+        actions={
+          <>
+            <ActionMenu
+              label={t('menus.v2.more')}
+              actions={[
+                { label: t('menus.v2.scans'), hint: t('menus.v2.scansHint'), icon: BarChart2, onClick: () => setScanAnalyticsOpen(true) },
+                { label: t('menus.v2.todayQr'), hint: t('menus.v2.todayQrHint'), icon: QrCode, onClick: () => void openTodayQr(), hidden: !dailyMenuId },
+                { label: t('menuPdf.buttonLabel'), icon: FileSearch, onClick: () => setPdfImportOpen(true) },
+              ]}
+            />
+            <PillButton icon={Sparkles} variant="ai" onClick={() => setAiGeneratorOpen(true)}>{t('menus.aiGenerator.button')}</PillButton>
+            <PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('menus.newMenu')}</PillButton>
+          </>
+        }
+      />
 
-      {/* ── Weekly schedule ─────────────────────────────────────────────────── */}
-      {!loading && menus.length > 0 && (() => {
-        const DAYS = ['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή']
-        const todayDow = new Date().getDay() === 0 ? 7 : new Date().getDay()
-        const hasSchedule = Object.keys(weeklySchedule).length > 0
-        return (
-          <GlassCard className="space-y-3">
-            <button onClick={() => setWeeklyOpen(v => !v)}
-              className="w-full flex items-center justify-between gap-2 text-left">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-brand-orange" />
-                <span className="font-semibold text-sm">Πρόγραμμα Εβδομάδας</span>
-                {hasSchedule && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold">
-                    Ενεργό
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {!weeklyOpen && hasSchedule && (
-                  <span className="text-xs text-white/40">
-                    {weeklySchedule[todayDow]
-                      ? menus.find(m => m.id === weeklySchedule[todayDow])?.name ?? '—'
-                      : '— σήμερα χωρίς πρόγραμμα'}
-                  </span>
-                )}
-                {weeklyOpen
-                  ? <ChevronUp className="h-4 w-4 text-white/40" />
-                  : <ChevronDown className="h-4 w-4 text-white/40" />}
-              </div>
-            </button>
+      {!loading && menus.length > 0 && (
+        <StatRow>
+          <StatTile tone="ink" label={t('menus.v2.today')} value={todayMenu?.name ?? '—'} hint={DAYS[todayDow - 1]} className="[&>span:nth-child(2)]:text-2xl [&>span:nth-child(2)]:truncate" />
+          <StatTile label={t('menus.v2.activeMenus')} value={activeCount} hint={t('menus.v2.ofTotal', { total: menus.length })} />
+          <StatTile label={t('menus.v2.scheduledDays')} value={`${Object.keys(weeklySchedule).length}/7`} hint={t('menus.v2.scheduledHint')} />
+          <StatTile label={t('menus.expired')} value={expiredCount} tone={expiredCount ? 'warn' : 'default'} hint={t('menus.v2.expiredHint')} />
+        </StatRow>
+      )}
 
-            {weeklyOpen && (
-              <div className="space-y-2 pt-1 border-t border-white/8">
-                <p className="text-xs text-white/40">
-                  Επίλεξε ποιο μενού ισχύει κάθε μέρα. Αλλάζει αυτόματα στο QR και σε όλες τις λειτουργίες.
-                </p>
-                <div className="grid gap-2">
-                  {DAYS.map((day, i) => {
-                    const dow = i + 1
-                    const isToday = dow === todayDow
-                    const selectedId = weeklySchedule[dow] ?? ''
-                    return (
-                      <div key={dow} className={cn(
-                        'flex items-center gap-3 rounded-xl px-3 py-2',
-                        isToday ? 'bg-brand-orange/10 border border-brand-orange/25' : 'bg-white/3',
-                      )}>
-                        <span className={cn(
-                          'text-sm font-medium w-24 shrink-0',
-                          isToday ? 'text-brand-orange' : 'text-white/60',
-                        )}>
-                          {isToday ? `${day} ←` : day}
-                        </span>
-                        <select
-                          value={selectedId}
-                          onChange={(e) => void setWeeklyDay(dow, e.target.value || null)}
-                          className="flex-1 rounded-lg px-2.5 py-1.5 text-sm bg-white/5 border border-white/10 text-white focus:outline-none focus:border-brand-orange/60 appearance-none"
-                        >
-                          <option value="">— καμία αυτόματη επιλογή —</option>
-                          {menus.filter(m => m.active).map(m => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
-                        </select>
-                        {selectedId && (
-                          <button onClick={() => void setWeeklyDay(dow, null)}
-                            className="shrink-0 text-white/25 hover:text-red-400 transition text-xs px-1">
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
+      {/* ── Weekly schedule: the active menu switches automatically every day ── */}
+      {!loading && menus.length > 0 && (
+        <Panel title={t('menus.v2.week')} actions={<span className="text-xs text-white/50">{t('menus.v2.weekHint')}</span>}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            {DAYS.map((day, i) => {
+              const dow = i + 1
+              const isToday = dow === todayDow
+              const selectedId = weeklySchedule[dow] ?? ''
+              return (
+                <div key={dow} className={cn('flex flex-col gap-2 rounded-2xl p-3', isToday ? 'bg-ink text-white-fixed' : 'bg-white/[0.04]')}>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={cn('text-xs font-medium', isToday ? 'text-lime' : 'text-white/55')}>{day}</span>
+                    {selectedId && (
+                      <button
+                        type="button"
+                        aria-label={t('common.delete')}
+                        onClick={() => void setWeeklyDay(dow, null)}
+                        className={cn('text-xs', isToday ? 'text-white-fixed/50 hover:text-white-fixed' : 'text-white/35 hover:text-red-500')}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={selectedId}
+                    onChange={(e) => void setWeeklyDay(dow, e.target.value || null)}
+                    aria-label={day}
+                    className={cn(
+                      'w-full truncate rounded-xl px-2 py-2 text-sm font-medium appearance-none focus:outline-none',
+                      isToday ? 'bg-white-fixed/10 text-white-fixed' : 'bg-bg-card text-white',
+                    )}
+                  >
+                    <option value="">{t('menus.v2.none')}</option>
+                    {menus.filter((m) => m.active).map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-            )}
-          </GlassCard>
-        )
-      })()}
+              )
+            })}
+          </div>
+        </Panel>
+      )}
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : menus.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <UtensilsCrossed className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('menus.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('menus.empty.description')}</p>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-            {t('menus.empty.cta')}
-          </Button>
-        </GlassCard>
+        <EmptyState
+          icon={UtensilsCrossed}
+          title={t('menus.empty.title')}
+          body={t('menus.empty.description')}
+          action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('menus.empty.cta')}</PillButton>}
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {menus.map((menu) => {
             const expired = isExpired(menu.valid_to)
+            const isDaily = dailyMenuId === menu.id
             return (
-              <GlassCard key={menu.id} className={cn('flex flex-col gap-3', !menu.active && 'opacity-60')}>
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', TYPE_COLORS[menu.type])}>
-                      {TYPE_ICONS[menu.type]}
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="font-semibold truncate">{menu.name}</h2>
-                      <span className="text-xs text-white/50">{typeLabel(menu.type)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(menu)}
-                      aria-label={menu.active ? t('menus.deactivate') : t('menus.activate')}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition"
-                    >
-                      {menu.active
-                        ? <ToggleRight className="h-5 w-5 text-emerald-400" />
-                        : <ToggleLeft className="h-5 w-5" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEdit(menu)}
-                      aria-label={t('common.edit')}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDuplicate(menu)}
-                      disabled={duplicatingId === menu.id}
-                      aria-label={t('menus.duplicate')}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition disabled:opacity-40"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(menu)}
-                      aria-label={t('common.delete')}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+              <article key={menu.id} className={cn('flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card', !menu.active && 'opacity-60')}>
+                <div className="flex items-start justify-between gap-3">
+                  <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium', TYPE_COLORS[menu.type])}>
+                    {TYPE_ICONS[menu.type]}{typeLabel(menu.type)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleActive(menu)}
+                    aria-label={menu.active ? t('menus.deactivate') : t('menus.activate')}
+                    className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition', menu.active ? 'bg-emerald-500/12 text-emerald-500' : 'bg-white/[0.06] text-white/50')}
+                  >
+                    {menu.active ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                    {menu.active ? t('menus.active') : t('menus.inactive')}
+                  </button>
                 </div>
 
-                {/* Description */}
-                {menu.description && (
-                  <p className="text-sm text-white/60 line-clamp-2">{menu.description}</p>
-                )}
+                <div className="min-w-0">
+                  <h2 className="text-xl font-medium tracking-[-0.02em] truncate">{menu.name}</h2>
+                  {menu.description && <p className="mt-1 text-sm text-white/55 line-clamp-2">{menu.description}</p>}
+                </div>
 
-                {/* Buffet/tasting price */}
-                {(menu.type === 'buffet' || menu.type === 'tasting') && menu.price_per_person != null && (
-                  <div className="text-sm text-white/60">
-                    {t('menus.pricePerPerson')}: <span className="text-white font-medium">€{menu.price_per_person.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {/* Badges row */}
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  {dailyMenuId === menu.id && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold bg-amber-400/20 text-amber-300">
-                      <Sun className="h-3 w-3" /> Μενού Ημέρας
+                  {(menu.type === 'buffet' || menu.type === 'tasting') && menu.price_per_person != null && (
+                    <span className="rounded-full bg-white/[0.06] px-2.5 py-1 font-medium tabular-nums">
+                      €{menu.price_per_person.toFixed(2)} / {t('menus.v2.person')}
                     </span>
                   )}
-                  <span className={cn(
-                    'inline-flex items-center px-2 py-0.5 rounded-full font-medium',
-                    menu.active ? 'bg-emerald-400/15 text-emerald-400' : 'bg-white/10 text-white/40',
-                  )}>
-                    {menu.active ? t('menus.active') : t('menus.inactive')}
-                  </span>
-                  {!menu.show_prices && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-amber-400/15 text-amber-400">
-                      {t('menus.pricesHidden')}
+                  {isDaily && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-lime px-2.5 py-1 font-medium text-ink">
+                      <Sun className="h-3 w-3" /> {t('menus.v2.dailyMenu')}
                     </span>
                   )}
-                  {expired && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-red-500/15 text-red-400">
-                      {t('menus.expired')}
-                    </span>
-                  )}
+                  {!menu.show_prices && <span className="rounded-full bg-amber-500/12 px-2.5 py-1 font-medium text-amber-500">{t('menus.pricesHidden')}</span>}
+                  {expired && <span className="rounded-full bg-red-500/10 px-2.5 py-1 font-medium text-red-500">{t('menus.expired')}</span>}
                   {menu.valid_from && menu.valid_to && !expired && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-white/10 text-white/50">
-                      {t('menus.validRange', { from: formatDate(menu.valid_from), to: formatDate(menu.valid_to) })}
-                    </span>
+                    <span className="rounded-full bg-white/[0.06] px-2.5 py-1 font-medium text-white/60">{t('menus.validRange', { from: formatDate(menu.valid_from), to: formatDate(menu.valid_to) })}</span>
                   )}
                   {menu.valid_to && !menu.valid_from && !expired && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-white/10 text-white/50">
-                      {t('menus.validTo_short', { date: formatDate(menu.valid_to) })}
-                    </span>
+                    <span className="rounded-full bg-white/[0.06] px-2.5 py-1 font-medium text-white/60">{t('menus.validTo_short', { date: formatDate(menu.valid_to) })}</span>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 mt-1">
+                <div className="mt-auto flex items-center gap-1 pt-1">
                   <Link
                     to={`/menus/${menu.id}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-white/5 border border-glass-border px-3 py-2 text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition"
+                    className="mr-auto inline-flex h-10 items-center gap-2 rounded-full bg-brand-orange px-4 text-sm font-medium text-on-accent hover:bg-brand-orange/85"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
                     {t('menus.editMenu')}
                   </Link>
                   <button
                     type="button"
-                    onClick={() => setDailyMenu(dailyMenuId === menu.id ? null : menu.id)}
-                    title={dailyMenuId === menu.id ? 'Αφαίρεση ως μενού ημέρας' : 'Ορισμός ως μενού ημέρας'}
-                    className={cn(
-                      'flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition',
-                      dailyMenuId === menu.id
-                        ? 'bg-amber-400/15 border-amber-400/40 text-amber-300 hover:bg-amber-400/25'
-                        : 'bg-white/5 border-glass-border text-white/70 hover:text-amber-300 hover:border-amber-400/40 hover:bg-amber-400/10',
-                    )}
+                    onClick={() => setDailyMenu(isDaily ? null : menu.id)}
+                    title={t(isDaily ? 'menus.v2.unsetDaily' : 'menus.v2.setDaily')}
+                    aria-label={t(isDaily ? 'menus.v2.unsetDaily' : 'menus.v2.setDaily')}
+                    className={cn(iconBtn, isDaily && 'bg-lime text-ink hover:bg-lime hover:text-ink')}
                   >
-                    <Sun className="h-3.5 w-3.5" />
+                    <Sun className="h-4 w-4" />
                   </button>
-                  <a
-                    href={`/menu/${menu.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-white/5 border border-glass-border px-3 py-2 text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition"
-                    title={t('menus.publicView')}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
+                  <a href={`/menu/${menu.id}`} target="_blank" rel="noopener noreferrer" title={t('menus.publicView')} aria-label={t('menus.publicView')} className={iconBtn}>
+                    <ExternalLink className="h-4 w-4" />
                   </a>
+                  <button type="button" onClick={() => openEdit(menu)} title={t('common.edit')} aria-label={t('common.edit')} className={iconBtn}>
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => onDuplicate(menu)} disabled={duplicatingId === menu.id} title={t('menus.duplicate')} aria-label={t('menus.duplicate')} className={iconBtn}>
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => onDelete(menu)} title={t('common.delete')} aria-label={t('common.delete')} className={cn(iconBtn, 'hover:text-red-500')}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-              </GlassCard>
+              </article>
             )
           })}
         </div>
@@ -549,7 +460,7 @@ export default function Menus() {
                   className={cn(
                     'flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition',
                     form.type === type
-                      ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                      ? 'bg-brand-orange border-brand-orange text-on-accent'
                       : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5',
                   )}
                 >
@@ -597,7 +508,7 @@ export default function Menus() {
                   className={cn(
                     'rounded-xl border px-3 py-2 text-sm font-medium capitalize transition',
                     form.print_template === tmpl
-                      ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                      ? 'bg-brand-orange border-brand-orange text-on-accent'
                       : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5',
                   )}>
                   {t(`menus.print.${tmpl}`)}
@@ -767,6 +678,6 @@ export default function Menus() {
       >
         <MenuScanAnalytics currentMenuName={menus.find(m => m.id === dailyMenuId)?.name ?? null} />
       </Drawer>
-    </div>
+    </Page>
   )
 }

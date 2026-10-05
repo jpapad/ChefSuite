@@ -175,7 +175,7 @@ export function AIMenuGeneratorDrawer({ open, onClose, onCreated }: AIMenuGenera
                 className="flex-1 bg-transparent outline-none text-sm text-white"
               >
                 {MENU_TYPES.map((t) => (
-                  <option key={t} value={t} className="bg-[#1a1208]">{t.replace('_', ' ')}</option>
+                  <option key={t} value={t} className="bg-bg-card">{t.replace('_', ' ')}</option>
                 ))}
               </select>
             </div>

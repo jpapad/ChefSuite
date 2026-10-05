@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Users, Clock, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp,
+  Users, Clock, TrendingUp, AlertTriangle, CheckCircle2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, Segmented, StatRow, StatTile, Panel, EmptyState } from '../components/ui/page'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
@@ -232,207 +232,128 @@ export default function StaffPerformance() {
     { key: 'mtd', label: t('staffPerf.periodMtd') },
   ]
 
-  return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('staffPerf.title')}</h1>
-          <p className="text-white/60 mt-1">{t('staffPerf.subtitle')}</p>
-        </div>
-        <div className="flex gap-1">
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPeriod(p.key)}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-sm font-medium transition',
-                period === p.key
-                  ? 'bg-brand-orange text-white-fixed'
-                  : 'text-white/60 hover:text-white hover:bg-white/5',
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </header>
+  const sel = members.find((m) => m.id === expanded) ?? members[0]
+  const pctTone = (v: number | null) => v == null ? 'text-white/40' : v === 100 ? 'text-emerald-500' : v >= 80 ? 'text-amber-500' : 'text-red-500'
+  const rateOf = (a: number, b: number) => (a + b > 0 ? Math.round((a / (a + b)) * 100) : null)
 
-      {/* Team summary */}
+  return (
+    <Page>
+      <PageHeader
+        title={t('staffPerf.title')}
+        subtitle={t('staffPerf.subtitle')}
+        actions={<Segmented value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: p.label }))} />}
+      />
+
       {!loading && members.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            {
-              label: t('staffPerf.totalHours'),
-              value: fmtHours(totalHours),
-              icon: Clock,
-              color: 'text-brand-orange',
-              bg: 'bg-brand-orange/15',
-            },
-            {
-              label: t('staffPerf.lateArrivals'),
-              value: String(totalLate),
-              icon: AlertTriangle,
-              color: totalLate > 0 ? 'text-amber-400' : 'text-emerald-400',
-              bg: totalLate > 0 ? 'bg-amber-400/15' : 'bg-emerald-400/15',
-            },
-            {
-              label: t('staffPerf.totalOvertime'),
-              value: fmtHours(totalOvertime),
-              icon: TrendingUp,
-              color: totalOvertime > 0 ? 'text-blue-400' : 'text-white/40',
-              bg: 'bg-blue-400/15',
-            },
-          ].map(({ label, value, icon: Icon, color, bg }) => (
-            <GlassCard key={label} className="flex items-start gap-4">
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${bg} ${color}`}>
-                <Icon className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="text-sm text-white/60">{label}</div>
-                <div className={cn('text-2xl font-semibold mt-0.5', color)}>{value}</div>
-              </div>
-            </GlassCard>
-          ))}
-        </div>
+        <StatRow>
+          <StatTile tone="ink" label={t('staffPerf.totalHours')} value={fmtHours(totalHours)} icon={Clock} />
+          <StatTile label={t('staffPerf.lateArrivals')} value={totalLate} tone={totalLate > 0 ? 'warn' : 'good'} icon={AlertTriangle} />
+          <StatTile label={t('staffPerf.totalOvertime')} value={fmtHours(totalOvertime)} tone={totalOvertime > 0 ? 'warn' : 'default'} icon={TrendingUp} />
+          <StatTile tone="lime" label={t('team.members')} value={members.length} icon={Users} />
+        </StatRow>
       )}
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : members.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <Users className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('staffPerf.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('staffPerf.empty.description')}</p>
-        </GlassCard>
+        <EmptyState icon={Users} title={t('staffPerf.empty.title')} body={t('staffPerf.empty.description')} />
       ) : (
-        <div className="space-y-3">
-          {members.map((m) => {
-            const isExp = expanded === m.id
-            const punctuality = m.onTimeCount + m.lateCount > 0
-              ? Math.round((m.onTimeCount / (m.onTimeCount + m.lateCount)) * 100)
-              : null
-            const attendanceRate = m.daysScheduled > 0
-              ? Math.round((m.daysWorked / m.daysScheduled) * 100)
-              : null
-
-            return (
-              <GlassCard key={m.id} className={cn(m.lateCount > 2 && 'border border-amber-500/20')}>
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-4"
-                  onClick={() => setExpanded(isExp ? null : m.id)}
-                >
-                  {/* Avatar / initial */}
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange text-sm font-bold">
-                    {m.name.charAt(0).toUpperCase()}
-                  </div>
-
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="font-semibold">{m.name}</div>
-                    <div className="text-xs text-white/40 mt-0.5 flex items-center gap-3 flex-wrap">
-                      <span>{fmtHours(m.workedMins)} {t('staffPerf.worked')}</span>
-                      {m.scheduledMins > 0 && <span>/ {fmtHours(m.scheduledMins)} {t('staffPerf.scheduled')}</span>}
-                      {m.overtimeMins > 0 && (
-                        <span className="text-blue-400">+{fmtHours(m.overtimeMins)} OT</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="hidden sm:flex items-center gap-6 shrink-0">
-                    {punctuality !== null && (
-                      <div className="text-center">
-                        <div className={cn('text-lg font-semibold',
-                          punctuality === 100 ? 'text-emerald-400'
-                            : punctuality >= 80 ? 'text-amber-400'
-                            : 'text-red-400',
-                        )}>
-                          {punctuality}%
-                        </div>
-                        <div className="text-xs text-white/40">{t('staffPerf.punctuality')}</div>
-                      </div>
-                    )}
-                    {attendanceRate !== null && (
-                      <div className="text-center">
-                        <div className={cn('text-lg font-semibold',
-                          attendanceRate === 100 ? 'text-emerald-400'
-                            : attendanceRate >= 80 ? 'text-amber-400'
-                            : 'text-red-400',
-                        )}>
-                          {attendanceRate}%
-                        </div>
-                        <div className="text-xs text-white/40">{t('staffPerf.attendance')}</div>
-                      </div>
-                    )}
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{m.daysWorked}</div>
-                      <div className="text-xs text-white/40">{t('staffPerf.days')}</div>
-                    </div>
-                  </div>
-
-                  {m.lateCount > 0 && (
-                    <span className="hidden sm:flex items-center gap-1 text-xs text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 shrink-0">
-                      <AlertTriangle className="h-3 w-3" />
-                      {m.lateCount}× {t('staffPerf.late')}
-                    </span>
-                  )}
-
-                  <div className="text-white/30 shrink-0">
-                    {isExp ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </button>
-
-                {isExp && (
-                  <div className="mt-4 pt-4 border-t border-glass-border">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 text-xs text-white/40 uppercase tracking-wide mb-2 px-1">
-                      <span>{t('staffPerf.date')}</span>
-                      <span>{t('staffPerf.clockIn')}</span>
-                      <span>{t('staffPerf.clockOut')}</span>
-                      <span>{t('staffPerf.hours')}</span>
-                      <span>{t('staffPerf.status')}</span>
-                    </div>
-                    <ul className="space-y-1">
-                      {[...m.dailyBreakdown].reverse().map((day) => {
-                        const late = day.lateBy !== null && day.lateBy !== -1 && day.lateBy > LATE_THRESHOLD_MINS
-                        const noShow = day.scheduledMins > 0 && day.workedMins === 0
-                        return (
-                          <li key={day.date} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-center text-sm px-1 py-1.5 rounded-lg hover:bg-white/3 transition">
-                            <span className="text-white/60">{new Date(day.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                            <span className="text-white/70">
-                              {day.clockIn ? new Date(day.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          {/* ── Ranking ── */}
+          <Panel padded={false}>
+            <div className="overflow-x-auto p-2">
+              <table className="w-full min-w-[620px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-white/50">
+                    <th className="px-3 py-3 font-medium">{t('staffPerf.v2.person')}</th>
+                    <th className="px-3 py-3 font-medium">{t('staffPerf.v2.hoursVsScheduled')}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t('staffPerf.punctuality')}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t('staffPerf.attendance')}</th>
+                    <th className="px-3 py-3 text-right font-medium">{t('staffPerf.late')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m) => {
+                    const punctuality = rateOf(m.onTimeCount, m.lateCount)
+                    const attendanceRate = m.daysScheduled > 0 ? Math.round((m.daysWorked / m.daysScheduled) * 100) : null
+                    const isSel = sel?.id === m.id
+                    const fill = m.scheduledMins > 0 ? Math.min((m.workedMins / m.scheduledMins) * 100, 100) : m.workedMins > 0 ? 100 : 0
+                    return (
+                      <tr key={m.id} onClick={() => setExpanded(m.id)} className={cn('cursor-pointer transition', isSel ? 'bg-ink text-white-fixed' : 'hover:bg-white/[0.03]')}>
+                        <td className="rounded-l-2xl px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className={cn('flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold', isSel ? 'bg-lime text-ink' : 'bg-white/[0.06]')}>{m.name.charAt(0).toUpperCase()}</span>
+                            <span className="font-medium">{m.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className={cn('h-2 w-28 overflow-hidden rounded-full', isSel ? 'bg-white-fixed/15' : 'bg-white/[0.08]')}>
+                              <div className={cn('h-2 rounded-full', isSel ? 'bg-lime' : 'bg-ink')} style={{ width: `${fill}%` }} />
+                            </div>
+                            <span className="text-xs tabular-nums opacity-70">
+                              {fmtHours(m.workedMins)}{m.scheduledMins > 0 && ` / ${fmtHours(m.scheduledMins)}`}
                             </span>
-                            <span className="text-white/70">
-                              {day.clockOut ? new Date(day.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
-                            </span>
-                            <span className="font-medium">{day.workedMins > 0 ? fmtHours(day.workedMins) : '—'}</span>
-                            <span>
-                              {noShow
-                                ? <span className="text-xs text-red-400">{t('staffPerf.noShow')}</span>
-                                : late
-                                ? <span className="text-xs text-amber-400">+{day.lateBy}m</span>
-                                : day.workedMins > 0
-                                ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                                : <span className="text-white/20">—</span>}
-                            </span>
-                          </li>
-                        )
-                      })}
-                    </ul>
+                            {m.overtimeMins > 0 && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-500">+{fmtHours(m.overtimeMins)}</span>}
+                          </div>
+                        </td>
+                        <td className={cn('px-3 py-3 text-right font-medium tabular-nums', !isSel && pctTone(punctuality))}>{punctuality != null ? `${punctuality}%` : '—'}</td>
+                        <td className={cn('px-3 py-3 text-right font-medium tabular-nums', !isSel && pctTone(attendanceRate))}>{attendanceRate != null ? `${attendanceRate}%` : '—'}</td>
+                        <td className="rounded-r-2xl px-3 py-3 text-right tabular-nums">{m.lateCount || '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
 
-                    <div className="flex items-center gap-6 mt-3 pt-3 border-t border-glass-border text-xs text-white/40">
-                      <span>{t('staffPerf.avgPerDay')}: <span className="text-white/70 font-medium">{fmtHours(m.avgDailyMins)}</span></span>
-                      {m.overtimeMins > 0 && <span>{t('staffPerf.overtime')}: <span className="text-blue-400 font-medium">{fmtHours(m.overtimeMins)}</span></span>}
-                    </div>
-                  </div>
-                )}
-              </GlassCard>
-            )
-          })}
+          {/* ── Detail ── */}
+          {sel && (
+            <Panel title={sel.name} className="xl:sticky xl:top-24">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-2xl bg-white/[0.04] p-3">
+                  <p className="text-xs text-white/50">{t('staffPerf.avgPerDay')}</p>
+                  <p className="font-medium tabular-nums">{fmtHours(sel.avgDailyMins)}</p>
+                </div>
+                <div className="rounded-2xl bg-white/[0.04] p-3">
+                  <p className="text-xs text-white/50">{t('staffPerf.days')}</p>
+                  <p className="font-medium tabular-nums">{sel.daysWorked}</p>
+                </div>
+                <div className="rounded-2xl bg-white/[0.04] p-3">
+                  <p className="text-xs text-white/50">{t('staffPerf.overtime')}</p>
+                  <p className="font-medium tabular-nums">{sel.overtimeMins > 0 ? fmtHours(sel.overtimeMins) : '—'}</p>
+                </div>
+              </div>
+              <ul className="max-h-[420px] divide-y divide-white/[0.06] overflow-y-auto">
+                {[...sel.dailyBreakdown].reverse().map((day) => {
+                  const late = day.lateBy !== null && day.lateBy !== -1 && day.lateBy > LATE_THRESHOLD_MINS
+                  const noShow = day.scheduledMins > 0 && day.workedMins === 0
+                  return (
+                    <li key={day.date} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5 text-sm">
+                      <span>
+                        <span className="block">{new Date(day.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                        <span className="block text-xs tabular-nums text-white/50">
+                          {day.clockIn ? new Date(day.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {' → '}
+                          {day.clockOut ? new Date(day.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </span>
+                      </span>
+                      <span className="font-medium tabular-nums">{day.workedMins > 0 ? fmtHours(day.workedMins) : '—'}</span>
+                      <span className="w-20 text-right">
+                        {noShow ? <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">{t('staffPerf.noShow')}</span>
+                          : late ? <span className="rounded-full bg-amber-500/12 px-2 py-0.5 text-xs font-medium text-amber-500 tabular-nums">+{day.lateBy}′</span>
+                          : day.workedMins > 0 ? <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-500" />
+                          : <span className="text-white/25">—</span>}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </Panel>
+          )}
         </div>
       )}
-    </div>
+    </Page>
   )
 }

@@ -35,7 +35,7 @@ function TimelineChart({ perDay }: { perDay: { date: string; count: number }[] }
                 width={barW}
                 height={h}
                 rx={3}
-                fill={date === todayKey ? 'rgba(249,115,22,0.85)' : 'rgba(255,255,255,0.14)'}
+                style={{ fill: date === todayKey ? 'rgba(249,115,22,0.85)' : 'rgb(var(--app-white) / 0.14)' }}
               />
               <title>{date}: {count} scans</title>
             </g>

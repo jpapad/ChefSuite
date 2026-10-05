@@ -18,7 +18,7 @@ export function TopBar() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   return (
-    <header className="glass border-b border-glass-border px-4 sm:px-6 py-3 sticky top-0 z-10">
+    <header className="bg-bg-surface/90 backdrop-blur px-4 sm:px-6 py-3 sticky top-0 z-10">
       {/* Mobile search overlay */}
       {mobileSearchOpen && (
         <div className="sm:hidden flex items-center gap-2 w-full">
@@ -30,8 +30,8 @@ export function TopBar() {
       {!mobileSearchOpen && (
         <div className="flex items-center gap-3">
           <div className="md:hidden flex items-center gap-2 shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange">
-              <Flame className="h-5 w-5 text-white-fixed" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lime">
+              <Flame className="h-5 w-5 text-ink" />
             </div>
             <span className="text-lg font-semibold">Chefsuite</span>
           </div>
@@ -55,7 +55,7 @@ export function TopBar() {
 
             <Link
               to="/profile"
-              className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange font-semibold hover:ring-2 hover:ring-brand-orange transition text-sm sm:text-base"
+              className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-bg-card shadow-card text-white font-semibold hover:ring-2 hover:ring-brand-orange transition text-sm sm:text-base"
               title={profile?.full_name ?? user?.email ?? ''}
             >
               {initialsFor(profile?.full_name, user?.email)}

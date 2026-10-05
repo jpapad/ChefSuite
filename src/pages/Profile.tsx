@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { UserCircle2, Mail, Shield, KeyRound, Save, Bell, BellOff, BellRing, Languages } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { useAuth } from '../contexts/AuthContext'
@@ -106,34 +107,21 @@ export default function Profile() {
   }
 
   return (
-    <div className="space-y-6 max-w-xl">
-      <header>
-        <h1 className="text-3xl font-semibold">{t('profile.title')}</h1>
-        <p className="text-white/60 mt-1">{t('profile.subtitle')}</p>
-      </header>
+    <Page className="max-w-3xl">
+      <PageHeader title={t('profile.title')} subtitle={t('profile.subtitle')} />
 
-      <GlassCard className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange text-2xl font-semibold shrink-0">
+      <section className="flex flex-wrap items-center gap-5 rounded-3xl bg-ink p-6 text-white-fixed">
+        <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-lime text-2xl font-semibold text-ink">
           {(profile?.full_name ?? user?.email ?? '?').slice(0, 2).toUpperCase()}
-        </div>
+        </span>
         <div className="min-w-0">
-          <div className="font-semibold text-lg truncate">
-            {profile?.full_name ?? '—'}
-          </div>
-          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
-            <span className="inline-flex items-center gap-1">
-              <Mail className="h-4 w-4" />
-              {user?.email}
-            </span>
-            {profile?.role && (
-              <span className="inline-flex items-center gap-1">
-                <Shield className="h-4 w-4" />
-                {roleLabel(profile.role)}
-              </span>
-            )}
+          <p className="truncate text-2xl font-medium tracking-[-0.02em]">{profile?.full_name ?? '—'}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white-fixed/10 px-3 py-1"><Mail className="h-4 w-4" />{user?.email}</span>
+            {profile?.role && <span className="inline-flex items-center gap-1.5 rounded-full bg-white-fixed/10 px-3 py-1"><Shield className="h-4 w-4" />{roleLabel(profile.role)}</span>}
           </div>
         </div>
-      </GlassCard>
+      </section>
 
       <GlassCard>
         <h2 className="text-lg font-semibold mb-4">{t('profile.displayName')}</h2>
@@ -340,6 +328,6 @@ export default function Profile() {
           </div>
         )}
       </GlassCard>
-    </div>
+    </Page>
   )
 }
