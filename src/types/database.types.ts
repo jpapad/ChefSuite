@@ -63,19 +63,37 @@ export interface Recipe {
   description_el: string | null
   name_bg: string | null
   description_bg: string | null
+  /** A base (stock, sauce, dough…) usable as a sub-recipe in other recipes */
+  is_base: boolean
+  /** For bases: the unit one "portion" stands for (L, kg…); null = portion */
+  yield_unit: string | null
   created_at: ISODateString
   updated_at: ISODateString
+}
+
+export interface RecipeSubRecipe {
+  id: UUID
+  team_id: UUID
+  recipe_id: UUID
+  sub_recipe_id: UUID
+  quantity: number
+  created_at: ISODateString
+}
+
+export interface RecipeSubRecipeDraft {
+  sub_recipe_id: UUID
+  quantity: number
 }
 
 export type RecipeInsert = Pick<
   Recipe,
   'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label'
-> & { team_id: UUID; calories?: number | null; protein_g?: number | null; carbs_g?: number | null; fat_g?: number | null; fiber_g?: number | null; sodium_mg?: number | null; name_el?: string | null; description_el?: string | null; name_bg?: string | null; description_bg?: string | null }
+> & { team_id: UUID; calories?: number | null; protein_g?: number | null; carbs_g?: number | null; fat_g?: number | null; fiber_g?: number | null; sodium_mg?: number | null; name_el?: string | null; description_el?: string | null; name_bg?: string | null; description_bg?: string | null; is_base?: boolean; yield_unit?: string | null }
 
 export type RecipeUpdate = Partial<
   Pick<
     Recipe,
-    'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fiber_g' | 'sodium_mg' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg'
+    'title' | 'description' | 'instructions' | 'cost_per_portion' | 'selling_price' | 'allergens' | 'category' | 'image_url' | 'prep_time' | 'cook_time' | 'servings' | 'difficulty' | 'parent_recipe_id' | 'variation_label' | 'calories' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fiber_g' | 'sodium_mg' | 'name_el' | 'description_el' | 'name_bg' | 'description_bg' | 'is_base' | 'yield_unit'
   >
 >
 
@@ -230,6 +248,8 @@ export interface InventoryItem {
   location_id: UUID | null
   supplier_id: UUID | null
   barcode: string | null
+  /** Target stock after a delivery (migration 0090); null → 2 × min_stock_level */
+  par_level?: number | null
   created_at: ISODateString
   updated_at: ISODateString
 }
@@ -244,13 +264,14 @@ export type InventoryInsert = Pick<
   yield_pct?: number | null
   category?: string | null
   subcategory?: string | null
+  par_level?: number | null
 }
 
 export type InventoryUpdate = Partial<
   Pick<
     InventoryItem,
     | 'name' | 'quantity' | 'unit' | 'min_stock_level' | 'cost_per_unit'
-    | 'location_id' | 'supplier_id' | 'yield_pct' | 'category' | 'subcategory'
+    | 'location_id' | 'supplier_id' | 'yield_pct' | 'category' | 'subcategory' | 'par_level'
   >
 >
 
@@ -917,3 +938,191 @@ export interface HACCPCleaningLog {
 export interface HACCPCleaningLogWithUser extends HACCPCleaningLog {
   user_name: string | null
 }
+
+// ── Staff certificates ────────────────────────────────────────────────────────
+export type CertificateKind = 'health_card' | 'haccp' | 'food_safety' | 'first_aid' | 'fire_safety' | 'other'
+
+export interface StaffCertificate {
+  id: UUID
+  team_id: UUID
+  user_id: UUID
+  kind: CertificateKind
+  title: string | null
+  issued_on: string | null
+  expires_on: string | null
+  doc_path: string | null
+  notes: string | null
+  created_by: UUID | null
+  created_at: ISODateString
+  updated_at: ISODateString
+}
+
+export type StaffCertificateDraft = Pick<StaffCertificate, 'user_id' | 'kind' | 'title' | 'issued_on' | 'expires_on' | 'doc_path' | 'notes'>
+
+// ── Lot traceability ──────────────────────────────────────────────────────────
+export type LotStatus = 'active' | 'depleted' | 'recalled' | 'discarded'
+
+export interface InventoryLot {
+  id: UUID
+  team_id: UUID
+  inventory_item_id: UUID
+  lot_number: string | null
+  expires_on: string | null
+  quantity_received: number
+  quantity_remaining: number
+  supplier_id: UUID | null
+  purchase_order_id: UUID | null
+  status: LotStatus
+  notes: string | null
+  received_at: ISODateString
+  created_by: UUID | null
+  created_at: ISODateString
+}
+
+export interface LotUsage {
+  id: UUID
+  team_id: UUID
+  lot_id: UUID
+  recipe_id: UUID | null
+  portions: number | null
+  quantity: number
+  used_at: ISODateString
+  used_by: UUID | null
+}
+
+// ── Equipment & maintenance ───────────────────────────────────────────────────
+export type EquipmentCategory = 'fridge' | 'freezer' | 'oven' | 'stove' | 'dishwasher' | 'hood' | 'coffee' | 'ice' | 'other'
+export type EquipmentStatus = 'ok' | 'attention' | 'out_of_order'
+export type EquipmentLogKind = 'service' | 'repair' | 'issue' | 'inspection'
+
+export interface Equipment {
+  id: UUID
+  team_id: UUID
+  name: string
+  category: EquipmentCategory
+  location: string | null
+  brand: string | null
+  model: string | null
+  serial_number: string | null
+  purchased_on: string | null
+  warranty_until: string | null
+  service_interval_days: number | null
+  last_service_on: string | null
+  technician_name: string | null
+  technician_phone: string | null
+  haccp_location: string | null
+  status: EquipmentStatus
+  notes: string | null
+  created_at: ISODateString
+}
+
+export type EquipmentDraft = Omit<Equipment, 'id' | 'team_id' | 'created_at'>
+
+export interface EquipmentLog {
+  id: UUID
+  team_id: UUID
+  equipment_id: UUID
+  kind: EquipmentLogKind
+  title: string
+  description: string | null
+  cost: number | null
+  performed_on: string
+  resolved: boolean
+  resolved_at: ISODateString | null
+  auto: boolean
+  created_by: UUID | null
+  created_at: ISODateString
+}
+
+export type EquipmentLogDraft = Pick<EquipmentLog, 'equipment_id' | 'kind' | 'title' | 'description' | 'cost' | 'performed_on' | 'resolved'>
+
+// ── Guest feedback ────────────────────────────────────────────────────────────
+export interface DishFeedback {
+  id: UUID
+  team_id: UUID
+  menu_id: UUID | null
+  menu_item_id: UUID | null
+  recipe_id: UUID | null
+  item_name: string
+  rating: number
+  comment: string | null
+  lang: string | null
+  created_at: ISODateString
+}
+
+// ── Staff training ────────────────────────────────────────────────────────────
+export interface TrainingQuestion {
+  q: string
+  options: string[]
+  /** index into options */
+  answer: number
+}
+
+export interface TrainingModule {
+  id: UUID
+  team_id: UUID
+  kind: 'sop' | 'quiz'
+  title: string
+  body: string | null
+  recipe_id: UUID | null
+  questions: TrainingQuestion[]
+  pass_pct: number
+  required: boolean
+  created_by: UUID | null
+  created_at: ISODateString
+  updated_at: ISODateString
+}
+
+export type TrainingModuleDraft = Pick<TrainingModule, 'kind' | 'title' | 'body' | 'recipe_id' | 'questions' | 'pass_pct' | 'required'>
+
+export interface TrainingCompletion {
+  id: UUID
+  team_id: UUID
+  module_id: UUID
+  user_id: UUID
+  score: number | null
+  passed: boolean
+  answers: number[] | null
+  completed_at: ISODateString
+}
+
+// ── Catering & events ─────────────────────────────────────────────────────────
+export type EventStatus = 'inquiry' | 'quoted' | 'confirmed' | 'completed' | 'cancelled'
+
+export interface CateringEvent {
+  id: UUID
+  team_id: UUID
+  title: string
+  client_name: string | null
+  client_phone: string | null
+  client_email: string | null
+  event_date: string | null
+  event_time: string | null
+  venue: string | null
+  guests: number
+  status: EventStatus
+  price_per_person: number | null
+  deposit: number | null
+  deposit_paid: boolean
+  terms: string | null
+  notes: string | null
+  created_by: UUID | null
+  created_at: ISODateString
+  updated_at: ISODateString
+}
+
+export type CateringEventDraft = Omit<CateringEvent, 'id' | 'team_id' | 'created_by' | 'created_at' | 'updated_at'>
+
+export interface EventItem {
+  id: UUID
+  team_id: UUID
+  event_id: UUID
+  recipe_id: UUID | null
+  name: string
+  portions: number
+  course: string | null
+  sort_order: number
+  created_at: ISODateString
+}
+
+export type EventItemDraft = Pick<EventItem, 'recipe_id' | 'name' | 'portions' | 'course'>

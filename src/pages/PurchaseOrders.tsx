@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Plus, ShoppingCart, FileUp, Trash2, Check, Package,
-  Send, RotateCcw, X, Euro, Loader2, Sparkles, AlertTriangle, ClipboardList,
+  Send, RotateCcw, X, Euro, Loader2, Sparkles, AlertTriangle, ClipboardList, MessageCircle, Wand2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
@@ -11,6 +11,10 @@ import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
 import { Textarea } from '../components/ui/Textarea'
 import { usePurchaseOrders, usePurchaseOrderItems } from '../hooks/usePurchaseOrders'
+import { useTeam } from '../hooks/useTeam'
+import { SendOrderSheet } from '../components/inventory/SendOrderSheet'
+import { AutoOrderDrawer } from '../components/inventory/AutoOrderDrawer'
+import { useOrderSuggestions } from '../hooks/useOrderSuggestions'
 import { useSuppliers } from '../hooks/useSuppliers'
 import { useInventory } from '../hooks/useInventory'
 import { useOrderWatchlist } from '../hooks/useOrderWatchlist'
@@ -85,6 +89,13 @@ export default function PurchaseOrders() {
   const { profile } = useAuth()
   const { orders, loading, error, create, update, remove } = usePurchaseOrders()
   const { suppliers } = useSuppliers()
+  const { team } = useTeam()
+  const [sendOpen, setSendOpen] = useState(false)
+  const { suggestions } = useOrderSuggestions()
+  const [autoOpen, setAutoOpen] = useState(false)
+  const [autoCreated, setAutoCreated] = useState<number | null>(null)
+  const suggestionLines = suggestions.filter((g) => g.supplier).reduce((n, g) => n + g.lines.length, 0)
+  const suggestionSuppliers = suggestions.filter((g) => g.supplier).length
   const { items: inventoryItems, update: updateInv } = useInventory()
   const { getItemsForSupplier, bulkRemove: watchlistBulkRemove } = useOrderWatchlist()
 
@@ -428,6 +439,26 @@ export default function PurchaseOrders() {
         actions={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('purchaseOrders.newOrder')}</PillButton>}
       />
 
+      {/* ── Automatic order suggestion ── */}
+      {suggestionLines > 0 && (
+        <section className="flex flex-wrap items-center gap-4 rounded-3xl bg-lime p-5 text-ink sm:p-6">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink text-lime">
+            <Wand2 className="h-5 w-5" />
+          </span>
+          <div className="min-w-[200px] flex-1">
+            <p className="text-lg font-medium">{t('autoOrder.bannerTitle', { count: suggestionLines })}</p>
+            <p className="text-sm text-ink/70">{t('autoOrder.bannerHint', { count: suggestionSuppliers })}</p>
+          </div>
+          <button type="button" onClick={() => setAutoOpen(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-white-fixed">
+            {t('autoOrder.review')}
+          </button>
+        </section>
+      )}
+      {autoCreated != null && (
+        <Notice tone="info">{t('autoOrder.created', { count: autoCreated })}</Notice>
+      )}
+
       {/* ── AI invoice reader ── */}
       <section className="flex flex-wrap items-center gap-4 rounded-3xl bg-ink p-5 sm:p-6 text-white-fixed">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-lime text-ink">
@@ -729,6 +760,15 @@ export default function PurchaseOrders() {
               <span className={cn('text-sm rounded-full px-3 py-1 font-medium', STATUS_STYLES[activeOrder.status])}>
                 {t(`purchaseOrders.status.${activeOrder.status}`)}
               </span>
+              {(activeOrder.status === 'draft' || activeOrder.status === 'sent') && orderItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSendOpen(true)}
+                  className="flex items-center gap-1.5 rounded-full bg-lime px-3.5 py-1.5 text-sm font-medium text-ink hover:brightness-95 transition"
+                >
+                  <MessageCircle className="h-4 w-4" />{t('sendOrder.button')}
+                </button>
+              )}
               {activeOrder.status === 'draft' && (
                 <button
                   type="button"
@@ -870,6 +910,24 @@ export default function PurchaseOrders() {
           </div>
         )}
       </Drawer>
+      {sendOpen && activeOrder && (
+        <SendOrderSheet
+          order={activeOrder}
+          items={orderItems}
+          supplier={suppliers.find((x) => x.id === activeOrder.supplier_id)}
+          teamName={team?.name ?? ''}
+          senderName={profile?.full_name ?? ''}
+          onClose={() => setSendOpen(false)}
+          onSent={() => { if (activeOrder.status === 'draft') void handleStatusChange(activeOrder, 'sent') }}
+        />
+      )}
+      <AutoOrderDrawer
+        open={autoOpen}
+        onClose={() => setAutoOpen(false)}
+        suggestions={suggestions}
+        createOrder={create}
+        onCreated={(n) => setAutoCreated(n)}
+      />
     </Page>
   )
 }

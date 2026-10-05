@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Printer, X, LayoutTemplate, UtensilsCrossed } from 'lucide-react'
+import { Printer, X, LayoutTemplate, UtensilsCrossed, ShieldAlert, Star, Heart } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { ALLERGEN_GROUPS, ALLERGEN_META } from '../components/ui/AllergenIcon'
 import { fetchPublicMenu } from '../hooks/useMenus'
 import { recordScan } from '../hooks/useMenuScans'
-import type { MenuWithSections, MenuItemTag, PrintTemplate } from '../types/database.types'
+import type { MenuWithSections, MenuItem, MenuItemTag, PrintTemplate } from '../types/database.types'
 
 
 const TAG_EMOJI: Record<MenuItemTag, string> = {
@@ -35,8 +37,27 @@ function localDesc(item: { description?: string | null; description_el?: string 
 
 
 
+// ── Filtering shared by all templates ────────────────────────────────────────
+interface TemplateProps {
+  menu: MenuWithSections
+  lang: Lang
+  /** Item passes the guest's diet/allergen filters */
+  isVisible: (item: MenuItem) => boolean
+  filtering: boolean
+  /** item id → allergens; null = no data (ask staff); missing map = feature off */
+  allergensOf?: Record<string, string[] | null>
+}
+
+const EU_ALLERGENS = ALLERGEN_GROUPS[0]!.keys
+
+function allergenLabel(key: string, lang: Lang) {
+  const m = ALLERGEN_META[key]
+  if (!m) return key
+  return lang === 'el' ? m.labelEl : lang === 'bg' ? m.labelBg : m.label
+}
+
 // ── Template: Classic ────────────────────────────────────────────────────────
-function ClassicTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; filterTag: MenuItemTag | null; lang: Lang }) {
+function ClassicTemplate({ menu, lang, isVisible, filtering }: TemplateProps) {
   return (
     <div className="font-serif max-w-2xl mx-auto px-6 py-10 print:px-0 print:py-0 space-y-10 text-gray-900">
       <div className="text-center space-y-2 border-b-2 border-gray-900 pb-6">
@@ -46,8 +67,8 @@ function ClassicTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
         {menu.price_per_person != null && <p className="text-gray-700 font-semibold">€{menu.price_per_person.toFixed(2)} p.p.</p>}
       </div>
       {menu.sections.map((section) => {
-        const items = filterTag ? section.items.filter((i) => (i.tags ?? []).includes(filterTag)) : section.items
-        if (filterTag && items.length === 0) return null
+        const items = section.items.filter(isVisible)
+        if (filtering && items.length === 0) return null
         return (
           <div key={section.id} className="space-y-4">
             <h2 className="text-center text-sm font-bold uppercase tracking-[0.3em] text-gray-600">── {localName(section, lang)} ──</h2>
@@ -77,7 +98,7 @@ function ClassicTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
 }
 
 // ── Template: Modern (bento) ─────────────────────────────────────────────────
-function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; filterTag: MenuItemTag | null; lang: Lang }) {
+function ModernTemplate({ menu, lang, isVisible, filtering, allergensOf }: TemplateProps) {
   const { t } = useTranslation()
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-3 px-3 py-3 font-sans text-ink sm:py-6 print:max-w-none print:px-0 print:py-0">
@@ -94,8 +115,8 @@ function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fil
       </header>
 
       {menu.sections.map((section) => {
-        const items = filterTag ? section.items.filter((i) => (i.tags ?? []).includes(filterTag)) : section.items
-        if (filterTag && items.length === 0) return null
+        const items = section.items.filter(isVisible)
+        if (filtering && items.length === 0) return null
         return (
           <section key={section.id} className="break-inside-avoid rounded-3xl bg-white-fixed p-5 shadow-[0_1px_2px_rgba(15,18,16,0.05),0_10px_30px_-18px_rgba(15,18,16,0.25)] sm:p-6">
             <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -106,6 +127,8 @@ function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fil
               {items.map((item) => {
                 const desc = localDesc(item, lang)
                 const tags = item.tags ?? []
+                const itemAllergens = allergensOf ? allergensOf[item.id] : undefined
+                const euAllergens = (itemAllergens ?? []).filter((a) => EU_ALLERGENS.includes(a))
                 return (
                   <li key={item.id} className="flex items-start gap-4 py-3.5">
                     <div className="min-w-0 flex-1">
@@ -119,6 +142,19 @@ function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fil
                             </span>
                           ))}
                         </div>
+                      )}
+                      {euAllergens.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {euAllergens.map((a) => (
+                            <span key={a} title={allergenLabel(a, lang)}
+                              className="inline-flex items-center gap-1 rounded-full border border-ink/10 px-2 py-0.5 text-[11px] text-ink/65">
+                              <span className="h-3.5 w-3.5">{ALLERGEN_META[a]?.icon}</span>{allergenLabel(a, lang)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {itemAllergens === null && (
+                        <p className="mt-1.5 text-[11px] text-ink/45">{t('menus.public.allergenUnknown', { lng: lang })}</p>
                       )}
                     </div>
                     {menu.show_prices && item.price != null && (
@@ -138,7 +174,7 @@ function ModernTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fil
 }
 
 // ── Template: Elegant ────────────────────────────────────────────────────────
-function ElegantTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; filterTag: MenuItemTag | null; lang: Lang }) {
+function ElegantTemplate({ menu, lang, isVisible, filtering }: TemplateProps) {
   return (
     <div className="font-serif max-w-xl mx-auto px-8 py-10 print:px-8 print:py-10 text-center"
       style={{ background: '#faf7f2', color: '#3d2b1f', minHeight: '100vh' }}>
@@ -152,8 +188,8 @@ function ElegantTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
           <div style={{ color: '#8b6f47', fontSize: '0.7rem', letterSpacing: '0.4em' }}>{'✦ ✦ ✦'}</div>
         </div>
         {menu.sections.map((section, sIdx) => {
-          const items = filterTag ? section.items.filter((i) => (i.tags ?? []).includes(filterTag)) : section.items
-          if (filterTag && items.length === 0) return null
+          const items = section.items.filter(isVisible)
+          if (filtering && items.length === 0) return null
           return (
             <div key={section.id} className="space-y-4">
               {sIdx > 0 && <div style={{ borderTop: '1px solid #c9a96e', margin: '0 2rem' }} />}
@@ -185,6 +221,98 @@ function ElegantTemplate({ menu, filterTag, lang }: { menu: MenuWithSections; fi
   )
 }
 
+// ── Guest feedback sheet ─────────────────────────────────────────────────────
+function FeedbackSheet({ menu, lang, onClose }: { menu: MenuWithSections; lang: Lang; onClose: () => void }) {
+  const { t } = useTranslation()
+  const [ratings, setRatings] = useState<Record<string, number>>({})
+  const [comments, setComments] = useState<Record<string, string>>({})
+  const [sending, setSending] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const rated = Object.keys(ratings)
+
+  async function send() {
+    setSending(true); setError(null)
+    try {
+      for (const itemId of rated) {
+        const { error: err } = await supabase.rpc('submit_dish_feedback', {
+          p_menu_id: menu.id, p_item_id: itemId, p_rating: ratings[itemId], p_comment: comments[itemId] ?? null, p_lang: lang,
+        })
+        if (err) throw err
+      }
+      setDone(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
+    } finally { setSending(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-3 backdrop-blur-sm sm:items-center print:hidden" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-[2rem] bg-white-fixed text-ink shadow-[0_20px_60px_rgba(15,18,16,0.3)]">
+        {done ? (
+          <div className="flex flex-col items-center gap-3 p-10 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lime"><Heart className="h-6 w-6" /></span>
+            <h2 className="text-2xl font-medium tracking-[-0.02em]">{t('menus.public.fbThanks', { lng: lang })}</h2>
+            <p className="text-sm text-ink/55">{t('menus.public.fbThanksHint', { lng: lang })}</p>
+            <button type="button" onClick={onClose} className="mt-2 h-11 rounded-full bg-ink px-6 text-sm font-medium text-white-fixed">{t('menus.public.fbClose', { lng: lang })}</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-3 p-5 pb-3">
+              <div>
+                <h2 className="text-2xl font-medium tracking-[-0.02em]">{t('menus.public.fbTitle', { lng: lang })}</h2>
+                <p className="text-sm text-ink/55">{t('menus.public.fbHint', { lng: lang })}</p>
+              </div>
+              <button type="button" onClick={onClose} aria-label="Close" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-[#EAEBE6]"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-3 pb-3">
+              {menu.sections.map((section) => section.items.length > 0 && (
+                <div key={section.id} className="mb-2">
+                  <p className="px-2 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-ink/45">{localName(section, lang)}</p>
+                  {section.items.map((item) => {
+                    const r = ratings[item.id] ?? 0
+                    return (
+                      <div key={item.id} className={`rounded-2xl px-2 py-2 ${r ? 'bg-[#F1F2EE]' : ''}`}>
+                        <div className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-[15px]">{localName(item, lang)}</span>
+                          <div className="flex shrink-0">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <button key={n} type="button" aria-label={`${n}`} onClick={() => setRatings((rs) => {
+                                if (rs[item.id] === n) { const { [item.id]: _, ...rest } = rs; return rest }
+                                return { ...rs, [item.id]: n }
+                              })} className="flex h-9 w-8 items-center justify-center">
+                                <Star className={`h-5 w-5 ${n <= r ? 'fill-[#0F1210] text-ink' : 'text-ink/20'}`} />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {r > 0 && (
+                          <input value={comments[item.id] ?? ''} maxLength={500}
+                            onChange={(e) => setComments((cs) => ({ ...cs, [item.id]: e.target.value }))}
+                            placeholder={t('menus.public.fbComment', { lng: lang })}
+                            className="mt-1.5 h-10 w-full rounded-xl bg-white-fixed px-3 text-sm outline-none placeholder:text-ink/35" />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 border-t border-ink/[0.07] p-3 pl-5">
+              <span className="flex-1 text-sm text-ink/55">{error ?? t('menus.public.fbCount', { count: rated.length, lng: lang })}</span>
+              <button type="button" onClick={() => void send()} disabled={rated.length === 0 || sending}
+                className="h-12 rounded-full bg-ink px-6 text-[15px] font-medium text-white-fixed disabled:opacity-30">
+                {sending ? '…' : t('menus.public.fbSend', { lng: lang })}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main page (exported for reuse in MenuToday) ──────────────────────────────
 export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
   const id = menuId
@@ -194,6 +322,20 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
   const [template, setTemplate] = useState<PrintTemplate>('classic')
   const [showTemplateBar, setShowTemplateBar] = useState(false)
   const [lang, setLang] = useState<Lang>(detectBrowserLang)
+  const [allergensOf, setAllergensOf] = useState<Record<string, string[] | null> | null>(null)
+  const [avoid, setAvoid] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('cs-avoid-allergens') ?? '[]') as string[] } catch { return [] }
+  })
+  const [allergyOpen, setAllergyOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+
+  function toggleAvoid(a: string) {
+    setAvoid((prev) => {
+      const next = prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
+      try { localStorage.setItem('cs-avoid-allergens', JSON.stringify(next)) } catch { /* private mode */ }
+      return next
+    })
+  }
 
   useEffect(() => {
     if (!id) { setMenu(null); return }
@@ -202,6 +344,13 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
       if (m?.print_template) setTemplate(m.print_template)
     })
     recordScan(id)
+    // Needs migration 0085 — without it the allergy filter simply stays hidden
+    supabase.rpc('get_public_menu_allergens', { p_menu_id: id }).then(({ data, error }) => {
+      if (error || !data) return
+      const map: Record<string, string[] | null> = {}
+      for (const row of data as { item_id: string; allergens: string[] | null }[]) map[row.item_id] = row.allergens
+      setAllergensOf(map)
+    })
   }, [id])
 
   const hasTags = useMemo(() => {
@@ -237,6 +386,20 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
     ? (['vegan', 'vegetarian', 'gluten_free', 'spicy'] as MenuItemTag[]).filter((tag) =>
         menu.sections.some((s) => s.items.some((i) => (i.tags ?? []).includes(tag))))
     : []
+  const presentAllergens = allergensOf
+    ? EU_ALLERGENS.filter((a) => Object.values(allergensOf).some((list) => list?.includes(a)))
+    : []
+  const activeAvoid = avoid.filter((a) => presentAllergens.includes(a))
+  const isVisible = (item: MenuItem) => {
+    if (activeFilterTag && !(item.tags ?? []).includes(activeFilterTag)) return false
+    if (activeAvoid.length > 0 && allergensOf) {
+      const list = allergensOf[item.id]
+      if (list && list.some((a) => activeAvoid.includes(a))) return false
+    }
+    return true
+  }
+  const filtering = !!activeFilterTag || activeAvoid.length > 0
+  const hiddenCount = filtering ? menu.sections.reduce((n, s) => n + s.items.filter((i) => !isVisible(i)).length, 0) : 0
   const pill = (on: boolean) => `h-9 shrink-0 rounded-full px-3.5 text-sm font-medium transition ${on ? 'bg-ink text-white-fixed' : 'text-ink/60 hover:text-ink'}`
 
   return (
@@ -258,7 +421,19 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
               ))}
             </div>
 
-            <button type="button" onClick={() => setShowTemplateBar((v) => !v)} title={t('menus.public.switchTemplate')}
+            {presentAllergens.length > 0 && (
+              <button type="button" onClick={() => { setAllergyOpen((v) => !v); setShowTemplateBar(false) }}
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition ${allergyOpen || activeAvoid.length > 0 ? 'bg-ink text-white-fixed' : 'hover:bg-[#EAEBE6]'}`}>
+                <ShieldAlert className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('menus.public.allergies', { lng: lang })}</span>
+                {activeAvoid.length > 0 && <span className="rounded-full bg-lime px-1.5 text-[11px] font-semibold text-ink tabular-nums">{activeAvoid.length}</span>}
+              </button>
+            )}
+            <button type="button" onClick={() => setFeedbackOpen(true)} title={t('menus.public.fbTitle', { lng: lang })}
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-lime px-3 text-sm font-medium text-ink hover:brightness-95">
+              <Star className="h-4 w-4" /><span className="hidden sm:inline">{t('menus.public.fbButton', { lng: lang })}</span>
+            </button>
+            <button type="button" onClick={() => { setShowTemplateBar((v) => !v); setAllergyOpen(false) }} title={t('menus.public.switchTemplate')}
               className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${showTemplateBar ? 'bg-ink text-white-fixed' : 'hover:bg-[#EAEBE6]'}`}>
               <LayoutTemplate className="h-4 w-4" />
             </button>
@@ -268,7 +443,26 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
             </button>
           </div>
 
-          {(filterTags.length > 0 || showTemplateBar) && (
+          {allergyOpen && (
+            <div className="flex flex-col gap-2 px-2 pb-2 pt-1">
+              <p className="text-xs text-ink/55">{t('menus.public.allergyHint', { lng: lang })}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {presentAllergens.map((a) => {
+                  const on = avoid.includes(a)
+                  return (
+                    <button key={a} type="button" onClick={() => toggleAvoid(a)} aria-pressed={on}
+                      className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition ${on ? 'bg-red-600 text-white-fixed' : 'bg-[#EAEBE6] text-ink/75 hover:text-ink'}`}>
+                      <span className="h-4 w-4">{ALLERGEN_META[a]?.icon}</span>
+                      {on && <X className="h-3.5 w-3.5" />}{allergenLabel(a, lang)}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] leading-snug text-ink/45">{t('menus.public.allergyDisclaimer', { lng: lang })}</p>
+            </div>
+          )}
+
+          {(filterTags.length > 0 || showTemplateBar) && !allergyOpen && (
             <div className="flex items-center gap-1 overflow-x-auto">
               {showTemplateBar
                 ? (['classic', 'modern', 'elegant'] as PrintTemplate[]).map((tmpl) => (
@@ -290,11 +484,19 @@ export function MenuPublicContent({ menuId }: { menuId: string | undefined }) {
         </div>
       </div>
 
+      {hiddenCount > 0 && (
+        <p className="mx-auto mt-3 max-w-3xl px-5 text-center text-xs text-ink/55 print:hidden">
+          {t('menus.public.hiddenDishes', { count: hiddenCount, lng: lang })}
+        </p>
+      )}
+
       <div className="pb-6">
-        {template === 'classic' && <ClassicTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
-        {template === 'modern' && <ModernTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
-        {template === 'elegant' && <ElegantTemplate menu={menu} filterTag={activeFilterTag} lang={lang} />}
+        {template === 'classic' && <ClassicTemplate menu={menu} lang={lang} isVisible={isVisible} filtering={filtering} />}
+        {template === 'modern' && <ModernTemplate menu={menu} lang={lang} isVisible={isVisible} filtering={filtering} allergensOf={allergensOf ?? undefined} />}
+        {template === 'elegant' && <ElegantTemplate menu={menu} lang={lang} isVisible={isVisible} filtering={filtering} />}
       </div>
+
+      {feedbackOpen && <FeedbackSheet menu={menu} lang={lang} onClose={() => setFeedbackOpen(false)} />}
 
       <style>{`
         @media print {

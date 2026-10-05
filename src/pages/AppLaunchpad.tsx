@@ -12,6 +12,9 @@ import { usePrepTasks } from '../hooks/usePrepTasks'
 import { useOnlineOrders } from '../hooks/useOnlineOrders'
 import { useReservations } from '../hooks/useReservations'
 import { useTeam } from '../hooks/useTeam'
+import { certStatus, daysLeft, useStaffCertificates } from '../hooks/useStaffCertificates'
+import { lotDaysLeft, useLots } from '../hooks/useLots'
+import { useEquipment } from '../hooks/useEquipment'
 import { NAV_SECTIONS } from '../components/layout/navigation'
 
 // Home — "Bento & Lime": what needs the chef's attention right now, today's
@@ -49,6 +52,9 @@ export default function AppLaunchpad() {
   const { orders } = useOnlineOrders()
   const { reservations, loading: resLoading } = useReservations(todayIso())
   const { members } = useTeam()
+  const { certs } = useStaffCertificates()
+  const { lots } = useLots()
+  const { equipment, logs: equipLogs } = useEquipment()
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Chef'
   const dateStr = new Date().toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })
@@ -63,12 +69,31 @@ export default function AppLaunchpad() {
     .sort((a, b) => a.reservation_time.localeCompare(b.reservation_time))
   const guests = activeRes.reduce((s, r) => s + r.party_size, 0)
 
+  const certAlerts = can('certificates')
+    ? certs.filter((c) => ['expired', 'expiring'].includes(certStatus(c)))
+    : []
+  const certName = (id: string) => members.find((m) => m.id === id)?.full_name ?? '—'
+
+  const lotAlerts = can('traceability')
+    ? lots.filter((l) => { const d = lotDaysLeft(l.expires_on); return l.status === 'active' && d != null && d <= 2 })
+        .sort((a, b) => (a.expires_on ?? '').localeCompare(b.expires_on ?? ''))
+    : []
+  const lotItem = (id: string) => items.find((i) => i.id === id)?.name ?? '—'
+
   // The "rail": things that need action, most urgent first
   const attention: { tone: Tone; label: string; detail: string; to: string }[] = [
     ...lowStock
       .filter((i) => i.quantity <= 0)
       .slice(0, 2)
       .map((i) => ({ tone: 'bad' as Tone, label: t('home.lowStock'), detail: t('home.lowStockItem', { name: i.name, qty: i.quantity, unit: i.unit, min: i.min_stock_level }), to: '/inventory' })),
+    ...certAlerts
+      .filter((c) => certStatus(c) === 'expired')
+      .slice(0, 2)
+      .map((c) => ({ tone: 'bad' as Tone, label: t('nav.certificates'), detail: t('home.certExpired', { name: certName(c.user_id), kind: t(`certs.kinds.${c.kind}`) }), to: '/certificates' })),
+    ...(can('equipment') ? equipLogs : [])
+      .filter((l) => l.kind === 'issue' && !l.resolved)
+      .slice(0, 2)
+      .map((l) => ({ tone: 'bad' as Tone, label: t('nav.equipment'), detail: t('home.equipIssue', { name: equipment.find((e) => e.id === l.equipment_id)?.name ?? '—', title: l.title }), to: '/equipment' })),
     ...(ordersBy('pending') > 0
       ? [{ tone: 'bad' as Tone, label: t('home.orders'), detail: t('home.ordersPending', { count: ordersBy('pending') }), to: '/kds' }]
       : []),
@@ -76,6 +101,16 @@ export default function AppLaunchpad() {
       .filter((i) => i.quantity > 0)
       .slice(0, 3)
       .map((i) => ({ tone: 'warn' as Tone, label: t('home.lowStock'), detail: t('home.lowStockItem', { name: i.name, qty: i.quantity, unit: i.unit, min: i.min_stock_level }), to: '/inventory' })),
+    ...certAlerts
+      .filter((c) => certStatus(c) === 'expiring')
+      .slice(0, 2)
+      .map((c) => ({ tone: 'warn' as Tone, label: t('nav.certificates'), detail: t('home.certExpiring', { name: certName(c.user_id), kind: t(`certs.kinds.${c.kind}`), count: daysLeft(c.expires_on) ?? 0 }), to: '/certificates' })),
+    ...lotAlerts.slice(0, 2).map((l) => ({
+      tone: ((lotDaysLeft(l.expires_on) ?? 0) < 0 ? 'bad' : 'warn') as Tone,
+      label: t('nav.traceability'),
+      detail: t('home.lotExpiring', { item: lotItem(l.inventory_item_id), lot: l.lot_number ?? '—', when: new Date(l.expires_on + 'T00:00:00').toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) }),
+      to: '/traceability',
+    })),
     ...(pendingPrep > 0
       ? [{ tone: 'info' as Tone, label: t('nav.prep'), detail: t('home.prepPending', { count: pendingPrep }), to: '/prep' }]
       : []),

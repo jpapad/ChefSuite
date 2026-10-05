@@ -41,6 +41,12 @@ export const ALL_MODULES = [
   'buffet-pulse',
   'haccp-logbook',
   'warehouse',
+  'certificates',
+  'traceability',
+  'equipment',
+  'feedback',
+  'training',
+  'catering',
 ] as const
 
 export type AppModule = (typeof ALL_MODULES)[number]
@@ -48,19 +54,19 @@ export type AppModule = (typeof ALL_MODULES)[number]
 export const MODULE_GROUPS: { labelKey: string; modules: AppModule[] }[] = [
   {
     labelKey: 'nav.groups.kitchen',
-    modules: ['dashboard', 'recipes', 'regional-recipes', 'menus', 'prep', 'kds', 'buffet-pulse', 'haccp', 'labels'],
+    modules: ['dashboard', 'recipes', 'regional-recipes', 'menus', 'prep', 'kds', 'buffet-pulse', 'haccp', 'labels', 'equipment'],
   },
   {
     labelKey: 'nav.groups.procurement',
-    modules: ['inventory', 'suppliers', 'orders', 'waste', 'price-tracking', 'stocktake', 'warehouse'],
+    modules: ['inventory', 'suppliers', 'orders', 'waste', 'price-tracking', 'stocktake', 'warehouse', 'traceability'],
   },
   {
     labelKey: 'nav.groups.team',
-    modules: ['team', 'shifts', 'timeclock', 'staff-performance', 'handover'],
+    modules: ['team', 'shifts', 'timeclock', 'staff-performance', 'handover', 'certificates', 'training'],
   },
   {
     labelKey: 'nav.groups.revenue',
-    modules: ['menu-engineering', 'reservations', 'analytics', 'pl', 'pos-settings', 'costing'],
+    modules: ['menu-engineering', 'reservations', 'analytics', 'pl', 'pos-settings', 'costing', 'feedback', 'catering'],
   },
   {
     labelKey: 'nav.groups.comms',
@@ -113,6 +119,12 @@ export const MODULE_LABEL_KEY: Record<AppModule, string> = {
   'buffet-pulse': 'nav.buffetPulse',
   'haccp-logbook': 'nav.haccpLogbook',
   'warehouse': 'nav.warehouse',
+  'certificates': 'nav.certificates',
+  'traceability': 'nav.traceability',
+  'equipment': 'nav.equipment',
+  'feedback': 'nav.feedback',
+  'training': 'nav.training',
+  'catering': 'nav.catering',
 }
 
 export function usePermissions() {

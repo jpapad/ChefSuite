@@ -13,6 +13,8 @@ export interface InventoryFormValues {
   cost_per_unit: number | null
   location_id: string | null
   barcode: string | null
+  /** Only present when set, so saving works before migration 0090 */
+  par_level?: number | null
 }
 
 interface InventoryFormProps {
@@ -34,6 +36,7 @@ function blank(initial?: InventoryItem): InventoryFormValues {
     cost_per_unit: initial?.cost_per_unit ?? null,
     location_id: initial?.location_id ?? null,
     barcode: initial?.barcode ?? null,
+    ...(initial?.par_level != null ? { par_level: initial.par_level } : {}),
   }
 }
 
@@ -163,6 +166,20 @@ export function InventoryForm({
           }
         />
       </div>
+
+      <Input
+        type="number"
+        name="par_level"
+        label="Target stock (par)"
+        step="any"
+        min={0}
+        placeholder={values.min_stock_level > 0 ? String(values.min_stock_level * 2) : ''}
+        hint="Stock you want right after a delivery — used for automatic order suggestions. Empty = 2 × reorder level."
+        value={values.par_level ?? ''}
+        onChange={(e) =>
+          setValues((v) => ({ ...v, par_level: e.target.value === '' ? null : Number(e.target.value) }))
+        }
+      />
 
       {locations.length > 0 && (
         <div className="space-y-1.5">

@@ -20,13 +20,14 @@ import { RecipeVersionHistory } from '../components/recipes/RecipeVersionHistory
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../hooks/useInventory'
 import { useRecipeIngredients } from '../hooks/useRecipeIngredients'
+import { useRecipeSubRecipes } from '../hooks/useRecipeSubRecipes'
 import { useMenus } from '../hooks/useMenus'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { RECIPE_CATEGORIES } from '../components/recipes/RecipeForm'
 import type { ImportedRecipe } from '../lib/gemini'
 import type { ExcelMenuRow } from '../lib/excelMenu'
-import type { Recipe, RecipeCategory, RecipeDifficulty, RecipeIngredientDraft, RecipeVersion } from '../types/database.types'
+import type { Recipe, RecipeCategory, RecipeDifficulty, RecipeIngredientDraft, RecipeSubRecipeDraft, RecipeVersion } from '../types/database.types'
 
 export default function Recipes() {
   const { t } = useTranslation()
@@ -39,6 +40,7 @@ export default function Recipes() {
     getFor: getIngredients,
     save: saveIngredients,
   } = useRecipeIngredients()
+  const { byRecipe: subsByRecipe, getFor: getSubs, save: saveSubs } = useRecipeSubRecipes()
 
   const [searchParams, setSearchParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -71,6 +73,7 @@ export default function Recipes() {
   const [activeAllergens, setActiveAllergens] = useState<string[]>([])
   const [activeCategory, setActiveCategory] = useState<RecipeCategory | null>(null)
   const [filterAllergenFree, setFilterAllergenFree] = useState(false)
+  const [filterBases, setFilterBases] = useState(false)
 
   const allAllergens = useMemo(() => {
     const set = new Set<string>()
@@ -92,9 +95,10 @@ export default function Recipes() {
       if (activeCategory && r.category !== activeCategory) return false
       if (filterUncategorized && r.category !== null) return false
       if (filterAllergenFree && r.allergens.filter(a => !a.startsWith('no_')).length > 0) return false
+      if (filterBases && !r.is_base) return false
       return true
     })
-  }, [recipes, query, activeAllergens, activeCategory, filterUncategorized, filterAllergenFree])
+  }, [recipes, query, activeAllergens, activeCategory, filterUncategorized, filterAllergenFree, filterBases])
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<RecipeCategory | '_none', number>()
@@ -255,7 +259,11 @@ export default function Recipes() {
   async function onSubmit(values: RecipeFormValues) {
     setSaving(true)
     try {
-      const { ingredients, ...recipeFields } = values
+      const { ingredients, sub_recipes, ...fields } = values
+      // Only send base fields when used, so saving works before migration 0084
+      const { is_base, yield_unit, ...rest } = fields
+      const usesBases = is_base || !!yield_unit || !!editing?.is_base
+      const recipeFields = usesBases ? fields : rest
       let recipeId: string
       if (editing) {
         const row = await update(editing.id, recipeFields)
@@ -265,6 +273,9 @@ export default function Recipes() {
         recipeId = row.id
       }
       await saveIngredients(recipeId, ingredients)
+      if (sub_recipes.length > 0 || getSubs(recipeId).length > 0) {
+        await saveSubs(recipeId, sub_recipes.filter((s) => s.quantity > 0))
+      }
       setDrawerOpen(false)
       setEditing(null)
     } finally {
@@ -332,12 +343,20 @@ export default function Recipes() {
     }
   }
 
-  const initialIngredients: RecipeIngredientDraft[] = editing
-    ? getIngredients(editing.id).map((i) => ({
-        inventory_item_id: i.inventory_item_id,
-        quantity: i.quantity,
-      }))
-    : []
+  // Memoized: the form resets itself whenever these identities change
+  const editingIngredients = editing ? getIngredients(editing.id) : null
+  const ingKey = editingIngredients?.length ? editingIngredients : null
+  const initialIngredients: RecipeIngredientDraft[] = useMemo(
+    () => (ingKey ?? []).map((i) => ({ inventory_item_id: i.inventory_item_id, quantity: i.quantity })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ingKey, editing?.id],
+  )
+  const editingSubs = editing ? subsByRecipe[editing.id] : undefined
+  const initialSubRecipes: RecipeSubRecipeDraft[] = useMemo(
+    () => (editingSubs ?? []).map((s) => ({ sub_recipe_id: s.sub_recipe_id, quantity: s.quantity })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editingSubs, editing?.id],
+  )
 
   // ── Overview numbers ──
   const priced = recipes.filter((r) => r.cost_per_portion != null && (r.selling_price ?? 0) > 0)
@@ -346,9 +365,10 @@ export default function Recipes() {
   const overTarget = priced.filter((r) => fcOf(r) > 30).length
   const incomplete = recipes.filter((r) => !r.description || !r.category || !r.instructions)
 
-  const hasFilters = activeAllergens.length > 0 || !!activeCategory || filterAllergenFree || filterUncategorized || !!query.trim()
+  const hasFilters = activeAllergens.length > 0 || !!activeCategory || filterAllergenFree || filterUncategorized || filterBases || !!query.trim()
+  const baseCount = recipes.filter((r) => r.is_base).length
   function clearFilters() {
-    setActiveAllergens([]); setActiveCategory(null); setFilterAllergenFree(false); setFilterUncategorized(false); setQuery('')
+    setActiveAllergens([]); setActiveCategory(null); setFilterAllergenFree(false); setFilterUncategorized(false); setFilterBases(false); setQuery('')
   }
 
   function renderCard(r: Recipe) {
@@ -486,6 +506,11 @@ export default function Recipes() {
                 onClick={() => { setActiveCategory(null); setFilterUncategorized((v) => !v) }}
               >
                 {t('categories.none')}
+              </Chip>
+            )}
+            {baseCount > 0 && (
+              <Chip active={filterBases} count={baseCount} onClick={() => setFilterBases((v) => !v)}>
+                {t('recipes.sub.bases')}
               </Chip>
             )}
           </ChipRow>
@@ -653,6 +678,9 @@ export default function Recipes() {
       <RecipeDetail
         recipe={viewing}
         ingredients={viewing ? getIngredients(viewing.id) : []}
+        subRecipes={viewing ? getSubs(viewing.id) : []}
+        getIngredients={getIngredients}
+        getSubRecipes={getSubs}
         inventory={inventory}
         onClose={() => setViewingId(null)}
         onEdit={(r) => { setViewingId(null); openEdit(r) }}
@@ -672,6 +700,8 @@ export default function Recipes() {
         <RecipeForm
           initial={editing ?? undefined}
           initialIngredients={initialIngredients}
+          initialSubRecipes={initialSubRecipes}
+          subsByRecipe={subsByRecipe}
           prefill={prefill}
           inventory={inventory}
           submitting={saving}

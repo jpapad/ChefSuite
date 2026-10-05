@@ -1,4 +1,4 @@
-import { Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, Mic, MicOff, ChevronLeft, ChevronRight, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus, MessageSquare, Trash2, Sparkles, Loader2, Activity, GitBranch, Check, Pencil, Play, MoreHorizontal, Timer, Send, AlertTriangle, Volume2 } from 'lucide-react'
+import { Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, Mic, MicOff, ChevronLeft, ChevronRight, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus, MessageSquare, Trash2, Sparkles, Loader2, Activity, GitBranch, Check, Layers, Pencil, Play, MoreHorizontal, Timer, Send, AlertTriangle, Volume2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { ActionMenu, PillButton, StatTile } from '../ui/page'
 import { AllergenBadge } from '../ui/AllergenIcon'
@@ -25,7 +25,10 @@ interface SRInstance {
 }
 type SRCtor = new () => SRInstance
 import { useTranslation } from 'react-i18next'
-import type { InventoryItem, Recipe, RecipeIngredient } from '../../types/database.types'
+import type { InventoryItem, Recipe, RecipeIngredient, RecipeSubRecipe } from '../../types/database.types'
+import { expandedNeeds, inheritedAllergens, recipePortionCost } from '../../lib/recipeTree'
+
+const NO_SUBS: RecipeSubRecipe[] = []
 
 function splitSteps(text: string): string[] {
   return text
@@ -144,6 +147,9 @@ function HandsFreeMode({ steps, onClose }: { steps: string[]; onClose: () => voi
 interface RecipeDetailProps {
   recipe: Recipe | null
   ingredients: RecipeIngredient[]
+  subRecipes?: RecipeSubRecipe[]
+  getIngredients?: (recipeId: string) => RecipeIngredient[]
+  getSubRecipes?: (recipeId: string) => RecipeSubRecipe[]
   inventory: InventoryItem[]
   onClose: () => void
   onEdit: (recipe: Recipe) => void
@@ -165,6 +171,9 @@ const DIFFICULTY_DOTS = { easy: 1, medium: 2, hard: 3 } as const
 export function RecipeDetail({
   recipe,
   ingredients,
+  subRecipes = NO_SUBS,
+  getIngredients,
+  getSubRecipes,
   inventory,
   onClose,
   onEdit,
@@ -292,10 +301,18 @@ export function RecipeDetail({
     finally { setConsuming(false) }
   }
 
-  const canMake = ingredients.length > 0 && ingredients.every((ing) => {
-    const item = inventory.find((i) => i.id === ing.inventory_item_id)
-    return item && item.quantity >= ing.quantity
-  })
+  // Ingredient/sub-recipe lookups — fall back to this recipe's own rows
+  const ingOf = (id: string) => getIngredients ? getIngredients(id) : (id === recipe?.id ? ingredients : [])
+  const subsOf = (id: string) => getSubRecipes ? getSubRecipes(id) : (id === recipe?.id ? subRecipes : NO_SUBS)
+  const shortages = (n: number) => {
+    if (!recipe) return []
+    return [...expandedNeeds(recipe.id, n, ingOf, subsOf)].filter(([itemId, need]) => {
+      const item = inventory.find((i) => i.id === itemId)
+      return !item || item.quantity < need
+    })
+  }
+  const hasComponents = ingredients.length > 0 || subRecipes.length > 0
+  const canMake = hasComponents && shortages(1).length === 0
 
   // Auto-translate user-generated content
   const trTitle       = useAutoTranslate(recipe?.title ?? null)
@@ -306,16 +323,8 @@ export function RecipeDetail({
   const ingNames = ingredients.map((ing) => inventory.find((i) => i.id === ing.inventory_item_id)?.name ?? null)
   const trIngNames = useAutoTranslateMany(ingNames)
 
-  const effectiveCost = recipe?.cost_per_portion ?? (() => {
-    if (!recipe || ingredients.length === 0) return null
-    let total = 0
-    for (const ing of ingredients) {
-      const item = inventory.find((i) => i.id === ing.inventory_item_id)
-      if (item?.cost_per_unit == null) return null
-      total += item.cost_per_unit * ing.quantity
-    }
-    return total
-  })()
+  const effectiveCost = recipe?.cost_per_portion ??
+    (recipe && hasComponents ? recipePortionCost(recipe.id, allRecipes, ingOf, subsOf, inventory, { useOverride: false }) : null)
 
   const foodCostPct =
     effectiveCost != null && recipe?.selling_price != null && recipe.selling_price > 0
@@ -340,10 +349,8 @@ export function RecipeDetail({
 
   if (!recipe) return null
 
-  const missingCount = ingredients.filter((ing) => {
-    const item = inventory.find((i) => i.id === ing.inventory_item_id)
-    return !item || item.quantity < ing.quantity * portions
-  }).length
+  const missingCount = shortages(portions).length
+  const allergens = subRecipes.length > 0 ? inheritedAllergens(recipe.id, allRecipes, subsOf) : recipe.allergens
   const fcTone = foodCostPct == null ? 'default' : foodCostPct <= 30 ? 'good' : foodCostPct <= 40 ? 'warn' : 'bad'
   const nutrients = [
     { label: t('recipes.detail.nutrients.calories'), value: recipe.calories, unit: 'kcal' },
@@ -448,7 +455,7 @@ export function RecipeDetail({
               hint={effectiveCost != null && recipe.selling_price != null ? `${t('recipes.v3.margin')} €${fmt(recipe.selling_price - effectiveCost)}` : undefined} />
             <StatTile label={t('recipes.detail.foodCost')} icon={TrendingUp} tone={fcTone}
               value={foodCostPct != null ? `${foodCostPct.toFixed(1)}%` : '—'} hint={t('recipes.v3.fcTarget')} />
-            {ingredients.length > 0 ? (
+            {hasComponents ? (
               <StatTile label={t('recipes.v3.stock')} icon={canMake ? PackageCheck : PackageX} tone={canMake ? 'lime' : 'warn'}
                 value={canMake ? t('recipes.v3.ready') : t('recipes.v3.missingN', { count: missingCount })}
                 hint={t('recipes.v3.forPortions', { count: portions })} />
@@ -457,21 +464,21 @@ export function RecipeDetail({
             )}
           </section>
 
-          {recipe.allergens.length > 0 && (
+          {allergens.length > 0 && (
             <section className="flex flex-wrap items-center gap-2 rounded-3xl bg-bg-card px-5 py-4 shadow-card">
               <span className="mr-2 flex items-center gap-1.5 text-sm font-medium text-white/60"><AlertTriangle className="h-4 w-4 text-amber-500" />{t('recipes.v3.allergens')}</span>
-              {recipe.allergens.map((a) => <AllergenBadge key={a} allergen={a} size="md" />)}
+              {allergens.map((a) => <AllergenBadge key={a} allergen={a} size="md" />)}
             </section>
           )}
 
           {/* ── Ingredients + method ── */}
           <section className="grid items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(320px,400px)_1fr]">
-            {ingredients.length > 0 && (
+            {hasComponents && (
               <div className="flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6 lg:sticky lg:top-20">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-medium">{t('recipes.detail.ingredients')}</h2>
-                    <p className="text-xs text-white/50">{t('recipes.v3.checked', { done: checkedIng.size, total: ingredients.length })}</p>
+                    <p className="text-xs text-white/50">{t('recipes.v3.checked', { done: checkedIng.size, total: ingredients.length + subRecipes.length })}</p>
                   </div>
                   <div className="flex items-center rounded-full bg-bg-input p-1">
                     <button type="button" onClick={() => setPortions((p) => Math.max(1, p - 1))} aria-label="−"
@@ -504,6 +511,33 @@ export function RecipeDetail({
                           </span>
                           <span title={enough ? t('recipes.detail.inStock') : t('recipes.detail.missingIngredients')}
                             className={`h-2 w-2 shrink-0 rounded-full ${enough ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        </button>
+                      </li>
+                    )
+                  })}
+                  {subRecipes.map((sr) => {
+                    const base = allRecipes.find((r) => r.id === sr.sub_recipe_id)
+                    const qty = sr.quantity * portions
+                    const done = checkedIng.has(sr.id)
+                    const baseShort = base ? [...expandedNeeds(base.id, qty, ingOf, subsOf)].some(([itemId, need]) => {
+                      const item = inventory.find((i) => i.id === itemId)
+                      return !item || item.quantity < need
+                    }) : true
+                    return (
+                      <li key={sr.id}>
+                        <button type="button" onClick={() => setCheckedIng((s) => toggleIn(s, sr.id))}
+                          className="flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left hover:bg-white/[0.04]">
+                          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition ${done ? 'bg-ink text-lime' : 'bg-lime text-ink'}`}>
+                            {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Layers className="h-3.5 w-3.5" />}
+                          </span>
+                          <span className={`min-w-0 flex-1 truncate text-[15px] font-medium ${done ? 'text-white/35 line-through' : ''}`}>
+                            {base?.title ?? t('common.unknown')}
+                            <span className="ml-1.5 text-[11px] font-normal text-white/45">{t('recipes.sub.baseTag')}</span>
+                          </span>
+                          <span className={`shrink-0 text-sm font-medium tabular-nums ${done ? 'text-white/30' : ''}`}>
+                            {qty % 1 === 0 ? qty : qty.toFixed(2)} <span className="font-normal text-white/50">{base?.yield_unit ?? t('recipes.sub.portionShort')}</span>
+                          </span>
+                          <span className={`h-2 w-2 shrink-0 rounded-full ${baseShort ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                         </button>
                       </li>
                     )

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useDishFeedback } from '../hooks/useDishFeedback'
 import { Star, TrendingUp, AlertTriangle, Minus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Page, PageHeader, Panel, StatRow, StatTile, Chip, ChipRow, EmptyState, Notice } from '../components/ui/page'
@@ -46,6 +47,9 @@ export default function MenuEngineering() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Quadrant | 'all'>('all')
+  const { byDish: ratings } = useDishFeedback(90)
+  const ratingOf = (item: EngineeredItem) =>
+    ratings.find((r) => (item.menu_item_id && r.menu_item_id === item.menu_item_id) || r.name === item.name)
 
   useEffect(() => {
     if (!profile?.team_id) return
@@ -280,6 +284,7 @@ export default function MenuEngineering() {
                     <th className="px-4 py-3 font-medium text-right">{t('menuEng.revenue')}</th>
                     <th className="px-4 py-3 font-medium text-right">{t('menuEng.margin')}</th>
                     <th className="px-4 py-3 font-medium text-right">{t('menuEng.avgPrice')}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t('menuEng.rating')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.06]">
@@ -305,6 +310,21 @@ export default function MenuEngineering() {
                           {item.margin_pct != null ? `${item.margin_pct.toFixed(1)}%` : '—'}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-white/60">€{fmt(item.avg_price)}</td>
+                        <td className="px-4 py-3 text-right">
+                          {(() => {
+                            const r = ratingOf(item)
+                            if (!r) return <span className="text-white/30">—</span>
+                            const disliked = r.avg < 3.5 && r.count >= 3 && (item.quadrant === 'star' || item.quadrant === 'plowhorse')
+                            return (
+                              <span className="inline-flex flex-col items-end">
+                                <span className={cn('tabular-nums font-medium', r.avg < 3.5 ? 'text-red-500' : r.avg >= 4.5 ? 'text-emerald-500' : '')}>
+                                  ★ {r.avg.toFixed(1)} <span className="text-xs font-normal text-white/40">({r.count})</span>
+                                </span>
+                                {disliked && <span className="text-[11px] font-medium text-red-500">{t('menuEng.sellsButDisliked')}</span>}
+                              </span>
+                            )
+                          })()}
+                        </td>
                       </tr>
                     )
                   })}

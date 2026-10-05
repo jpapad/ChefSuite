@@ -118,6 +118,11 @@ export function RecipeCard({ recipe, ingredients, inventory, onView, onEdit, onD
       {/* Body */}
       <div className="flex flex-1 flex-col gap-2 px-3 pb-2 pt-3">
         <div className="flex items-center gap-2 text-xs text-white/55">
+          {recipe.is_base && (
+            <span className="rounded-full bg-lime px-2 py-0.5 font-semibold text-ink">
+              {t('recipes.sub.baseTag')}{recipe.yield_unit ? ` · ${recipe.yield_unit}` : ''}
+            </span>
+          )}
           {recipe.category && <span>{t(`recipes.categories.${recipe.category}`)}</span>}
           {totalTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{fmtMin(totalTime)}</span>}
           {recipe.servings && <span className="flex items-center gap-1"><Users className="h-3 w-3" />{recipe.servings}</span>}

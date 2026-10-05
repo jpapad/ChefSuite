@@ -64,6 +64,12 @@ const KitchenBuffetKDS        = lazy(() => import('./pages/KitchenBuffetKDS'))
 const HACCPLogbook            = lazy(() => import('./pages/HACCPLogbook'))
 const Warehouse               = lazy(() => import('./pages/Warehouse'))
 const BuffetMap               = lazy(() => import('./pages/BuffetMap'))
+const Certificates = lazy(() => import('./pages/Certificates'))
+const Traceability = lazy(() => import('./pages/Traceability'))
+const EquipmentPage = lazy(() => import('./pages/EquipmentPage'))
+const GuestFeedback = lazy(() => import('./pages/GuestFeedback'))
+const Training = lazy(() => import('./pages/Training'))
+const Catering = lazy(() => import('./pages/Catering'))
 const BuffetMapPublic         = lazy(() => import('./pages/BuffetMapPublic'))
 
 export default function App() {
@@ -155,6 +161,12 @@ export default function App() {
                 <Route path="pos-settings" element={<PermissionGuard module="pos-settings"><PosSettings /></PermissionGuard>} />
                 <Route path="buffet-pulse" element={<PermissionGuard module="buffet-pulse"><BuffetPulse /></PermissionGuard>} />
                 <Route path="buffet-map" element={<PermissionGuard module="buffet-pulse"><BuffetMap /></PermissionGuard>} />
+                <Route path="certificates" element={<PermissionGuard module="certificates"><Certificates /></PermissionGuard>} />
+                <Route path="traceability" element={<PermissionGuard module="traceability"><Traceability /></PermissionGuard>} />
+                <Route path="equipment" element={<PermissionGuard module="equipment"><EquipmentPage /></PermissionGuard>} />
+                <Route path="feedback" element={<PermissionGuard module="feedback"><GuestFeedback /></PermissionGuard>} />
+                <Route path="training" element={<PermissionGuard module="training"><Training /></PermissionGuard>} />
+                <Route path="catering" element={<PermissionGuard module="catering"><Catering /></PermissionGuard>} />
                 <Route path="warehouse" element={<PermissionGuard module="warehouse"><Warehouse /></PermissionGuard>} />
               </Route>
 

@@ -4,7 +4,7 @@ import {
   BarChart3, CreditCard, Flame, Monitor, ClipboardList, Thermometer, BookLock,
   Trash2, Heart, Activity, Map, Users, CalendarDays, TimerIcon, Award, CalendarCheck,
   MessageSquare, Radio, Bot, BookOpen, BookMarked, Scale, Layers, FlaskConical,
-  CalendarRange, Sparkles, type LucideIcon,
+  CalendarRange, Sparkles, BadgeCheck, ScanLine, Wrench, MessageSquareHeart, GraduationCap, PartyPopper, type LucideIcon,
 } from 'lucide-react'
 import type { AppModule } from '../../hooks/usePermissions'
 
@@ -44,6 +44,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/menu-engineering', labelKey: 'nav.menuEngineering', icon: Star,            module: 'menu-engineering' },
       { to: '/labels',           labelKey: 'nav.labels',          icon: Tag,             module: 'labels' },
       { to: '/regional-recipes', labelKey: 'nav.regionalRecipes', icon: MapPin,          module: 'regional-recipes' },
+      { to: '/feedback', labelKey: 'nav.feedback', icon: MessageSquareHeart, module: 'feedback' },
     ],
   },
   {
@@ -55,6 +56,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/suppliers',      labelKey: 'nav.suppliers',      icon: Truck,          module: 'suppliers' },
       { to: '/orders',         labelKey: 'nav.purchaseOrders', icon: ShoppingCart,   module: 'orders' },
       { to: '/price-tracking', labelKey: 'nav.priceTracking',  icon: TrendingUp,     module: 'price-tracking' },
+      { to: '/traceability', labelKey: 'nav.traceability', icon: ScanLine, module: 'traceability' },
     ],
   },
   {
@@ -64,6 +66,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/pl',           labelKey: 'nav.profitLoss',  icon: BarChart3,  module: 'pl' },
       { to: '/analytics',    labelKey: 'nav.analytics',   icon: TrendingUp, module: 'analytics' },
       { to: '/pos-settings', labelKey: 'nav.posSettings', icon: CreditCard, module: 'pos-settings' },
+      { to: '/catering', labelKey: 'nav.catering', icon: PartyPopper, module: 'catering' },
     ],
   },
   {
@@ -76,6 +79,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/waste',         labelKey: 'nav.wasteLog',     icon: Trash2,         module: 'waste' },
       { to: '/handover',      labelKey: 'nav.handover',     icon: ClipboardCheck, module: 'handover' },
       { to: '/pulse',         labelKey: 'nav.pulse',        icon: Heart,          module: 'pulse' },
+      { to: '/equipment', labelKey: 'nav.equipment', icon: Wrench, module: 'equipment' },
     ],
   },
   {
@@ -93,6 +97,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: '/timeclock',         labelKey: 'nav.timeclock',        icon: TimerIcon,     module: 'timeclock' },
       { to: '/staff-performance', labelKey: 'nav.staffPerformance', icon: Award,         module: 'staff-performance' },
       { to: '/reservations',      labelKey: 'nav.reservations',     icon: CalendarCheck, module: 'reservations' },
+      { to: '/certificates', labelKey: 'nav.certificates', icon: BadgeCheck, module: 'certificates' },
+      { to: '/training', labelKey: 'nav.training', icon: GraduationCap, module: 'training' },
     ],
   },
   {

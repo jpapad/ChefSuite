@@ -18,7 +18,11 @@ import type {
   RecipeCategory,
   RecipeDifficulty,
   RecipeIngredientDraft,
+  RecipeSubRecipe,
+  RecipeSubRecipeDraft,
 } from '../../types/database.types'
+import { ancestorsOf } from '../../lib/recipeTree'
+import { Layers, X } from 'lucide-react'
 
 export const RECIPE_CATEGORIES: RecipeCategory[] = [
   'appetizer', 'soup', 'salad', 'main', 'side',
@@ -47,11 +51,17 @@ export interface RecipeFormValues {
   description_el: string | null
   name_bg: string | null
   description_bg: string | null
+  is_base: boolean
+  yield_unit: string | null
+  sub_recipes: RecipeSubRecipeDraft[]
 }
 
 interface RecipeFormProps {
   initial?: Recipe
   initialIngredients?: RecipeIngredientDraft[]
+  initialSubRecipes?: RecipeSubRecipeDraft[]
+  /** All sub-recipe links of the team, to prevent circular bases */
+  subsByRecipe?: Record<string, RecipeSubRecipe[]>
   prefill?: Partial<RecipeFormValues>
   inventory: InventoryItem[]
   submitting?: boolean
@@ -63,6 +73,7 @@ function blank(
   initial?: Recipe,
   initialIngredients?: RecipeIngredientDraft[],
   prefill?: Partial<RecipeFormValues>,
+  initialSubRecipes?: RecipeSubRecipeDraft[],
 ): RecipeFormValues {
   return {
     title: initial?.title ?? prefill?.title ?? '',
@@ -84,12 +95,19 @@ function blank(
     description_el: initial?.description_el ?? prefill?.description_el ?? null,
     name_bg: initial?.name_bg ?? prefill?.name_bg ?? null,
     description_bg: initial?.description_bg ?? prefill?.description_bg ?? null,
+    is_base: initial?.is_base ?? prefill?.is_base ?? false,
+    yield_unit: initial?.yield_unit ?? prefill?.yield_unit ?? null,
+    sub_recipes: initialSubRecipes ?? prefill?.sub_recipes ?? [],
   }
 }
+
+const YIELD_UNITS = ['L', 'ml', 'kg', 'g', 'τεμ']
 
 export function RecipeForm({
   initial,
   initialIngredients,
+  initialSubRecipes,
+  subsByRecipe = {},
   prefill,
   inventory,
   submitting,
@@ -102,7 +120,7 @@ export function RecipeForm({
   const { create: createInventoryItem, update: updateInventoryItem } = useInventory()
   const otherRecipes = allRecipes.filter((r) => r.id !== initial?.id)
   const [values, setValues] = useState<RecipeFormValues>(() =>
-    blank(initial, initialIngredients, prefill),
+    blank(initial, initialIngredients, prefill, initialSubRecipes),
   )
   const [error, setError] = useState<string | null>(null)
   const [suggesting, setSuggesting] = useState(false)
@@ -198,8 +216,15 @@ export function RecipeForm({
   }
 
   useEffect(() => {
-    setValues(blank(initial, initialIngredients, prefill))
-  }, [initial, initialIngredients, prefill])
+    setValues(blank(initial, initialIngredients, prefill, initialSubRecipes))
+  }, [initial, initialIngredients, prefill, initialSubRecipes])
+
+  // Bases that can go into this recipe: anything that doesn't already use it
+  const blocked = initial ? ancestorsOf(initial.id, subsByRecipe) : new Set<string>()
+  const baseCandidates = allRecipes
+    .filter((r) => !blocked.has(r.id) && !values.sub_recipes.some((s) => s.sub_recipe_id === r.id))
+    .sort((a, b) => Number(b.is_base) - Number(a.is_base) || a.title.localeCompare(b.title))
+  const [baseToAdd, setBaseToAdd] = useState('')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -347,6 +372,31 @@ export function RecipeForm({
         </div>
       </div>
 
+      {/* Base (sub-recipe) settings */}
+      <div className="flex flex-col gap-3 rounded-2xl bg-bg-input p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" checked={values.is_base}
+            onChange={(e) => setValues((v) => ({ ...v, is_base: e.target.checked }))}
+            className="mt-1 h-4 w-4 accent-[#0F1210]" />
+          <span>
+            <span className="block text-sm font-medium">{t('recipes.sub.isBase')}</span>
+            <span className="block text-xs text-white/55">{t('recipes.sub.isBaseHint')}</span>
+          </span>
+        </label>
+        {values.is_base && (
+          <div className="flex flex-wrap items-center gap-2 pl-7">
+            <span className="text-xs text-white/55">{t('recipes.sub.yieldUnit')}</span>
+            {[null, ...YIELD_UNITS].map((u) => (
+              <button key={u ?? 'portion'} type="button" onClick={() => setValues((v) => ({ ...v, yield_unit: u }))}
+                className={cn('h-8 rounded-full px-3 text-xs font-medium transition',
+                  values.yield_unit === u ? 'bg-ink text-white-fixed' : 'bg-bg-card text-white/65 hover:text-white')}>
+                {u ?? t('recipes.sub.portion')}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <Textarea
         name="description"
         label={t('recipes.form.description')}
@@ -416,6 +466,53 @@ export function RecipeForm({
         onChange={(next) => setValues((v) => ({ ...v, ingredients: next }))}
         inventory={inventory}
       />
+
+      {/* Sub-recipes (bases) */}
+      <div className="flex flex-col gap-2">
+        <span className="flex items-center gap-1.5 text-sm font-medium text-white/80">
+          <Layers className="h-4 w-4" />{t('recipes.sub.title')}
+        </span>
+        <p className="-mt-1 text-xs text-white/50">{t('recipes.sub.hint')}</p>
+        {values.sub_recipes.map((sr, idx) => {
+          const base = allRecipes.find((r) => r.id === sr.sub_recipe_id)
+          return (
+            <div key={sr.sub_recipe_id} className="flex items-center gap-2 rounded-2xl bg-bg-input p-2 pl-4">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{base?.title ?? '—'}</span>
+              <input type="number" min={0} step="0.01" value={sr.quantity}
+                onChange={(e) => {
+                  const q = Number(e.target.value)
+                  setValues((v) => ({ ...v, sub_recipes: v.sub_recipes.map((x, i) => i === idx ? { ...x, quantity: q } : x) }))
+                }}
+                className="h-9 w-20 rounded-xl bg-bg-card px-2 text-right text-sm tabular-nums outline-none focus:ring-2 focus:ring-brand-orange/40" />
+              <span className="w-14 shrink-0 text-xs text-white/55">{base?.yield_unit ?? t('recipes.sub.portionShort')}</span>
+              <button type="button" aria-label={t('common.delete')}
+                onClick={() => setValues((v) => ({ ...v, sub_recipes: v.sub_recipes.filter((_, i) => i !== idx) }))}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 hover:bg-bg-card hover:text-red-500">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )
+        })}
+        {baseCandidates.length > 0 && (
+          <div className="flex gap-2">
+            <select value={baseToAdd} onChange={(e) => setBaseToAdd(e.target.value)}
+              className="h-11 min-w-0 flex-1 rounded-xl border border-inv-border bg-bg-input px-3 text-sm outline-none focus:ring-2 focus:ring-brand-orange/40">
+              <option value="">{t('recipes.sub.pick')}</option>
+              {baseCandidates.map((r) => (
+                <option key={r.id} value={r.id}>{r.is_base ? '◆ ' : ''}{r.title}{r.yield_unit ? ` (${r.yield_unit})` : ''}</option>
+              ))}
+            </select>
+            <button type="button" disabled={!baseToAdd}
+              onClick={() => {
+                setValues((v) => ({ ...v, sub_recipes: [...v.sub_recipes, { sub_recipe_id: baseToAdd, quantity: 1 }] }))
+                setBaseToAdd('')
+              }}
+              className="inline-flex h-11 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-medium text-white-fixed disabled:opacity-40">
+              <Plus className="h-4 w-4" />{t('common.add')}
+            </button>
+          </div>
+        )}
+      </div>
 
       {pendingIngredients.length > 0 && (
         <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-3 space-y-2">
