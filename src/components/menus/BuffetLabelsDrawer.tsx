@@ -99,7 +99,7 @@ function LabelCardPreview({ item, menu, settings, qrDataUrl, shortCode, status, 
             disabled={copies <= 1}
             className="h-4 w-4 rounded flex items-center justify-center bg-black/60 text-white/80 hover:bg-black/80 disabled:opacity-30 text-[10px] leading-none"
           >−</button>
-          <span className="min-w-[14px] text-center text-[9px] font-bold text-white bg-brand-orange rounded px-0.5 leading-4">
+          <span className="min-w-[14px] text-center text-[9px] font-bold text-on-accent bg-brand-orange rounded px-0.5 leading-4">
             ×{copies}
           </span>
           <button
@@ -900,7 +900,7 @@ export function BuffetLabelsDrawer({ open, onClose, menu, recipes }: Props) {
                           className={cn(
                             'px-3 py-1 transition',
                             settings.customUnit === u
-                              ? 'bg-brand-orange text-white'
+                              ? 'bg-brand-orange text-on-accent'
                               : 'text-white/50 hover:text-white hover:bg-white/5',
                           )}
                         >

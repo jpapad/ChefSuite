@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
+import { Page, PageHeader } from '../components/ui/page'
 import { useTranslation } from 'react-i18next'
-import { Search, BookOpen } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { cn } from '../lib/cn'
 import i18n from '../i18n'
@@ -312,14 +313,8 @@ export default function IngredientsEncyclopedia() {
   }
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold flex items-center gap-3">
-          <BookOpen className="h-8 w-8 text-brand-orange" />
-          {t('ingredients.title')}
-        </h1>
-        <p className="text-white/60 mt-1">{t('ingredients.subtitle')}</p>
-      </header>
+    <Page>
+      <PageHeader title={t('ingredients.title')} subtitle={t('ingredients.subtitle')} />
 
       {/* Search + filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -329,7 +324,7 @@ export default function IngredientsEncyclopedia() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('ingredients.searchPlaceholder')}
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-brand-orange/50 focus:bg-white/8 transition"
+            className="w-full bg-bg-card shadow-card rounded-full pl-10 pr-4 h-11 text-sm text-white placeholder:text-white/25 outline-none focus:border-brand-orange/50 focus:bg-white/8 transition"
           />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -339,10 +334,10 @@ export default function IngredientsEncyclopedia() {
               type="button"
               onClick={() => setActiveCategory(cat.id)}
               className={cn(
-                'px-3 py-2 rounded-xl border text-sm font-medium transition whitespace-nowrap',
+                'h-9 px-3.5 rounded-full text-[13px] font-medium transition whitespace-nowrap',
                 activeCategory === cat.id
-                  ? 'border-brand-orange bg-brand-orange/15 text-brand-orange'
-                  : 'border-white/10 text-white/50 hover:border-white/25 hover:text-white/80 hover:bg-white/5',
+                  ? 'bg-brand-orange text-on-accent'
+                  : 'bg-bg-card shadow-card text-white/70 hover:text-white',
               )}
             >
               <span className="mr-1">{cat.emoji}</span>{t(cat.labelKey)}
@@ -405,6 +400,6 @@ export default function IngredientsEncyclopedia() {
           })}
         </div>
       )}
-    </div>
+    </Page>
   )
 }

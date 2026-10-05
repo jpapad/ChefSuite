@@ -51,7 +51,29 @@
       "library": "Библиотека"
     },
     "search": "Търсене…",
-    "noResults": "Няма резултати"
+    "noResults": "Няма резултати",
+    "primary": "Основна навигация",
+    "switchTeam": "Смяна на кухня",
+    "sections": {
+      "home": "Начало",
+      "homeShort": "Начало",
+      "recipes": "Рецепти и менюта",
+      "recipesShort": "Рецепти",
+      "stock": "Склад и доставки",
+      "stockShort": "Склад",
+      "finance": "Финанси",
+      "financeShort": "Финанси",
+      "kitchen": "Кухня",
+      "kitchenShort": "Кухня",
+      "buffet": "Бюфет на живо",
+      "buffetShort": "Бюфет",
+      "team": "Екип и резервации",
+      "teamShort": "Екип",
+      "comms": "Комуникация и AI",
+      "commsShort": "Чат",
+      "library": "Знания",
+      "libraryShort": "Знания"
+    }
   },
   "notifications": {
     "title": "Известия",
@@ -284,6 +306,56 @@
       "variations": "Вариации",
       "comments": "Бележки на екипа",
       "addComment": "Добавете бележка…"
+    },
+    "v2": {
+      "import": "Импорт",
+      "importHint": "От URL или текст",
+      "scanHint": "Снимка или ръкопис",
+      "excel": "Импорт от Excel",
+      "excelHint": "Рецепти и ново меню наведнъж",
+      "quick": "Бърз списък",
+      "quickHint": "Много рецепти от списък с имена",
+      "aiTools": "AI инструменти",
+      "batch": "AI попълване и подготовка",
+      "batchHint": "Описания, времена, алергени, шаблони",
+      "allergenHint": "Откриване в цялата библиотека",
+      "bulkAi": "Масова AI актуализация",
+      "bulkHint": "Имена и описания на EL/BG",
+      "total": "Рецепти",
+      "totalHint": "в {{count}} категории",
+      "avgFc": "Среден food cost",
+      "avgFcHint": "от {{count}} рецепти с цена",
+      "overTarget": "Над 30%",
+      "overTargetHint": "food cost на порция",
+      "incomplete": "Непълни",
+      "incompleteHint": "Попълни с AI →",
+      "all": "Всички",
+      "grid": "Мрежа",
+      "groups": "Групи",
+      "allergens": "Алергени",
+      "showing": "{{count}} от {{total}} рецепти"
+    },
+    "v3": {
+      "back": "Рецепти",
+      "more": "Още",
+      "cookMode": "Режим готвене",
+      "upNext": "Следва",
+      "sayCommands": "Кажи „next“, „back“, „repeat“ или „stop“",
+      "costPerPortion": "Цена / порция",
+      "sellingPrice": "Продажна цена",
+      "margin": "Марж",
+      "fcTarget": "Цел ≤ 30%",
+      "stock": "Наличност",
+      "ready": "Готово",
+      "missingN": "Липсват {{count}}",
+      "forPortions": "За {{count}} порции",
+      "noIngredients": "Без съставки",
+      "allergens": "Алергени",
+      "checked": "{{done}} от {{total}} готови",
+      "stepsDone": "{{done}} от {{total}} стъпки",
+      "reset": "Изчисти",
+      "makeDeduct": "Приготви и извади от склада",
+      "noNutrition": "Все още няма хранителни данни."
     }
   },
   "inventory": {
@@ -344,7 +416,29 @@
       "now": "СЕГА"
     },
     "autoOrder": "Създай Поръчка",
-    "autoOrderCreated": "Поръчка създадена за {{supplier}}"
+    "autoOrderCreated": "Поръчка създадена за {{supplier}}",
+    "v2": {
+      "scan": "Сканиране",
+      "receiveHint": "Приемане с баркод",
+      "checkHint": "Бърза проверка",
+      "tools": "Инструменти",
+      "count": "Инвентаризация",
+      "countHint": "Броене на цял екран",
+      "watchlistHint": "Артикули, които следите",
+      "importExcel": "Импорт от Excel",
+      "items": "Артикули",
+      "locationsCount": "в {{count}} места",
+      "low": "Ниска наличност",
+      "lowHint": "Натисни за филтър",
+      "value": "Стойност на склада",
+      "valueHint": "по последна единична цена",
+      "urgent": "Свършват до 3 дни",
+      "urgentHint": "Виж списъка за поръчка →",
+      "stock": "Наличност",
+      "daily": "Дневни поръчки",
+      "dailyHint": "Какво трябва да излезе днес",
+      "unassigned": "Без място"
+    }
   },
   "prep": {
     "title": "Подготовка",
@@ -442,6 +536,10 @@
       "noSteps": "без стъпки",
       "smartGenerate": "AI Разбивка ({{count}} рецепта(и))",
       "analyzing": "Анализ с AI…"
+    },
+    "v2": {
+      "more": "Още",
+      "progress": "Напредък за деня"
     }
   },
   "suppliers": {
@@ -476,6 +574,14 @@
       "notesPlaceholder": "График за доставки, специални условия…",
       "logo": "Лого",
       "create": "Добави доставчик"
+    },
+    "v2": {
+      "linkedItems": "Артикули с доставчик",
+      "linkedHint": "от {{total}} артикула",
+      "unlinked": "Без доставчик",
+      "unlinkedHint": "Свържи в склада →",
+      "noContact": "Без контакти",
+      "noContactHint": "без телефон или имейл"
     }
   },
   "team": {
@@ -524,7 +630,15 @@
     "memberLanguage": "Език на приложението",
     "savePermissions": "Запази разрешенията",
     "savingPermissions": "Запазване…",
-    "permissionsSaved": "Разрешенията са запазени"
+    "permissionsSaved": "Разрешенията са запазени",
+    "v2": {
+      "expiring": "Изтичат скоро",
+      "expiringHint": "достъп до 7 дни",
+      "target": "Цел",
+      "targetTitle": "Цел за food cost",
+      "targetHint": "Използва се за цветовете, анализа на менюто и предложените цени.",
+      "custom": "Персонални права"
+    }
   },
   "analytics": {
     "title": "Аналитика",
@@ -666,6 +780,17 @@
       "labelPlaceholder": "напр. Сутрешна температурна проверка",
       "frequency": "Проверка всеки",
       "overdueWarning": "{{count}} проверка(и) са закъснели! Запишете температура."
+    },
+    "v2": {
+      "more": "Още",
+      "checks": "Проверки",
+      "locationsCount": "в {{count}} точки",
+      "pass": "В норма",
+      "fail": "Извън норма",
+      "compliance": "Съответствие",
+      "overdue": "{{count}} просрочени проверки →",
+      "inRange": "В норма",
+      "outOfRange": "Извън норма"
     }
   },
   "chat": {
@@ -701,7 +826,19 @@
     "addTasksHint": "Добавете задачи в страницата Подготовка.",
     "tabPrep": "Подготовка",
     "tabOrders": "Поръчки",
-    "noOrders": "Няма активни поръчки"
+    "noOrders": "Няма активни поръчки",
+    "v2": {
+      "new": "Нови",
+      "preparing": "В подготовка",
+      "ready": "Готови",
+      "prevDay": "Предишен ден",
+      "nextDay": "Следващ ден",
+      "table": "Маса {{table}}",
+      "takeaway": "За вкъщи",
+      "start": "Започни",
+      "markReady": "Готово",
+      "served": "Сервирано"
+    }
   },
   "walkie": {
     "title": "Рация",
@@ -866,6 +1003,16 @@
       "close": "Затвори",
       "total": "Общо",
       "totalRow": "Общо часове"
+    },
+    "v2": {
+      "export": "Експорт",
+      "hours": "Часове за седмицата",
+      "shifts": "Смени",
+      "people": "Хора по график",
+      "peopleHint": "от целия екип",
+      "today": "Смени днес",
+      "todayHint": "по графика",
+      "hoursShort": "Часове"
     }
   },
   "waste": {
@@ -1177,6 +1324,52 @@
       "clearFilter": "Покажи всички",
       "hiddenByFilter": "Скрито от филтър",
       "switchTemplate": "Шаблон"
+    },
+    "v2": {
+      "more": "Още",
+      "scans": "QR сканирания",
+      "scansHint": "Колко отвориха дигиталното меню",
+      "todayQr": "QR на дневното меню",
+      "todayQrHint": "Печат или изтегляне",
+      "today": "Днес сервираме",
+      "activeMenus": "Активни менюта",
+      "ofTotal": "от общо {{total}}",
+      "scheduledDays": "Дни с график",
+      "scheduledHint": "сменя се автоматично всеки ден",
+      "expiredHint": "с изтекъл срок",
+      "week": "Седмичен график",
+      "weekHint": "Активното меню се сменя в QR, KDS и бюфета",
+      "none": "Без меню",
+      "person": "човек",
+      "dailyMenu": "Дневно меню",
+      "setDaily": "Задай като дневно меню",
+      "unsetDaily": "Премахни като дневно меню",
+      "days": [
+        "Понеделник",
+        "Вторник",
+        "Сряда",
+        "Четвъртък",
+        "Петък",
+        "Събота",
+        "Неделя"
+      ],
+      "kitchen": "Кухня",
+      "share": "QR и експорт",
+      "scansCount": "{{count}} сканирания",
+      "canva": "Експорт за Canva",
+      "dishes": "Ястия",
+      "inSections": "в {{count}} раздела",
+      "available": "Налични",
+      "availableHint": "останалите са скрити от QR",
+      "fcHint": "от {{count}} ястия с цена",
+      "linked": "Със рецепта",
+      "linkedHint": "Свържи рецепти →",
+      "sections": "Раздели",
+      "bulkLink": "Масово свързване на рецепти",
+      "transfer": "Премести или копирай в друго меню",
+      "noRecipe": "Без рецепта",
+      "editRecipe": "Редактирай рецептата",
+      "fromLibrary": "От библиотеката"
     }
   },
   "language": {
@@ -1233,6 +1426,10 @@
       "title": "Няма поръчки за покупка все още",
       "description": "Създайте поръчки за изпращане към доставчиците.",
       "cta": "Създайте първата поръчка"
+    },
+    "v2": {
+      "invoiceHint": "Качете PDF или снимка. Редовете се съпоставят с наличностите.",
+      "chooseFile": "Избери файл"
     }
   },
   "timeclock": {
@@ -1248,7 +1445,10 @@
     "stillIn": "все още вътре",
     "entries": "Записи",
     "noEntries": "Няма записи за този ден.",
-    "erganiExport": "Експорт Е8"
+    "erganiExport": "Експорт Е8",
+    "v2": {
+      "people": "Кой е на смяна"
+    }
   },
   "reservations": {
     "title": "Резервации",
@@ -1295,6 +1495,10 @@
     "empty": {
       "title": "Няма данни за работно време",
       "description": "Членовете на екипа трябва да влизат и излизат за показатели."
+    },
+    "v2": {
+      "person": "Служител",
+      "hoursVsScheduled": "Часове / график"
     }
   },
   "pl": {
@@ -1323,6 +1527,18 @@
     "empty": {
       "title": "Няма данни все още",
       "description": "Завършете онлайн поръчки и получете поръчки за покупка за преглед."
+    },
+    "v2": {
+      "statement": "Отчет за приходите",
+      "idealVsActual": "Идеален и реален food cost",
+      "idealOnlineOnly": "Идеален: само онлайн поръчки",
+      "ideal": "Идеален food cost",
+      "actual": "Реален food cost",
+      "variance": "Отклонение",
+      "overuse": "Преразход или фира",
+      "belowIdeal": "Под идеалния",
+      "onTarget": "В целта",
+      "idealExplain": "Идеален = теоретична цена от рецепти × продажби. Реален = потребление от склада. Положително отклонение означава фира или по-големи порции."
     }
   },
   "priceTracking": {
@@ -1342,6 +1558,16 @@
     "empty": {
       "title": "Няма данни за цени все още",
       "description": "Качете фактури с единични цени за проследяване на промените."
+    },
+    "v2": {
+      "tracked": "Артикули с история",
+      "trackedHint": "от доставки и фактури",
+      "alerts": "Поскъпвания",
+      "alertsHint": "над {{pct}}%",
+      "cheaper": "По-евтини",
+      "cheaperHint": "спад над 2%",
+      "avgChange": "Средна промяна",
+      "avgChangeHint": "от първия запис"
     }
   },
   "menuEng": {
@@ -1370,6 +1596,15 @@
     "empty": {
       "title": "Няма данни за продажби все още",
       "description": "Завършете онлайн поръчки за анализ."
+    },
+    "v2": {
+      "window": "Последните 30 дни",
+      "dishes": "Продадени ястия",
+      "unitsTotal": "{{count}} порции общо",
+      "matrix": "Популярност × марж",
+      "marginAxis": "Марж",
+      "popularityAxis": "Популярност",
+      "allDishes": "Всички ястия"
     }
   },
   "journal": {
@@ -1454,7 +1689,11 @@
     "starter1": "Коя от рецептите ми има най-висок % разходи за храна?",
     "starter2": "Какво мога да сготвя тази вечер с наличното?",
     "starter3": "Предложи веган вариация на едно от основните ми ястия.",
-    "starter4": "Кои артикули са с нисък запас и трябва да поръчам?"
+    "starter4": "Кои артикули са с нисък запас и трябва да поръчам?",
+    "v2": {
+      "knows": "Какво знае Copilot",
+      "try": "Опитайте"
+    }
   },
   "culinaryTools": {
     "title": "Кухненски Инструменти",
@@ -1638,7 +1877,17 @@
     "noItems": "Няма намерени артикули",
     "changesOnly": "Само промени",
     "allItems": "Всички",
-    "reason": "stocktake"
+    "reason": "stocktake",
+    "v2": {
+      "items": "Артикули",
+      "itemsHint": "в списъка за броене",
+      "changed": "С разлика",
+      "changedHint": "ще се запишат като движения",
+      "surplus": "Излишък",
+      "surplusHint": "преброени повече",
+      "shortage": "Липса",
+      "shortageHint": "преброени по-малко"
+    }
   },
   "costing": {
     "title": "Себестойност",
@@ -1665,7 +1914,19 @@
     "noRecipes": "Няма намерени рецепти",
     "noIngredients": "Няма съставки с данни за цена",
     "warningHigh": "Висок food cost",
-    "warningLow": "Нисък марж"
+    "warningLow": "Нисък марж",
+    "v2": {
+      "event": "Калкулация на събитие",
+      "target": "цел {{target}}%",
+      "aboveTarget": "Над целта",
+      "optimizeHint": "Оптимизирай цените →",
+      "allOnTarget": "всички в целта",
+      "missingCost": "Съставки без цена",
+      "optimize": "Оптимизирай ({{count}})",
+      "optimizerTitle": "{{count}} рецепти над {{target}}%",
+      "optimizerHint": "Изберете кои да получат предложената цена.",
+      "applyPrices": "Приложи цените"
+    }
   },
   "handover": {
     "title": "Предаване на Смяна",
@@ -1722,7 +1983,10 @@
     "previewHint": "Показване на първите 3 етикета",
     "previewEmpty": "Изберете рецепти за преглед",
     "print": "Печат на {{count}} Етикет(а)",
-    "noRecipes": "Няма намерени рецепти"
+    "noRecipes": "Няма намерени рецепти",
+    "v2": {
+      "settings": "Настройки на етикета"
+    }
   },
   "buffetPulse": {
     "title": "Buffet Live Pulse",
@@ -1793,6 +2057,11 @@
       "scheduleSub": "Календар за доставки",
       "importExcel": "Импорт Excel",
       "importExcelSub": "Масов импорт"
+    },
+    "v2": {
+      "overview": "Всички инструменти",
+      "transfers": "Трансфери",
+      "transfersSub": "Вътрешни трансфери на наличности"
     }
   },
   "haccpLogbook": {
@@ -1827,7 +2096,13 @@
     "outOfRangeWarning": "⚠️ Открити температури извън нормата — необходими са коригиращи действия",
     "errorInvalidTemps": "Температурите не са валидни.",
     "errorTaskName": "Моля въведете име на задачата.",
-    "drawerTitle": "Настройки на HACCP дневник"
+    "drawerTitle": "Настройки на HACCP дневник",
+    "v2": {
+      "title": "Дигитален HACCP дневник",
+      "thisShift": "записи на температура",
+      "completion": "Завършеност за деня",
+      "completionHint": "температури и почистване"
+    }
   },
   "tempLog": {
     "acceptable": "Допустимо:",
@@ -1885,5 +2160,52 @@
     "namePlaceholder": "напр. Зехтин екстра върджин",
     "deleteConfirm": "Изтриване на продукт?",
     "lowStockCount": "ниска наличност"
+  },
+  "home": {
+    "kicker": "Днес в кухнята",
+    "needsAttention": "Изисква внимание",
+    "allClear": "Всичко е наред, нищо не чака.",
+    "lowStockItem": "{{name}}: {{qty}} {{unit}}, минимум {{min}}",
+    "prepPending": "{{count}} задачи за подготовка чакат",
+    "ordersPending": "{{count}} нови онлайн поръчки",
+    "prepToday": "Подготовка днес",
+    "prepEmpty": "Няма задачи за днес",
+    "prepDone": "{{done}} от {{total}} готови",
+    "lowStock": "Ниска наличност",
+    "lowStockNone": "Всичко е над минимума",
+    "reservations": "Резервации днес",
+    "guests": "{{count}} гости",
+    "orders": "Онлайн поръчки",
+    "ordersBreakdown": "{{pending}} нови · {{preparing}} в подготовка · {{ready}} готови",
+    "recipes": "Рецепти",
+    "teamMembers": "членове на екипа",
+    "nextUp": "Следващи резервации",
+    "noReservations": "Няма резервации днес",
+    "openKds": "Отвори KDS",
+    "buffetMonitor": "Бюфет монитор",
+    "everything": "Цялата ви кухня",
+    "copilotTitle": "Попитай Chef Copilot",
+    "copilotBody": "Познава наличностите, рецептите и разходите на екипа ви.",
+    "copilotCta": "Започни разговор",
+    "sectionDesc": {
+      "recipes": "Библиотека, менюта, цена на ястие, етикети",
+      "stock": "Наличности, инвентаризация, доставчици, поръчки",
+      "finance": "Food cost, P&L, анализи, POS",
+      "kitchen": "KDS, подготовка, HACCP, отпадъци, смяна",
+      "buffet": "Състояние на ястията на живо и карта",
+      "team": "Смени, присъствие, представяне, резервации",
+      "comms": "Чат, уоки-токи, Copilot, дневник",
+      "library": "Техники, съставки, подправки, сезони"
+    }
+  },
+  "auth": {
+    "v2": {
+      "headline": "Цялата ти кухня, на едно място.",
+      "f1": "Рецепти, менюта и калкулации",
+      "f2": "Склад и поръчки",
+      "f3": "KDS, подготовка и HACCP",
+      "f4": "Екип, смени и комуникация",
+      "footer": "ChefSuite · Създаден за професионални кухни"
+    }
   }
 }

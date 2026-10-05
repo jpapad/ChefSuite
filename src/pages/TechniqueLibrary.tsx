@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Page, PageHeader } from '../components/ui/page'
 import { useTranslation } from 'react-i18next'
 import { Search, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -317,30 +318,27 @@ export default function TechniqueLibrary() {
   }, [search, category, difficulty, isEl])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t('techniques.title')}</h1>
-        <p className="text-sm text-white/40 mt-1">{t('techniques.subtitle')}</p>
-      </div>
+    <Page>
+      <PageHeader title={t('techniques.title')} subtitle={t('techniques.subtitle')} />
 
       <div className="space-y-3">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 pointer-events-none" />
           <input type="text" placeholder={t('techniques.search')} value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="glass rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/50 w-full" />
+            className="rounded-full bg-bg-card shadow-card pl-10 pr-4 h-11 text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-brand-orange/40 w-full" />
         </div>
 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setCategory('all')}
-            className={cn('px-3 py-1 rounded-full text-xs font-medium transition',
-              category === 'all' ? 'bg-brand-orange text-white' : 'glass text-white/50 hover:text-white/80')}>
+            className={cn('h-9 px-3.5 rounded-full text-[13px] font-medium transition',
+              category === 'all' ? 'bg-brand-orange text-on-accent' : 'bg-bg-card shadow-card text-white/70 hover:text-white')}>
             {t('techniques.all')}
           </button>
           {ALL_CATEGORIES.map((cat) => (
             <button key={cat} type="button" onClick={() => setCategory(cat)}
-              className={cn('px-3 py-1 rounded-full text-xs font-medium transition',
-                category === cat ? 'bg-brand-orange text-white' : 'glass text-white/50 hover:text-white/80')}>
+              className={cn('h-9 px-3.5 rounded-full text-[13px] font-medium transition',
+                category === cat ? 'bg-brand-orange text-on-accent' : 'bg-bg-card shadow-card text-white/70 hover:text-white')}>
               {t(`techniques.${cat}`)}
             </button>
           ))}
@@ -348,13 +346,13 @@ export default function TechniqueLibrary() {
 
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setDifficulty('all')}
-            className={cn('px-3 py-1 rounded-full text-xs font-medium transition border border-transparent',
+            className={cn('h-9 px-3.5 rounded-full text-[13px] font-medium transition border border-transparent',
               difficulty === 'all' ? 'bg-white/15 text-white' : 'text-white/35 hover:text-white/60')}>
             {t('techniques.all')}
           </button>
           {ALL_DIFFICULTIES.map((d) => (
             <button key={d} type="button" onClick={() => setDifficulty(d)}
-              className={cn('px-3 py-1 rounded-full text-xs font-medium transition border',
+              className={cn('h-9 px-3.5 rounded-full text-[13px] font-medium transition border',
                 difficulty === d ? DIFF_COLORS[d] : 'border-transparent text-white/35 hover:text-white/60')}>
               {t(`techniques.${d}`)}
             </button>
@@ -371,6 +369,6 @@ export default function TechniqueLibrary() {
           ))}
         </div>
       )}
-    </div>
+    </Page>
   )
 }

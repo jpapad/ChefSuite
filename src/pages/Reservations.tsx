@@ -1,18 +1,17 @@
 import { useState } from 'react'
 import { CalendarCheck, ChevronLeft, ChevronRight, Users, Phone, Mail, Check, X, Coffee, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
-import { Button } from '../components/ui/Button'
+import { Page, PageHeader, StatRow, StatTile, Panel, EmptyState, Notice } from '../components/ui/page'
 import { useReservations } from '../hooks/useReservations'
 import { cn } from '../lib/cn'
 import type { Reservation, ReservationStatus } from '../types/database.types'
 
 const STATUS_STYLES: Record<ReservationStatus, string> = {
-  pending:   'bg-amber-500/20 text-amber-300',
-  confirmed: 'bg-blue-500/20 text-blue-300',
-  seated:    'bg-brand-orange/20 text-brand-orange',
-  completed: 'bg-emerald-500/20 text-emerald-300',
-  cancelled: 'bg-white/10 text-white/40',
+  pending:   'bg-amber-500/15 text-amber-500',
+  confirmed: 'bg-sky-500/12 text-sky-500',
+  seated:    'bg-lime text-ink',
+  completed: 'bg-emerald-500/12 text-emerald-500',
+  cancelled: 'bg-white/[0.08] text-white/50',
 }
 
 const STATUS_ORDER: ReservationStatus[] = ['pending', 'confirmed', 'seated', 'completed', 'cancelled']
@@ -62,154 +61,122 @@ export default function Reservations() {
 
   const pending = reservations.filter((r) => r.status === 'pending').length
 
+  const active = reservations.filter((r) => r.status !== 'cancelled')
+  const covers = active.reduce((sum, r) => sum + r.party_size, 0)
+  const seated = reservations.filter((r) => r.status === 'seated').length
+  const byHour = [...new Set(reservations.map((r) => r.reservation_time.slice(0, 2)))].sort()
+
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold">{t('reservations.title')}</h1>
-        <p className="text-white/60 mt-1">{t('reservations.subtitle')}</p>
-      </header>
-
-      {error && <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>}
-
-      {/* Date navigator */}
-      <GlassCard className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => setDate((d) => addDays(d, -1))}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <div className="text-center">
-          <p className="font-semibold">{dateLabel(date)}</p>
-          <div className="flex items-center justify-center gap-3 mt-0.5">
-            {pending > 0 && (
-              <span className="text-xs text-amber-400">{t('reservations.pendingCount', { count: pending })}</span>
-            )}
-            {date !== todayIso() && (
-              <button type="button" onClick={() => setDate(todayIso())}
-                className="text-xs text-white/40 hover:text-white/70 transition">
-                {t('common.today')}
-              </button>
-            )}
+    <Page>
+      <PageHeader
+        title={t('reservations.title')}
+        subtitle={t('reservations.subtitle')}
+        actions={
+          <div className="flex items-center gap-1 rounded-full bg-bg-card p-1 shadow-card">
+            <button type="button" aria-label="−1" onClick={() => setDate((d) => addDays(d, -1))}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setDate(todayIso())} className="min-w-[140px] px-2 text-sm font-medium first-letter:uppercase" title={t('common.today')}>
+              {dateLabel(date)}
+            </button>
+            <button type="button" aria-label="+1" onClick={() => setDate((d) => addDays(d, 1))}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white"><ChevronRight className="h-4 w-4" /></button>
           </div>
-        </div>
-        <button type="button" onClick={() => setDate((d) => addDays(d, 1))}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </GlassCard>
+        }
+      />
+
+      {error && <Notice>{error}</Notice>}
+
+      <StatRow>
+        <StatTile tone="ink" label={t('reservations.title')} value={active.length} hint={dateLabel(date)} />
+        <StatTile label={t('reservations.guests')} value={covers} icon={Users} />
+        <StatTile label={t('reservations.status.pending')} value={pending} tone={pending ? 'warn' : 'default'} hint={pending ? t('reservations.pendingCount', { count: pending }) : undefined} />
+        <StatTile tone="lime" label={t('reservations.status.seated')} value={seated} icon={Coffee} />
+      </StatRow>
 
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : reservations.length === 0 ? (
-        <GlassCard className="text-center py-10">
-          <CalendarCheck className="h-10 w-10 text-white/20 mx-auto mb-3" />
-          <p className="text-white/50">{t('reservations.noReservations')}</p>
-        </GlassCard>
+        <EmptyState icon={CalendarCheck} title={t('reservations.noReservations')} />
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {/* List */}
-          <div className="space-y-2">
-            {reservations.map((r) => (
-              <GlassCard
-                key={r.id}
-                className={cn(
-                  'flex items-center gap-4 cursor-pointer hover:bg-white/[.03] transition',
-                  selectedId === r.id && 'ring-2 ring-brand-orange/50',
-                )}
-                onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
-                  <span className="text-lg font-bold text-white/60">{r.party_size}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold truncate">{r.guest_name}</span>
-                    <span className={cn('text-xs rounded-full px-2 py-0.5 font-medium shrink-0', STATUS_STYLES[r.status])}>
-                      {t(`reservations.status.${r.status}`)}
-                    </span>
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+          {/* ── Timeline by hour ── */}
+          <Panel>
+            <ol className="flex flex-col">
+              {byHour.map((hour) => (
+                <li key={hour} className="grid grid-cols-[64px_minmax(0,1fr)] gap-3 border-t border-white/[0.06] py-3 first:border-t-0 first:pt-0">
+                  <span className="pt-2 text-lg font-medium tabular-nums text-white/55">{hour}:00</span>
+                  <div className="flex flex-col gap-2">
+                    {reservations.filter((r) => r.reservation_time.slice(0, 2) === hour).map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        aria-pressed={selectedId === r.id}
+                        onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}
+                        className={cn('flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition', selectedId === r.id ? 'bg-ink text-white-fixed' : 'bg-white/[0.04] hover:bg-white/[0.07]', r.status === 'cancelled' && 'opacity-50')}
+                      >
+                        <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-medium tabular-nums', selectedId === r.id ? 'bg-lime text-ink' : 'bg-bg-card shadow-card')}>
+                          {r.party_size}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">{r.guest_name}</span>
+                          <span className={cn('flex items-center gap-1 text-xs tabular-nums', selectedId === r.id ? 'text-white-fixed/60' : 'text-white/50')}>
+                            <Clock className="h-3 w-3" />{formatTime(r.reservation_time)}{r.notes && ` · ${r.notes.slice(0, 40)}`}
+                          </span>
+                        </span>
+                        <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-medium', STATUS_STYLES[r.status])}>{t(`reservations.status.${r.status}`)}</span>
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-sm text-white/50">
-                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{formatTime(r.reservation_time)}</span>
-                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{r.party_size}</span>
-                  </div>
-                </div>
-              </GlassCard>
-            ))}
-          </div>
+                </li>
+              ))}
+            </ol>
+          </Panel>
 
-          {/* Detail panel */}
+          {/* ── Detail ── */}
           {selected ? (
-            <GlassCard className="space-y-4 self-start">
+            <Panel className="lg:sticky lg:top-24">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">{selected.guest_name}</h2>
-                  <p className="text-sm text-white/50 mt-0.5">
-                    {formatTime(selected.reservation_time)} · {selected.party_size} {t('reservations.guests')}
-                  </p>
+                  <h2 className="text-2xl font-medium tracking-[-0.02em]">{selected.guest_name}</h2>
+                  <p className="text-sm text-white/55">{formatTime(selected.reservation_time)} · {selected.party_size} {t('reservations.guests')}</p>
                 </div>
-                <button type="button" onClick={() => setSelectedId(null)}
-                  className="text-white/40 hover:text-white transition">
+                <button type="button" onClick={() => setSelectedId(null)} aria-label={t('common.close', 'Close')} className="flex h-9 w-9 items-center justify-center rounded-full text-white/50 hover:bg-white/[0.06] hover:text-white">
                   <X className="h-5 w-5" />
                 </button>
               </div>
-
-              {/* Contact */}
-              <div className="space-y-1.5">
+              <div className="flex flex-wrap gap-2">
                 {selected.guest_phone && (
-                  <a href={`tel:${selected.guest_phone}`} className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition">
-                    <Phone className="h-4 w-4" />{selected.guest_phone}
-                  </a>
+                  <a href={`tel:${selected.guest_phone}`} className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-orange px-4 text-sm font-medium text-on-accent"><Phone className="h-4 w-4" />{selected.guest_phone}</a>
                 )}
                 {selected.guest_email && (
-                  <a href={`mailto:${selected.guest_email}`} className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition">
-                    <Mail className="h-4 w-4" />{selected.guest_email}
-                  </a>
-                )}
-                {selected.notes && (
-                  <p className="text-sm text-white/50 mt-2 p-3 rounded-xl bg-white/5 border border-glass-border">
-                    {selected.notes}
-                  </p>
+                  <a href={`mailto:${selected.guest_email}`} className="inline-flex h-10 items-center gap-2 rounded-full bg-white/[0.06] px-4 text-sm font-medium"><Mail className="h-4 w-4" />{selected.guest_email}</a>
                 )}
               </div>
-
-              {/* Status actions */}
-              <div className="space-y-2 pt-1">
-                <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">{t('reservations.changeStatus')}</p>
-                <div className="flex flex-wrap gap-2">
-                  {STATUS_ORDER.filter((s) => s !== selected.status).map((s) => {
-                    const icons: Record<ReservationStatus, React.ReactNode> = {
-                      pending:   <Clock className="h-4 w-4" />,
-                      confirmed: <Check className="h-4 w-4" />,
-                      seated:    <Coffee className="h-4 w-4" />,
-                      completed: <Check className="h-4 w-4" />,
-                      cancelled: <X className="h-4 w-4" />,
-                    }
-                    return (
-                      <button key={s} type="button"
-                        onClick={() => void handleStatus(selected, s)}
-                        className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition', STATUS_STYLES[s],
-                          'hover:brightness-125')}>
-                        {icons[s]}
-                        {t(`reservations.status.${s}`)}
-                      </button>
-                    )
-                  })}
+              {selected.notes && <p className="rounded-2xl bg-amber-500/10 p-3 text-sm text-amber-600">{selected.notes}</p>}
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-white/55">{t('reservations.changeStatus')}</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {STATUS_ORDER.filter((st) => st !== selected.status).map((st) => (
+                    <button key={st} type="button" onClick={() => void handleStatus(selected, st)}
+                      className={cn('flex items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-sm font-medium transition hover:brightness-95', STATUS_STYLES[st])}>
+                      {st === 'cancelled' ? <X className="h-4 w-4" /> : st === 'seated' ? <Coffee className="h-4 w-4" /> : st === 'pending' ? <Clock className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                      {t(`reservations.status.${st}`)}
+                    </button>
+                  ))}
                 </div>
-                <Button
-                  variant="ghost"
-                  className="text-red-400 hover:text-red-300 text-xs"
-                  onClick={() => { if (window.confirm(t('reservations.deleteConfirm'))) void remove(selected.id).then(() => setSelectedId(null)) }}
-                >
-                  {t('common.delete')}
-                </Button>
               </div>
-            </GlassCard>
+              <button type="button" onClick={() => { if (window.confirm(t('reservations.deleteConfirm'))) void remove(selected.id).then(() => setSelectedId(null)) }}
+                className="self-start text-sm font-medium text-red-500 hover:underline">
+                {t('common.delete')}
+              </button>
+            </Panel>
           ) : (
-            <div className="hidden lg:flex items-center justify-center text-white/20 text-sm">
+            <div className="hidden items-center justify-center rounded-3xl border border-dashed border-white/15 p-10 text-center text-sm text-white/45 lg:flex">
               {t('reservations.selectHint')}
             </div>
           )}
         </div>
       )}
-    </div>
+    </Page>
   )
 }

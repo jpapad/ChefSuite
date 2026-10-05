@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '../lib/cn'
+import { Page } from '../components/ui/page'
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory, isLowStock } from '../hooks/useInventory'
 import { useTeam } from '../hooks/useTeam'
@@ -38,21 +39,14 @@ function BentoCard({
   to?: string
   glow?: string
 }) {
+  // `glow` is accepted for compatibility but no longer drawn in the new design
+  void glow
   const base = cn(
-    'relative glass gradient-border rounded-2xl p-5 flex flex-col gap-3',
-    'transition-all duration-300 hover:-translate-y-0.5',
-    'hover:shadow-[0_16px_48px_rgba(120,70,20,0.18)]',
-    'overflow-hidden',
+    'relative rounded-3xl bg-bg-card shadow-card p-5 flex flex-col gap-3 overflow-hidden',
+    'transition-transform duration-300 hover:-translate-y-0.5',
     className,
   )
-  const inner = (
-    <>
-      {glow && (
-        <div className={cn('absolute pointer-events-none rounded-full blur-3xl opacity-25', glow)} />
-      )}
-      {children}
-    </>
-  )
+  const inner = <>{children}</>
   if (to) return <Link to={to} className={base}>{inner}</Link>
   return <div className={base}>{inner}</div>
 }
@@ -61,8 +55,6 @@ function StatPill({
   icon: Icon,
   label,
   value,
-  from,
-  to: toColor,
   href,
 }: {
   icon: React.ElementType
@@ -73,14 +65,13 @@ function StatPill({
   href?: string
 }) {
   const inner = (
-    <div className="group relative glass gradient-border rounded-2xl px-4 py-3.5 flex items-center gap-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(120,70,20,0.15)] overflow-hidden">
-      <div className={cn('absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br', from, toColor)} />
-      <div className={cn('relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br', from, toColor)}>
-        <Icon className="h-5 w-5 text-white-fixed" />
+    <div className="group relative flex items-center gap-3 rounded-3xl bg-bg-card px-5 py-4 shadow-card transition-transform duration-300 hover:-translate-y-0.5">
+      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+        <Icon className="h-5 w-5" />
       </div>
       <div className="relative min-w-0">
-        <div className="text-xs text-white/45 truncate">{label}</div>
-        <div className="text-xl font-bold leading-tight tabular-nums">{value}</div>
+        <div className="truncate text-sm text-white/55">{label}</div>
+        <div className="text-2xl font-medium leading-tight tracking-[-0.02em] tabular-nums">{value}</div>
       </div>
       {href && (
         <ChevronRight className="relative h-4 w-4 text-white/20 group-hover:text-white/60 ml-auto shrink-0 transition-colors" />
@@ -119,7 +110,7 @@ function QrScanChart({ history }: { history: { date: string; count: number }[] }
                 width={barW}
                 height={h}
                 rx={3}
-                fill={isToday ? 'rgba(167,139,250,0.85)' : 'rgba(255,255,255,0.12)'}
+                style={{ fill: isToday ? 'rgba(167,139,250,0.85)' : 'rgb(var(--app-white) / 0.12)' }}
               />
             </g>
           )
@@ -174,22 +165,17 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="flex flex-col gap-5">
+    <Page>
 
       {/* ── Hero greeting card ─────────────────────────────────── */}
-      <div className="relative rounded-3xl overflow-hidden glass gradient-border p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 min-h-[140px]">
-        {/* Warm glow blobs */}
-        <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full bg-brand-orange/25 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="theme-dark relative flex min-h-[140px] flex-col gap-4 overflow-hidden rounded-3xl bg-ink p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
 
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-orange/20">
-              <Flame className="h-3.5 w-3.5 text-brand-orange" />
-            </div>
-            <span className="text-xs text-white/40 uppercase tracking-widest font-medium">{dateStr}</span>
+            <Flame className="h-4 w-4 text-lime" />
+            <span className="text-sm text-white/60 first-letter:uppercase">{dateStr}</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">{greeting}</h1>
+          <h1 className="text-4xl sm:text-5xl font-medium tracking-[-0.03em] leading-tight">{greeting}</h1>
           <p className="mt-1.5 text-sm text-white/40">
             {tasks.length > 0
               ? t('dashboard.heroSubtitle', { done: doneTasks.length, total: tasks.length, pct: prepPct })
@@ -198,14 +184,11 @@ export default function Dashboard() {
         </div>
 
         <div className="relative z-10 sm:text-right flex sm:flex-col items-center sm:items-end gap-3 sm:gap-0">
-          <div className="text-5xl sm:text-6xl font-bold tabular-nums tracking-tight text-white leading-none">{time}</div>
+          <div className="text-6xl sm:text-7xl font-medium tabular-nums tracking-[-0.04em] text-lime leading-none">{time}</div>
           {tasks.length > 0 && (
             <div className="sm:mt-2 flex items-center gap-1.5">
               <div className="h-1.5 w-20 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-brand-orange to-[#e8b87a] rounded-full transition-all duration-700"
-                  style={{ width: `${prepPct}%` }}
-                />
+                <div className="h-full rounded-full bg-lime transition-all duration-700" style={{ width: `${prepPct}%` }} />
               </div>
               <span className="text-xs text-white/35 tabular-nums">{prepPct}%</span>
             </div>
@@ -278,8 +261,8 @@ export default function Dashboard() {
                   { label: t('dashboard.orderPending'),   count: pendingOrders.length,   from: 'from-amber-500/20',   text: 'text-amber-400',   border: 'border-amber-500/20' },
                   { label: t('dashboard.orderPreparing'), count: preparingOrders.length, from: 'from-blue-500/20',    text: 'text-blue-400',    border: 'border-blue-500/20'  },
                   { label: t('dashboard.orderReady'),     count: readyOrders.length,     from: 'from-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/20'},
-                ].map(({ label, count, from, text, border }) => (
-                  <div key={label} className={cn('rounded-xl border bg-gradient-to-b px-3 py-3 text-center', border, from, 'to-transparent')}>
+                ].map(({ label, count, text }) => (
+                  <div key={label} className={cn('rounded-2xl px-3 py-3 text-center bg-white/[0.04]')}>
                     <div className={cn('text-2xl font-bold', text)}>{count}</div>
                     <div className="text-[11px] text-white/50 mt-0.5">{label}</div>
                   </div>
@@ -356,10 +339,7 @@ export default function Dashboard() {
           </div>
 
           <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-brand-orange to-[#e8b87a] rounded-full transition-all duration-700"
-              style={{ width: `${prepPct}%` }}
-            />
+            <div className="h-full rounded-full bg-ink transition-all duration-700" style={{ width: `${prepPct}%` }} />
           </div>
 
           {prepLoading ? (
@@ -376,8 +356,8 @@ export default function Dashboard() {
                   <span className={cn(
                     'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors',
                     task.done_at
-                      ? 'bg-brand-orange border-brand-orange text-white-fixed-fixed'
-                      : 'border-white/20',
+                      ? 'bg-brand-orange border-brand-orange text-on-accent'
+                      : 'border-white/25',
                   )}>
                     {task.done_at && <Check className="h-3 w-3" />}
                   </span>
@@ -502,6 +482,6 @@ export default function Dashboard() {
         </BentoCard>
 
       </div>
-    </div>
+    </Page>
   )
 }

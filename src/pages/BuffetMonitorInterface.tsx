@@ -266,26 +266,34 @@ export default function BuffetMonitorInterface() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
+  const items = activeMenu?.items ?? []
+  const statusOf = (id: string): BuffetItemStatus => statusMap.get(id)?.status ?? 'full'
+  const RANK: Record<string, number> = { empty: 0, low: 1, preparing: 2, coming: 2, full: 3 }
+  // Dishes that need action float to the top; codes stay tied to menu order
+  const ordered = [...items].sort((a, b) => (RANK[statusOf(a.menu_item_id)] ?? 3) - (RANK[statusOf(b.menu_item_id)] ?? 3))
+  const counts = {
+    full: items.filter((i) => statusOf(i.menu_item_id) === 'full').length,
+    low: items.filter((i) => statusOf(i.menu_item_id) === 'low').length,
+    empty: items.filter((i) => statusOf(i.menu_item_id) === 'empty').length,
+  }
+  const barBtn = 'flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.08] hover:bg-white/[0.14] active:bg-white/20 transition-colors'
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="theme-dark min-h-screen flex flex-col">
       {/* Top bar */}
-      <header className="sticky top-0 z-10 bg-gray-900/80 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center gap-3">
-        <button
-          onClick={() => navigate('/buffet-pulse')}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors"
-        >
+      <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 bg-bg-surface/90 px-4 py-3 backdrop-blur">
+        <button onClick={() => navigate('/buffet-pulse')} aria-label={t('common.back', 'Back')} className={barBtn}>
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Activity className="h-5 w-5 text-emerald-400 shrink-0" />
-          <span className="font-semibold truncate">{t('buffetPulse.monitorMode')}</span>
-          <span className="ml-1 shrink-0 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold tracking-wider text-emerald-400 uppercase">
-            {t('buffetPulse.liveIndicator')}
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="truncate text-xl font-medium">{activeMenu?.name ?? t('buffetPulse.monitorMode')}</span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink" />{t('buffetPulse.liveIndicator')}
           </span>
         </div>
         {/* Manual short-code lookup (Plan B when QR scan fails) */}
-        <div className="flex items-center gap-1 rounded-xl bg-white/10 px-2 border border-white/20 focus-within:border-emerald-400/60 focus-within:bg-white/15 transition-colors">
-          <Hash className="h-4 w-4 text-white/40 shrink-0" />
+        <label className="flex h-12 items-center gap-1 rounded-full bg-white/[0.08] px-4 focus-within:ring-2 focus-within:ring-lime/60">
+          <Hash className="h-4 w-4 shrink-0 text-white/45" />
           <input
             type="text"
             inputMode="numeric"
@@ -294,51 +302,39 @@ export default function BuffetMonitorInterface() {
             value={codeQuery}
             onChange={(e) => handleCodeInput(e.target.value)}
             onBlur={() => setTimeout(() => setCodeQuery(''), 1500)}
-            className="w-10 bg-transparent py-2 text-sm font-mono font-bold text-white placeholder:text-white/25 focus:outline-none"
+            className="w-12 bg-transparent font-mono text-base font-semibold placeholder:text-white/25 focus:outline-none"
             aria-label="Αναζήτηση με 3-ψήφιο κωδικό"
           />
-        </div>
-        <button
-          onClick={() => setShowHistory((v) => !v)}
-          className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
-            showHistory ? 'bg-brand-orange/80 text-white' : 'bg-white/10 hover:bg-white/20',
-          )}
-          title="Ιστορικό ανεφοδιασμών"
-        >
-          <History className="h-4 w-4" />
+        </label>
+        <button onClick={() => setShowHistory((v) => !v)} title="Ιστορικό ανεφοδιασμών" aria-label="Ιστορικό ανεφοδιασμών"
+          className={cn(barBtn, showHistory && 'bg-lime text-ink hover:bg-lime')}>
+          <History className="h-5 w-5" />
         </button>
-        <button
-          onClick={() => { void loadMenus(); void loadStatus() }}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors"
-        >
-          <RefreshCw className="h-4 w-4" />
+        <button onClick={() => { void loadMenus(); void loadStatus() }} aria-label="Refresh" className={barBtn}>
+          <RefreshCw className="h-5 w-5" />
         </button>
       </header>
 
-      {/* ── Refill History Panel ── */}
+      {/* ── Refill history ── */}
       {showHistory && (
-        <div className="bg-gray-900/95 border-b border-white/10 px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/40">Ιστορικό Ανεφοδιασμών</p>
-            <button onClick={() => setShowHistory(false)} className="text-white/30 hover:text-white transition">
-              <X className="h-4 w-4" />
-            </button>
+        <div className="mx-4 mb-2 rounded-3xl bg-bg-card p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-white/60">Ιστορικό ανεφοδιασμών</p>
+            <button onClick={() => setShowHistory(false)} aria-label="Close" className="text-white/40 hover:text-white"><X className="h-4 w-4" /></button>
           </div>
           {refillHistory.length === 0 ? (
-            <p className="text-xs text-white/30 py-2">Δεν υπάρχουν καταγραφές ακόμα.</p>
+            <p className="py-2 text-sm text-white/40">Δεν υπάρχουν καταγραφές ακόμα.</p>
           ) : (
-            <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-none">
+            <div className="max-h-48 space-y-1.5 overflow-y-auto scrollbar-none">
               {refillHistory.map((entry) => {
-                const fromColor = entry.fromStatus === 'empty' ? 'text-red-400' : entry.fromStatus === 'low' ? 'text-amber-400' : 'text-emerald-400'
-                const toColor   = entry.toStatus === 'empty'   ? 'text-red-400' : entry.toStatus === 'low'   ? 'text-amber-400' : 'text-emerald-400'
+                const tone = (st: string) => st === 'empty' ? 'text-red-400' : st === 'low' ? 'text-amber-400' : 'text-emerald-400'
                 return (
-                  <div key={entry.id} className="flex items-center gap-2 text-xs">
-                    <span className="text-white/30 font-mono shrink-0">{formatTime(entry.at)}</span>
-                    <span className="text-white/70 truncate flex-1">{entry.itemName}</span>
-                    <span className={cn('shrink-0 font-bold uppercase', fromColor)}>{entry.fromStatus}</span>
-                    <span className="text-white/20">→</span>
-                    <span className={cn('shrink-0 font-bold uppercase', toColor)}>{entry.toStatus}</span>
+                  <div key={entry.id} className="flex items-center gap-2 text-sm">
+                    <span className="shrink-0 font-mono text-white/40">{formatTime(entry.at)}</span>
+                    <span className="flex-1 truncate">{entry.itemName}</span>
+                    <span className={cn('shrink-0 text-xs font-semibold uppercase', tone(entry.fromStatus))}>{entry.fromStatus}</span>
+                    <span className="text-white/25">→</span>
+                    <span className={cn('shrink-0 text-xs font-semibold uppercase', tone(entry.toStatus))}>{entry.toStatus}</span>
                   </div>
                 )
               })}
@@ -347,140 +343,92 @@ export default function BuffetMonitorInterface() {
         </div>
       )}
 
-      {/* Menu tabs */}
-      {menus.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto px-4 py-2 bg-gray-900 border-b border-white/10 scrollbar-none">
-          {menus.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setActiveMenuId(m.id)}
-              className={cn(
-                'shrink-0 rounded-xl px-4 py-2 text-sm font-medium transition-colors',
-                m.id === activeMenuId
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-white/10 text-white/60 hover:bg-white/20',
-              )}
-            >
-              {m.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Menu tabs + live counts */}
+      <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+        {menus.length > 1 && menus.map((m) => (
+          <button key={m.id} onClick={() => setActiveMenuId(m.id)}
+            className={cn('h-11 shrink-0 rounded-full px-5 text-sm font-medium transition-colors', m.id === activeMenuId ? 'bg-lime text-ink' : 'bg-white/[0.08] text-white/70 hover:bg-white/[0.14]')}>
+            {m.name}
+          </button>
+        ))}
+        {items.length > 0 && (
+          <div className="ml-auto flex gap-2">
+            <span className="rounded-full bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-400 tabular-nums">{counts.empty} {t('buffetPulse.empty')}</span>
+            <span className="rounded-full bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-400 tabular-nums">{counts.low} {t('buffetPulse.low')}</span>
+            <span className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-400 tabular-nums">{counts.full} {t('buffetPulse.full')}</span>
+          </div>
+        )}
+      </div>
 
       {/* Content */}
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 pt-2">
         {loading ? (
-          <div className="flex items-center justify-center py-20 gap-3 text-white/40">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
+          <div className="flex items-center justify-center gap-3 py-20 text-white/40"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : menus.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
             <Activity className="h-12 w-12 text-white/20" />
-            <p className="text-white/50 max-w-xs text-sm">{t('buffetPulse.noBuffetMenu')}</p>
+            <p className="max-w-xs text-sm text-white/55">{t('buffetPulse.noBuffetMenu')}</p>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {(activeMenu?.items ?? []).map((item) => {
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {ordered.map((item) => {
               const st = statusMap.get(item.menu_item_id)
               const currentStatus: BuffetItemStatus = st?.status ?? 'full'
               const vesselReq = st?.vessel_request ?? false
               const isUpdating = updating === item.menu_item_id
-
-              // Name header background — the whole top block is colored
-              const nameBg =
-                currentStatus === 'empty' ? 'bg-red-700'
-                : currentStatus === 'low'  ? 'bg-amber-600'
-                : 'bg-emerald-700'
-
+              const head =
+                currentStatus === 'empty' ? 'bg-red-600 text-white-fixed'
+                : currentStatus === 'low' ? 'bg-amber-500 text-ink'
+                : 'bg-bg-card-2 text-white'
               const isHighlighted = highlightedId === item.menu_item_id
-              // Short code for display on card
-              const itemIndex = (activeMenu?.items ?? []).indexOf(item)
+              const itemIndex = items.indexOf(item)
               const shortCode = itemIndex >= 0 ? String(itemIndex + 1).padStart(3, '0') : null
 
               return (
                 <div
                   key={item.menu_item_id}
                   ref={(el) => { if (el) cardRefs.current.set(item.menu_item_id, el) }}
-                  className={cn(
-                    'rounded-2xl overflow-hidden flex flex-col shadow-lg transition-all duration-300',
-                    isHighlighted ? 'ring-4 ring-yellow-400 scale-[1.02]' : '',
-                  )}
-                  style={{ backgroundColor: '#1f2937' }}
+                  className={cn('flex flex-col overflow-hidden rounded-3xl bg-bg-card transition-all duration-300', isHighlighted && 'scale-[1.02] ring-4 ring-lime')}
                 >
-                  {/* ── Name block (colored by status) ──────────────── */}
-                  <div className={cn('px-5 py-5 flex flex-col gap-1', nameBg)}>
+                  <div className={cn('flex flex-col gap-1 px-5 py-4', head)}>
                     <div className="flex items-start justify-between gap-2">
-                      <p
-                        className="text-2xl font-black leading-snug tracking-tight flex-1"
-                        style={{ color: '#ffffff' }}
-                      >
-                        {item.item_name}
-                      </p>
-                      {shortCode && (
-                        <span
-                          className="shrink-0 rounded-lg px-2 py-1 text-xs font-mono font-bold tracking-widest"
-                          style={{ backgroundColor: 'rgba(0,0,0,0.25)', color: 'rgba(255,255,255,0.85)' }}
-                        >
-                          #{shortCode}
-                        </span>
-                      )}
+                      <p className="flex-1 text-xl font-semibold leading-snug">{item.item_name}</p>
+                      {shortCode && <span className="shrink-0 rounded-full bg-black/20 px-2.5 py-1 font-mono text-xs font-semibold">#{shortCode}</span>}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-xs font-bold uppercase tracking-widest"
-                        style={{ color: 'rgba(255,255,255,0.75)' }}
-                      >
-                        {t(STATUS_CFG[currentStatus].label)}
-                      </span>
-                      {isUpdating && <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'rgba(255,255,255,0.6)' }} />}
-                      {vesselReq && !isUpdating && (
-                        <span style={{ color: 'rgba(255,255,255,0.75)' }} className="text-xs font-semibold">
-                          · 🥘 Αλλαγή Σκεύους
-                        </span>
-                      )}
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider opacity-80">
+                      {t(STATUS_CFG[currentStatus].label)}
+                      {isUpdating && <Loader2 className="h-3 w-3 animate-spin" />}
+                      {vesselReq && !isUpdating && <span className="normal-case tracking-normal">· Αλλαγή σκεύους</span>}
                     </div>
                   </div>
 
-                  {/* ── Status buttons ────────────────────────────────── */}
                   <div className="grid grid-cols-3 gap-2 p-3">
                     {(['full', 'low', 'empty'] as BuffetItemStatus[]).map((s) => {
-                      const cfg = STATUS_CFG[s]
                       const active = currentStatus === s
+                      const on = s === 'empty' ? 'bg-red-600 text-white-fixed' : s === 'low' ? 'bg-amber-500 text-ink' : 'bg-emerald-600 text-white-fixed'
                       return (
                         <button
                           key={s}
                           disabled={isUpdating}
+                          aria-pressed={active}
                           onClick={() => void upsertStatus(item, { status: s, vessel_request: vesselReq })}
-                          className={cn(
-                            'rounded-xl py-5 text-sm font-black transition-all select-none',
-                            cfg.bg,
-                            active
-                              ? `ring-2 ${cfg.ring} ring-offset-2`
-                              : 'opacity-35',
-                            isUpdating && 'cursor-not-allowed opacity-25',
-                          )}
-                          style={{ color: '#ffffff' }}
+                          className={cn('select-none rounded-2xl py-5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-30',
+                            active ? on : 'bg-white/[0.06] text-white/60 hover:bg-white/[0.1]')}
                         >
-                          {t(cfg.label)}
+                          {t(STATUS_CFG[s].label)}
                         </button>
                       )
                     })}
                   </div>
 
-                  {/* ── Vessel request ────────────────────────────────── */}
                   <button
                     disabled={isUpdating}
+                    aria-pressed={vesselReq}
                     onClick={() => void upsertStatus(item, { vessel_request: !vesselReq })}
-                    className={cn(
-                      'mx-3 mb-3 rounded-xl py-4 text-sm font-semibold transition-all select-none',
-                      isUpdating && 'cursor-not-allowed opacity-25',
-                    )}
-                    style={{
-                      backgroundColor: vesselReq ? '#f59e0b' : 'rgba(255,255,255,0.08)',
-                      color: vesselReq ? '#ffffff' : 'rgba(255,255,255,0.55)',
-                    }}
+                    className={cn('mx-3 mb-3 select-none rounded-full py-4 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-30',
+                      vesselReq ? 'bg-lime text-ink' : 'bg-white/[0.06] text-white/60 hover:bg-white/[0.1]')}
                   >
-                    🥘 {t(vesselReq ? 'buffetPulse.vesselRequested' : 'buffetPulse.vesselRequest')}
+                    {t(vesselReq ? 'buffetPulse.vesselRequested' : 'buffetPulse.vesselRequest')}
                   </button>
                 </div>
               )
@@ -495,17 +443,10 @@ export default function BuffetMonitorInterface() {
           {toasts.map((toast) => (
             <div
               key={toast.id}
-              className="flex items-center gap-3 rounded-2xl px-5 py-4 shadow-2xl animate-fade-in-up"
-              style={{
-                backgroundColor: '#065f46',
-                border: '1px solid rgba(52,211,153,0.5)',
-                minWidth: '280px',
-                maxWidth: '90vw',
-              }}
+              className="flex min-w-[280px] max-w-[90vw] items-center gap-3 rounded-full bg-lime px-5 py-3.5 text-ink shadow-2xl animate-fade-in-up"
             >
-              <span className="text-xl shrink-0">✅</span>
-              <p className="text-sm font-semibold leading-snug" style={{ color: '#fff' }}>
-                <span style={{ color: '#6ee7b7' }}>«{toast.itemName}»</span>
+              <p className="text-sm font-semibold leading-snug">
+                <span>«{toast.itemName}»</span>
                 {' '}ανανεώθηκε από την κουζίνα!
               </p>
             </div>

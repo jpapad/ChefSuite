@@ -112,7 +112,7 @@ export function BottomNav() {
                 className={({ isActive }) =>
                   cn(
                     'flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] text-[10px] font-medium transition-colors w-full',
-                    isActive ? 'text-brand-orange' : 'text-white/50 hover:text-white',
+                    isActive ? 'text-white font-semibold' : 'text-white/50 hover:text-white',
                   )
                 }
               >
@@ -147,8 +147,8 @@ export function BottomNav() {
             {/* Handle */}
             <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange">
-                  <Flame className="h-4 w-4 text-white-fixed" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-lime">
+                  <Flame className="h-4 w-4 text-ink" />
                 </div>
                 <span className="font-semibold">Chefsuite</span>
               </div>

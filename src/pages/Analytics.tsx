@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, StatRow, StatTile } from '../components/ui/page'
 import { useInventory, isLowStock } from '../hooks/useInventory'
 import { useRecipes } from '../hooks/useRecipes'
 import { useFoodCost } from '../hooks/useFoodCost'
@@ -280,197 +281,68 @@ export default function Analytics() {
   const maxConsumption = Math.max(...weeklyConsumption.map((w) => w.cost), 1)
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('analytics.title')}</h1>
-          <p className="text-white/60 mt-1">{t('analytics.subtitle')}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setReportsOpen(true)}
-          className="flex items-center gap-2 rounded-xl border border-glass-border px-3 py-2 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition"
-        >
-          <Mail className="h-4 w-4" />
-          {t('reports.emailReport')}
-        </button>
-      </header>
+    <Page>
+      <PageHeader
+        title={t('analytics.title')}
+        subtitle={t('analytics.subtitle')}
+        actions={<PillButton icon={Mail} onClick={() => setReportsOpen(true)}>{t('reports.emailReport')}</PillButton>}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: t('analytics.inventoryValue'),
-            value: valuedItems > 0 ? `€${fmt(inventoryValue)}` : '—',
-            sub: valuedItems < totalItems
-              ? t('analytics.itemsMissingCost', { count: totalItems - valuedItems })
-              : t('analytics.itemsTotal', { count: totalItems }),
-            icon: Package,
-            color: 'text-blue-400',
-            bg: 'bg-blue-400/15',
-          },
-          {
-            label: t('analytics.lowStockItems'),
-            value: String(lowStockCount),
-            sub: lowStockCount > 0 ? t('analytics.needRestocking') : t('analytics.allLevelsOK'),
-            icon: Package,
-            color: lowStockCount > 0 ? 'text-amber-400' : 'text-emerald-400',
-            bg: lowStockCount > 0 ? 'bg-amber-400/15' : 'bg-emerald-400/15',
-          },
-          {
-            label: t('analytics.avgRecipeCost'),
-            value: avgCost != null ? `€${fmt(avgCost)}` : '—',
-            sub: t('analytics.recipesPriced', { with: withCost.length, total: recipes.length }),
-            icon: ChefHat,
-            color: 'text-brand-orange',
-            bg: 'bg-brand-orange/15',
-          },
-          {
-            label: t('analytics.prepRate7d'),
-            value: completionRate != null ? `${completionRate}%` : '—',
-            sub: prepLoading ? t('common.loading') : t('analytics.tasksDone', { done: doneTasks7d, total: totalTasks7d }),
-            icon: ClipboardList,
-            color: 'text-amber-400',
-            bg: 'bg-amber-400/15',
-          },
-        ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <GlassCard key={label} className="flex items-start gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${bg} ${color}`}>
-              <Icon className="h-6 w-6" />
+      {/* ── Sales bento ── */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col gap-5 rounded-3xl bg-ink p-6 text-white-fixed sm:col-span-2 lg:row-span-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm text-[#C9CEC8]">{t('analytics.revenue7d')}</p>
+              <p className="mt-1 text-5xl font-medium tracking-[-0.04em] tabular-nums text-lime">{salesLoading ? '…' : `€${fmt(revenue7d)}`}</p>
+              <p className="mt-1 text-sm text-[#C9CEC8]">{t('analytics.ordersCount', { count: orders7d })}</p>
             </div>
-            <div className="min-w-0">
-              <div className="text-sm text-white/60">{label}</div>
-              <div className="text-2xl font-semibold mt-0.5">{value}</div>
-              <div className="text-xs text-white/50 mt-1">{sub}</div>
-            </div>
-          </GlassCard>
-        ))}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <GlassCard className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-400">
-            <Euro className="h-6 w-6" />
+            <ShoppingBag className="h-5 w-5 text-[#C9CEC8]" />
           </div>
-          <div>
-            <div className="text-sm text-white/60">{t('analytics.consumptionCost30d')}</div>
-            <div className="text-2xl font-semibold mt-0.5">
-              {fcLoading ? '…' : `€${fmt(totalConsumption30d)}`}
-            </div>
-            <div className="text-xs text-white/50 mt-1">{t('analytics.trackedMovementsOnly')}</div>
-          </div>
-        </GlassCard>
-
-        <GlassCard className="flex items-start gap-4">
-          <div className={cn(
-            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
-            avgFoodCostPct == null ? 'bg-white/10 text-white/40'
-              : avgFoodCostPct <= 30 ? 'bg-emerald-400/15 text-emerald-400'
-              : avgFoodCostPct <= 40 ? 'bg-amber-400/15 text-amber-400'
-              : 'bg-red-400/15 text-red-400',
-          )}>
-            <Percent className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-sm text-white/60">{t('analytics.avgFoodCostPct')}</div>
-            <div className={cn(
-              'text-2xl font-semibold mt-0.5',
-              avgFoodCostPct == null ? 'text-white'
-                : avgFoodCostPct <= 30 ? 'text-emerald-400'
-                : avgFoodCostPct <= 40 ? 'text-amber-400'
-                : 'text-red-400',
-            )}>
-              {fcLoading ? '…' : avgFoodCostPct != null ? fmtPct(avgFoodCostPct) : '—'}
-            </div>
-            <div className="text-xs text-white/50 mt-1">
-              {t('analytics.recipesWithSellingPrice', { count: recipesWithPct.length })}
-            </div>
-          </div>
-        </GlassCard>
-
-        <GlassCard className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange">
-            <TrendingDown className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-sm text-white/60">{t('analytics.targetFoodCost')}</div>
-            <div className="text-2xl font-semibold mt-0.5 text-brand-orange">≤ 30%</div>
-            <div className="text-xs text-white/50 mt-1">{t('analytics.industryBenchmark')}</div>
-          </div>
-        </GlassCard>
-      </div>
-
-      {/* ── Sales section ── */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          {
-            label: t('analytics.revenueToday'),
-            value: salesLoading ? '…' : `€${fmt(revenueToday)}`,
-            sub: t('analytics.completedOrders', { count: salesDays.at(-1)?.orders ?? 0 }),
-            icon: ShoppingBag,
-            color: 'text-emerald-400',
-            bg: 'bg-emerald-400/15',
-          },
-          {
-            label: t('analytics.revenue7d'),
-            value: salesLoading ? '…' : `€${fmt(revenue7d)}`,
-            sub: t('analytics.ordersCount', { count: orders7d }),
-            icon: TrendingUp,
-            color: 'text-brand-orange',
-            bg: 'bg-brand-orange/15',
-          },
-          {
-            label: t('analytics.avgOrderValue'),
-            value: salesLoading || orders7d === 0 ? '—' : `€${fmt(revenue7d / orders7d)}`,
-            sub: t('analytics.last7days'),
-            icon: Euro,
-            color: 'text-blue-400',
-            bg: 'bg-blue-400/15',
-          },
-        ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-          <GlassCard key={label} className="flex items-start gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${bg} ${color}`}>
-              <Icon className="h-6 w-6" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm text-white/60">{label}</div>
-              <div className="text-2xl font-semibold mt-0.5">{value}</div>
-              <div className="text-xs text-white/50 mt-1">{sub}</div>
-            </div>
-          </GlassCard>
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <GlassCard>
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-emerald-400" />
-            {t('analytics.revenueChart')}
-          </h2>
-          {salesLoading ? (
-            <p className="text-white/50 text-sm">{t('common.loading')}</p>
-          ) : revenue7d === 0 ? (
-            <p className="text-white/50 text-sm">{t('analytics.noSalesData')}</p>
-          ) : (
-            <div className="flex items-end gap-2 h-32">
-              {salesDays.map((d) => {
+          {!salesLoading && revenue7d > 0 ? (
+            <div className="mt-auto flex h-36 items-end gap-2">
+              {salesDays.map((d, i) => {
                 const heightPct = (d.revenue / maxRevenue) * 100
+                const isLast = i === salesDays.length - 1
                 return (
-                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="text-[10px] text-white/50">
-                      {d.revenue > 0 ? `€${d.revenue < 100 ? fmt(d.revenue) : Math.round(d.revenue)}` : ''}
-                    </div>
+                  <div key={d.date} className="flex flex-1 flex-col items-center gap-1.5">
                     <div
-                      className="w-full rounded-t-lg bg-emerald-400 transition-all"
+                      className={cn('w-full rounded-t-lg', isLast ? 'bg-lime' : 'bg-white-fixed/15')}
                       style={{ height: `${Math.max(heightPct, d.revenue > 0 ? 6 : 2)}%` }}
+                      title={`€${fmt(d.revenue)}`}
                     />
-                    <div className="text-[10px] text-white/50 text-center">{d.label}</div>
+                    <span className="text-[11px] text-[#A7ADA6]">{d.label}</span>
                   </div>
                 )
               })}
             </div>
+          ) : (
+            <p className="mt-auto text-sm text-[#A7ADA6]">{salesLoading ? t('common.loading') : t('analytics.noSalesData')}</p>
           )}
-        </GlassCard>
+        </div>
+        <StatTile label={t('analytics.revenueToday')} value={salesLoading ? '…' : `€${fmt(revenueToday)}`} hint={t('analytics.completedOrders', { count: salesDays.at(-1)?.orders ?? 0 })} />
+        <StatTile label={t('analytics.avgOrderValue')} value={salesLoading || orders7d === 0 ? '—' : `€${fmt(revenue7d / orders7d)}`} hint={t('analytics.last7days')} />
+        <StatTile
+          label={t('analytics.avgFoodCostPct')}
+          value={fcLoading ? '…' : avgFoodCostPct != null ? fmtPct(avgFoodCostPct) : '—'}
+          tone={avgFoodCostPct == null ? 'default' : avgFoodCostPct <= 30 ? 'good' : avgFoodCostPct <= 40 ? 'warn' : 'bad'}
+          hint={`${t('analytics.targetFoodCost')} ≤ 30%`}
+        />
+        <StatTile tone="lime" label={t('analytics.prepRate7d')} value={completionRate != null ? `${completionRate}%` : '—'} hint={prepLoading ? t('common.loading') : t('analytics.tasksDone', { done: doneTasks7d, total: totalTasks7d })} to="/prep" />
+      </section>
 
+      <StatRow>
+        <StatTile label={t('analytics.inventoryValue')} value={valuedItems > 0 ? `€${fmt(inventoryValue)}` : '—'} icon={Package}
+          hint={valuedItems < totalItems ? t('analytics.itemsMissingCost', { count: totalItems - valuedItems }) : t('analytics.itemsTotal', { count: totalItems })} />
+        <StatTile label={t('analytics.lowStockItems')} value={lowStockCount} tone={lowStockCount > 0 ? 'warn' : 'good'} icon={Package}
+          hint={lowStockCount > 0 ? t('analytics.needRestocking') : t('analytics.allLevelsOK')} to="/inventory" />
+        <StatTile label={t('analytics.avgRecipeCost')} value={avgCost != null ? `€${fmt(avgCost)}` : '—'} icon={ChefHat}
+          hint={t('analytics.recipesPriced', { with: withCost.length, total: recipes.length })} />
+        <StatTile label={t('analytics.consumptionCost30d')} value={fcLoading ? '…' : `€${fmt(totalConsumption30d)}`} icon={Euro}
+          hint={t('analytics.trackedMovementsOnly')} />
+      </StatRow>
+
+      <div className="grid gap-6">
         <GlassCard>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-brand-orange" />
@@ -493,12 +365,12 @@ export default function Analytics() {
                       </span>
                       <div className="flex items-center gap-3 shrink-0 ml-2">
                         <span className="text-white/40 text-xs">×{item.qty}</span>
-                        <span className="text-emerald-400 font-medium">€{fmt(item.revenue)}</span>
+                        <span className="font-medium tabular-nums">€{fmt(item.revenue)}</span>
                       </div>
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-white/10">
                       <div
-                        className="h-1.5 rounded-full bg-emerald-400"
+                        className="h-1.5 rounded-full bg-ink"
                         style={{ width: `${(item.revenue / maxRev) * 100}%` }}
                       />
                     </div>
@@ -527,7 +399,7 @@ export default function Analytics() {
                 <div key={w.week} className="flex-1 flex flex-col items-center gap-1">
                   <div className="text-xs text-white/50">€{w.cost < 100 ? fmt(w.cost) : Math.round(w.cost)}</div>
                   <div
-                    className="w-full rounded-t-lg bg-emerald-400 transition-all"
+                    className="w-full rounded-t-lg bg-ink transition-all"
                     style={{ height: `${Math.max(heightPct, 6)}%` }}
                   />
                   <div className="text-[10px] text-white/50 text-center">{w.label}</div>
@@ -779,6 +651,6 @@ export default function Analytics() {
       </GlassCard>
 
       <EmailReportsDrawer open={reportsOpen} onClose={() => setReportsOpen(false)} />
-    </div>
+    </Page>
   )
 }

@@ -11,7 +11,7 @@ export function PWAUpdateBanner() {
   if (!needRefresh) return null
 
   return (
-    <div className="fixed top-0 inset-x-0 z-[9999] flex items-center justify-between gap-3 px-4 py-3 bg-brand-orange text-white text-sm font-semibold shadow-xl">
+    <div className="fixed top-0 inset-x-0 z-[9999] flex items-center justify-between gap-3 px-4 py-3 bg-brand-orange text-on-accent text-sm font-semibold shadow-xl">
       <span>🔄 Νέα έκδοση διαθέσιμη</span>
       <button
         onClick={() => updateServiceWorker(true)}

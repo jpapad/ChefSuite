@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers, ShieldAlert, ArrowLeft, ListPlus } from 'lucide-react'
+import { Plus, ChefHat, Search, X, Sparkles, ScanLine, FileSpreadsheet, CheckSquare, Square, Trash2, Layers, ShieldAlert, ListPlus, LayoutGrid } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Input } from '../components/ui/Input'
-import { GlassCard } from '../components/ui/GlassCard'
-import { Button } from '../components/ui/Button'
+import { Page, PageHeader, PillButton, ActionMenu, StatRow, StatTile, SearchField, Segmented, Chip, ChipRow, Panel, EmptyState, Notice } from '../components/ui/page'
 import { Drawer } from '../components/ui/Drawer'
 import { RecipeCard } from '../components/recipes/RecipeCard'
 import { RecipeDetail } from '../components/recipes/RecipeDetail'
@@ -29,19 +27,6 @@ import { RECIPE_CATEGORIES } from '../components/recipes/RecipeForm'
 import type { ImportedRecipe } from '../lib/gemini'
 import type { ExcelMenuRow } from '../lib/excelMenu'
 import type { Recipe, RecipeCategory, RecipeDifficulty, RecipeIngredientDraft, RecipeVersion } from '../types/database.types'
-
-const CATEGORY_META: Record<RecipeCategory, { emoji: string; label: string }> = {
-  appetizer: { emoji: '🥗', label: 'Ορεκτικά' },
-  soup:      { emoji: '🍜', label: 'Σούπες' },
-  salad:     { emoji: '🥙', label: 'Σαλάτες' },
-  main:      { emoji: '🍖', label: 'Κύρια Πιάτα' },
-  side:      { emoji: '🥦', label: 'Συνοδευτικά' },
-  sauce:     { emoji: '🫙', label: 'Σάλτσες' },
-  bread:     { emoji: '🍞', label: 'Ψωμιά' },
-  dessert:   { emoji: '🍰', label: 'Γλυκά' },
-  beverage:  { emoji: '🥤', label: 'Ποτά' },
-  other:     { emoji: '🍽️', label: 'Άλλα' },
-}
 
 export default function Recipes() {
   const { t } = useTranslation()
@@ -77,7 +62,6 @@ export default function Recipes() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [groupedView, setGroupedView] = useState(false)
-  const [showAll, setShowAll] = useState(false)
   const [filterUncategorized, setFilterUncategorized] = useState(false)
 
   useEffect(() => {
@@ -120,8 +104,6 @@ export default function Recipes() {
     }
     return counts
   }, [recipes])
-
-  const showCategoryBrowser = !showAll && !activeCategory && !filterUncategorized && !query.trim() && !loading && recipes.length > 0
 
   const groupedRecipes = useMemo(() => {
     if (!groupedView) return null
@@ -357,376 +339,217 @@ export default function Recipes() {
       }))
     : []
 
-  return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('recipes.title')}</h1>
-          <p className="text-white/60 mt-1">{t('recipes.subtitle')}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {recipes.length > 0 && !showCategoryBrowser && (
-            <>
-              <Button
-                variant="secondary"
-                leftIcon={<Layers className="h-5 w-5" />}
-                onClick={() => setGroupedView((v) => !v)}
-                className={groupedView ? 'border-brand-orange/60 text-brand-orange' : ''}
-              >
-                {groupedView ? t('recipes.grouped') : t('recipes.groupBy')}
-              </Button>
-              <Button
-                variant="secondary"
-                leftIcon={selectionMode ? <X className="h-5 w-5" /> : <CheckSquare className="h-5 w-5" />}
-                onClick={toggleSelectionMode}
-              >
-                {selectionMode ? t('common.cancel') : t('recipes.selectMode')}
-              </Button>
-            </>
-          )}
-          {!selectionMode && (
-            <>
-              <Button
-                variant="secondary"
-                leftIcon={<Sparkles className="h-5 w-5" />}
-                onClick={() => setImportDrawerOpen(true)}
-              >
-                {t('recipes.importWithAI')}
-              </Button>
-              <Button
-                variant="secondary"
-                leftIcon={<ScanLine className="h-5 w-5" />}
-                onClick={() => setScanDrawerOpen(true)}
-              >
-                {t('recipes.scan.button')}
-              </Button>
-              <Button
-                variant="secondary"
-                leftIcon={<FileSpreadsheet className="h-5 w-5" />}
-                onClick={() => setExcelMenuDrawerOpen(true)}
-              >
-                Import Excel Menu
-              </Button>
-              {recipes.length > 0 && (
-                <>
-                  <Button
-                    variant="secondary"
-                    leftIcon={<ShieldAlert className="h-5 w-5" />}
-                    onClick={() => setAllergenScanOpen(true)}
-                  >
-                    {t('recipes.allergenScan')}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    leftIcon={<Sparkles className="h-5 w-5" />}
-                    onClick={() => setBulkAIUpdateOpen(true)}
-                  >
-                    Bulk AI Update
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    leftIcon={<ListPlus className="h-5 w-5" />}
-                    onClick={() => setQuickCreatorOpen(true)}
-                  >
-                    Γρήγορη Λίστα
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    leftIcon={<ChefHat className="h-5 w-5" />}
-                    onClick={() => { setBatchProcessorInitial(undefined); setBatchProcessorOpen(true) }}
-                  >
-                    AI Συμπλήρωση & Prep
-                  </Button>
-                </>
-              )}
-              <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-                {t('recipes.newRecipe')}
-              </Button>
-            </>
-          )}
-        </div>
-      </header>
+  // ── Overview numbers ──
+  const priced = recipes.filter((r) => r.cost_per_portion != null && (r.selling_price ?? 0) > 0)
+  const fcOf = (r: Recipe) => ((r.cost_per_portion ?? 0) / (r.selling_price ?? 1)) * 100
+  const avgFc = priced.length ? priced.reduce((s, r) => s + fcOf(r), 0) / priced.length : null
+  const overTarget = priced.filter((r) => fcOf(r) > 30).length
+  const incomplete = recipes.filter((r) => !r.description || !r.category || !r.instructions)
 
-      {error && (
-        <GlassCard className="border border-red-500/40 text-red-300">
-          {error}
-        </GlassCard>
+  const hasFilters = activeAllergens.length > 0 || !!activeCategory || filterAllergenFree || filterUncategorized || !!query.trim()
+  function clearFilters() {
+    setActiveAllergens([]); setActiveCategory(null); setFilterAllergenFree(false); setFilterUncategorized(false); setQuery('')
+  }
+
+  function renderCard(r: Recipe) {
+    const selected = selectedIds.has(r.id)
+    return (
+      <div key={r.id} className="relative">
+        {selectionMode && (
+          <button
+            type="button"
+            onClick={() => toggleSelect(r.id)}
+            className="absolute inset-0 z-10 rounded-3xl focus:outline-none"
+            aria-label={selected ? t('common.deselect') : t('common.select')}
+          >
+            <span className={[
+              'absolute top-3 left-3 flex h-7 w-7 items-center justify-center rounded-full border-2 transition',
+              selected ? 'border-lime bg-lime text-ink' : 'border-white-fixed/70 bg-black/40 text-transparent',
+            ].join(' ')}>
+              {selected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-white-fixed/60" />}
+            </span>
+          </button>
+        )}
+        <div className={selectionMode ? (selected ? 'ring-2 ring-lime ring-offset-2 ring-offset-bg-surface rounded-3xl' : 'opacity-60') : ''}>
+          <RecipeCard
+            recipe={r}
+            ingredients={getIngredients(r.id)}
+            inventory={inventory}
+            onView={selectionMode ? () => {} : (rec) => setViewingId(rec.id)}
+            onEdit={selectionMode ? () => {} : openEdit}
+            onDelete={selectionMode ? () => {} : onDelete}
+            onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)}
+            onHistory={selectionMode ? () => {} : setVersionRecipe}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Page>
+      <PageHeader
+        title={t('recipes.title')}
+        subtitle={t('recipes.subtitle')}
+        actions={selectionMode ? (
+          <PillButton icon={X} onClick={toggleSelectionMode}>{t('common.cancel')}</PillButton>
+        ) : (
+          <>
+            <ActionMenu
+              label={t('recipes.v2.import')}
+              icon={FileSpreadsheet}
+              actions={[
+                { label: t('recipes.importWithAI'), hint: t('recipes.v2.importHint'), icon: Sparkles, onClick: () => setImportDrawerOpen(true) },
+                { label: t('recipes.scan.button'), hint: t('recipes.v2.scanHint'), icon: ScanLine, onClick: () => setScanDrawerOpen(true) },
+                { label: t('recipes.v2.excel'), hint: t('recipes.v2.excelHint'), icon: FileSpreadsheet, onClick: () => setExcelMenuDrawerOpen(true) },
+                { label: t('recipes.v2.quick'), hint: t('recipes.v2.quickHint'), icon: ListPlus, onClick: () => setQuickCreatorOpen(true), hidden: recipes.length === 0 },
+              ]}
+            />
+            <ActionMenu
+              label={t('recipes.v2.aiTools')}
+              icon={Sparkles}
+              variant="ai"
+              actions={[
+                { label: t('recipes.v2.batch'), hint: t('recipes.v2.batchHint'), icon: ChefHat, onClick: () => { setBatchProcessorInitial(undefined); setBatchProcessorOpen(true) } },
+                { label: t('recipes.allergenScan'), hint: t('recipes.v2.allergenHint'), icon: ShieldAlert, onClick: () => setAllergenScanOpen(true) },
+                { label: t('recipes.v2.bulkAi'), hint: t('recipes.v2.bulkHint'), icon: Sparkles, onClick: () => setBulkAIUpdateOpen(true) },
+              ].map((a) => ({ ...a, hidden: recipes.length === 0 }))}
+            />
+            {recipes.length > 0 && (
+              <PillButton icon={CheckSquare} onClick={toggleSelectionMode}>{t('recipes.selectMode')}</PillButton>
+            )}
+            <PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('recipes.newRecipe')}</PillButton>
+          </>
+        )}
+      />
+
+      {error && <Notice>{error}</Notice>}
+
+      {recipes.length > 0 && (
+        <StatRow>
+          <StatTile tone="ink" label={t('recipes.v2.total')} value={recipes.length} hint={t('recipes.v2.totalHint', { count: usedCategories.length })} />
+          <StatTile
+            label={t('recipes.v2.avgFc')}
+            value={avgFc != null ? `${avgFc.toFixed(1)}%` : '—'}
+            tone={avgFc != null && avgFc > 30 ? 'warn' : 'default'}
+            hint={t('recipes.v2.avgFcHint', { count: priced.length })}
+            to="/costing"
+          />
+          <StatTile label={t('recipes.v2.overTarget')} value={overTarget} tone={overTarget > 0 ? 'warn' : 'good'} hint={t('recipes.v2.overTargetHint')} to="/menu-engineering" />
+          <StatTile
+            tone="lime"
+            label={t('recipes.v2.incomplete')}
+            value={incomplete.length}
+            hint={incomplete.length ? t('recipes.v2.incompleteHint') : undefined}
+            onClick={incomplete.length ? () => { setBatchProcessorInitial(new Set(incomplete.map((r) => r.id))); setBatchProcessorOpen(true) } : undefined}
+          />
+        </StatRow>
       )}
 
       {recipes.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex-1 min-w-[220px] max-w-md">
-            <Input
-              name="search"
-              placeholder={t('recipes.searchPlaceholder')}
-              leftIcon={<Search className="h-5 w-5" />}
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); if (e.target.value) setShowAll(true) }}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchField value={query} onChange={setQuery} placeholder={t('recipes.searchPlaceholder')} className="flex-1 max-w-md" />
+            <Segmented
+              value={groupedView ? 'groups' : 'grid'}
+              onChange={(v) => setGroupedView(v === 'groups')}
+              options={[
+                { value: 'grid', label: t('recipes.v2.grid'), icon: LayoutGrid },
+                { value: 'groups', label: t('recipes.v2.groups'), icon: Layers },
+              ]}
             />
+            {hasFilters && (
+              <button type="button" onClick={clearFilters} className="text-sm text-white/55 hover:text-white underline-offset-4 hover:underline">
+                {t('recipes.clearFilters')}
+              </button>
+            )}
           </div>
 
-          {!showCategoryBrowser && (
-            <>
-              {usedCategories.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-white/50">{t('recipes.filterCategory')}</span>
-                  {usedCategories.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setActiveCategory((prev) => prev === cat ? null : cat)}
-                      className={
-                        'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
-                        (activeCategory === cat
-                          ? 'bg-brand-orange border-brand-orange text-white-fixed'
-                          : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
-                      }
-                    >
-                      {t(`recipes.categories.${cat}`)}
-                      {activeCategory === cat && <X className="h-3 w-3" />}
-                    </button>
-                  ))}
-                </div>
-              )}
+          <ChipRow>
+            <Chip active={!activeCategory && !filterUncategorized} onClick={() => { setActiveCategory(null); setFilterUncategorized(false) }} count={recipes.length}>
+              {t('recipes.v2.all')}
+            </Chip>
+            {usedCategories.map((cat) => (
+              <Chip
+                key={cat}
+                active={activeCategory === cat}
+                count={categoryCounts.get(cat) ?? 0}
+                onClick={() => { setFilterUncategorized(false); setActiveCategory((prev) => (prev === cat ? null : cat)) }}
+              >
+                {t(`recipes.categories.${cat}`)}
+              </Chip>
+            ))}
+            {(categoryCounts.get('_none') ?? 0) > 0 && (
+              <Chip
+                active={filterUncategorized}
+                count={categoryCounts.get('_none')}
+                onClick={() => { setActiveCategory(null); setFilterUncategorized((v) => !v) }}
+              >
+                {t('categories.none')}
+              </Chip>
+            )}
+          </ChipRow>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setFilterAllergenFree((v) => !v); setActiveAllergens([]) }}
-                  className={
-                    'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
-                    (filterAllergenFree
-                      ? 'bg-green-500/20 border-green-500/50 text-green-300'
-                      : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
-                  }
-                >
-                  <span className="text-base leading-none">✓</span>
-                  {t('recipes.allergenFree')}
-                  {filterAllergenFree && <X className="h-3 w-3" />}
-                </button>
-
-                {allAllergens.filter(a => !a.startsWith('no_')).map((a) => (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => { toggleAllergen(a); setFilterAllergenFree(false) }}
-                    className={
-                      'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition ' +
-                      (activeAllergens.includes(a)
-                        ? 'bg-brand-orange border-brand-orange text-white-fixed'
-                        : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
-                    }
-                  >
-                    {a}
-                    {activeAllergens.includes(a) && <X className="h-3 w-3" />}
-                  </button>
-                ))}
-                {(activeAllergens.length > 0 || activeCategory || filterAllergenFree || filterUncategorized) && (
-                  <button
-                    type="button"
-                    onClick={() => { setActiveAllergens([]); setActiveCategory(null); setFilterAllergenFree(false); setFilterUncategorized(false) }}
-                    className="text-xs text-white/50 hover:text-white underline"
-                  >
-                    {t('recipes.clearFilters')}
-                  </button>
-                )}
-              </div>
-            </>
+          {allAllergens.some((a) => !a.startsWith('no_')) && (
+            <ChipRow>
+              <span className="shrink-0 pr-1 text-[13px] text-white/50">{t('recipes.v2.allergens')}</span>
+              <Chip tone="good" active={filterAllergenFree} onClick={() => { setFilterAllergenFree((v) => !v); setActiveAllergens([]) }}>
+                {t('recipes.allergenFree')}
+              </Chip>
+              {allAllergens.filter((a) => !a.startsWith('no_')).map((a) => (
+                <Chip key={a} active={activeAllergens.includes(a)} onClick={() => { toggleAllergen(a); setFilterAllergenFree(false) }}>
+                  {a}
+                </Chip>
+              ))}
+            </ChipRow>
           )}
         </div>
       )}
 
       {loading ? (
-        <GlassCard>
-          <p className="text-white/60">{t('recipes.loadingRecipes')}</p>
-        </GlassCard>
+        <Panel><p className="text-white/55">{t('recipes.loadingRecipes')}</p></Panel>
       ) : recipes.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <ChefHat className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">{t('recipes.empty.title')}</h2>
-          <p className="text-white/60 max-w-sm">{t('recipes.empty.description')}</p>
-          <Button
-            leftIcon={<Plus className="h-5 w-5" />}
-            onClick={openCreate}
-            className="mt-2"
-          >
-            {t('recipes.empty.cta')}
-          </Button>
-        </GlassCard>
-      ) : showCategoryBrowser ? (
-        /* ── Category Browser ── */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {/* All Recipes tile */}
-          <button
-            type="button"
-            onClick={() => { setShowAll(true); setFilterUncategorized(false); setActiveCategory(null) }}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 py-6 px-3 text-center"
-          >
-            <span className="text-3xl leading-none">🍽️</span>
-            <p className="font-semibold text-sm text-white leading-tight">{t('categories.allRecipes')}</p>
-            <p className="text-white/40 text-xs">{recipes.length}</p>
-          </button>
-
-          {/* Per-category tiles */}
-          {RECIPE_CATEGORIES.filter((cat) => (categoryCounts.get(cat) ?? 0) > 0).map((cat) => {
-            const meta = CATEGORY_META[cat]
-            const count = categoryCounts.get(cat) ?? 0
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => { setActiveCategory(cat); setShowAll(false); setFilterUncategorized(false) }}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-brand-orange/10 hover:border-brand-orange/30 transition-all active:scale-95 py-6 px-3 text-center"
-              >
-                <span className="text-3xl leading-none">{meta.emoji}</span>
-                <p className="font-semibold text-sm text-white leading-tight">{t(`categories.${cat}`)}</p>
-                <p className="text-white/40 text-xs">{count}</p>
-              </button>
-            )
-          })}
-
-          {/* Uncategorized tile */}
-          {(categoryCounts.get('_none') ?? 0) > 0 && (
-            <button
-              type="button"
-              onClick={() => { setActiveCategory(null); setFilterUncategorized(true); setShowAll(false) }}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 py-6 px-3 text-center"
-            >
-              <span className="text-3xl leading-none">📋</span>
-              <p className="font-semibold text-sm text-white leading-tight">{t('categories.none')}</p>
-              <p className="text-white/40 text-xs">{categoryCounts.get('_none')}</p>
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon={ChefHat}
+          title={t('recipes.empty.title')}
+          body={t('recipes.empty.description')}
+          action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('recipes.empty.cta')}</PillButton>}
+        />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Search} title={t('recipes.noMatch')} action={<PillButton onClick={clearFilters}>{t('recipes.clearFilters')}</PillButton>} />
       ) : (
         <>
-          {/* Back to browser breadcrumb */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => { setActiveCategory(null); setShowAll(false); setFilterUncategorized(false); setQuery(''); setActiveAllergens([]); setFilterAllergenFree(false); setGroupedView(false) }}
-              className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t('categories.browserTitle')}
-            </button>
-            {activeCategory && (
-              <>
-                <span className="text-white/20">/</span>
-                <span className="text-sm font-medium text-white">
-                  {CATEGORY_META[activeCategory]?.emoji} {t(`categories.${activeCategory}`)}
-                </span>
-              </>
-            )}
-            {filterUncategorized && (
-              <>
-                <span className="text-white/20">/</span>
-                <span className="text-sm font-medium text-white">{'📋 ' + t('categories.none')}</span>
-              </>
-            )}
-            {showAll && !activeCategory && !filterUncategorized && (
-              <>
-                <span className="text-white/20">/</span>
-                <span className="text-sm font-medium text-white">{t('categories.allRecipes')}</span>
-              </>
-            )}
-            {query.trim() && (
-              <>
-                <span className="text-white/20">/</span>
-                <span className="text-sm font-medium text-white">"{query.trim()}"</span>
-              </>
-            )}
-          </div>
-
-          {filtered.length === 0 && (
-            <GlassCard>
-              <p className="text-white/60">{t('recipes.noMatch')}</p>
-            </GlassCard>
-          )}
-
+          <p className="text-sm text-white/55">{t('recipes.v2.showing', { count: filtered.length, total: recipes.length })}</p>
           {groupedView && groupedRecipes ? (
-            <div className="space-y-8">
+            <div className="flex flex-col gap-8">
               {groupedRecipes.map((group) => (
-                <div key={group.category ?? '_none'}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <h2 className="text-xs font-semibold text-white/40 uppercase tracking-widest whitespace-nowrap">
-                      {group.label}
-                    </h2>
-                    <div className="h-px flex-1 bg-white/10" />
-                    <span className="text-xs text-white/30">{group.items.length}</span>
+                <section key={group.category ?? '_none'} className="flex flex-col gap-3">
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="text-xl font-medium">{group.label}</h2>
+                    <span className="text-sm text-white/45 tabular-nums">{group.items.length}</span>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {group.items.map((r) => (
-                      <div key={r.id} className="relative">
-                        {selectionMode && (
-                          <button type="button" onClick={() => toggleSelect(r.id)} className="absolute inset-0 z-10 rounded-2xl focus:outline-none" aria-label={selectedIds.has(r.id) ? t('common.deselect') : t('common.select')}>
-                            <span className={['absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition', selectedIds.has(r.id) ? 'border-red-400 bg-red-400 text-white' : 'border-white/40 bg-black/40 text-transparent'].join(' ')}>
-                              {selectedIds.has(r.id) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-white/50" />}
-                            </span>
-                          </button>
-                        )}
-                        <div className={selectionMode ? (selectedIds.has(r.id) ? 'ring-2 ring-red-400 rounded-2xl' : 'opacity-60') : ''}>
-                          <RecipeCard recipe={r} ingredients={getIngredients(r.id)} inventory={inventory} onView={selectionMode ? () => {} : (rec) => setViewingId(rec.id)} onEdit={selectionMode ? () => {} : openEdit} onDelete={selectionMode ? () => {} : onDelete} onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)} onHistory={selectionMode ? () => {} : setVersionRecipe} />
-                        </div>
-                      </div>
-                    ))}
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {group.items.map(renderCard)}
                   </div>
-                </div>
+                </section>
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((r) => (
-                <div key={r.id} className="relative">
-                  {selectionMode && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSelect(r.id)}
-                      className="absolute inset-0 z-10 rounded-2xl focus:outline-none"
-                      aria-label={selectedIds.has(r.id) ? t('common.deselect') : t('common.select')}
-                    >
-                      <span className={[
-                        'absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition',
-                        selectedIds.has(r.id)
-                          ? 'border-red-400 bg-red-400 text-white'
-                          : 'border-white/40 bg-black/40 text-transparent',
-                      ].join(' ')}>
-                        {selectedIds.has(r.id)
-                          ? <CheckSquare className="h-4 w-4" />
-                          : <Square className="h-4 w-4 text-white/50" />}
-                      </span>
-                    </button>
-                  )}
-                  <div className={selectionMode ? (selectedIds.has(r.id) ? 'ring-2 ring-red-400 rounded-2xl' : 'opacity-60') : ''}>
-                    <RecipeCard
-                      recipe={r}
-                      ingredients={getIngredients(r.id)}
-                      inventory={inventory}
-                      onView={selectionMode ? () => {} : (rec) => setViewingId(rec.id)}
-                      onEdit={selectionMode ? () => {} : openEdit}
-                      onDelete={selectionMode ? () => {} : onDelete}
-                      onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)}
-                      onHistory={selectionMode ? () => {} : setVersionRecipe}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {filtered.map(renderCard)}
             </div>
           )}
 
-          {/* ── Bulk-delete action bar ── */}
+          {/* ── Selection action bar ── */}
           {selectionMode && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border border-white/20 bg-[#1a1d25]/95 backdrop-blur px-3 py-2.5 shadow-2xl">
-              <span className="text-sm font-semibold text-white px-2 whitespace-nowrap">
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-ink px-3 py-2 text-white-fixed shadow-2xl">
+              <span className="px-3 text-sm font-medium whitespace-nowrap">
                 {selectedIds.size} {t('recipes.selected')}
               </span>
-              <div className="w-px h-5 bg-white/20" />
               <button
                 type="button"
                 onClick={selectedIds.size === filtered.length ? clearSelection : selectAll}
-                className="rounded-xl border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition whitespace-nowrap"
+                className="rounded-full bg-white-fixed/10 px-4 py-2 text-sm font-medium hover:bg-white-fixed/20 whitespace-nowrap"
               >
                 {selectedIds.size === filtered.length ? t('common.deselectAll') : t('common.selectAll', { count: filtered.length })}
               </button>
@@ -734,16 +557,16 @@ export default function Recipes() {
                 type="button"
                 onClick={() => { setBatchProcessorInitial(new Set(selectedIds)); setBatchProcessorOpen(true) }}
                 disabled={selectedIds.size === 0}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-orange px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-orange/80 disabled:opacity-40 disabled:pointer-events-none"
+                className="flex items-center gap-1.5 rounded-full bg-lime px-4 py-2 text-sm font-medium text-ink disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
               >
                 <Sparkles className="h-4 w-4" />
-                AI Συμπλήρωση & Prep
+                {t('recipes.v2.batch')}
               </button>
               <button
                 type="button"
                 onClick={() => void bulkDelete()}
                 disabled={selectedIds.size === 0 || bulkDeleting}
-                className="flex items-center gap-1.5 rounded-xl bg-red-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-40 disabled:pointer-events-none"
+                className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white-fixed disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
               >
                 <Trash2 className="h-4 w-4" />
                 {bulkDeleting ? t('recipes.bulkDeleting') : t('recipes.bulkDelete', { count: selectedIds.size })}
@@ -860,6 +683,6 @@ export default function Recipes() {
           }}
         />
       </Drawer>
-    </div>
+    </Page>
   )
 }

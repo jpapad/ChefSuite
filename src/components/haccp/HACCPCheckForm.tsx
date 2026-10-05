@@ -86,7 +86,7 @@ export function HACCPCheckForm({ locations, submitting, onSubmit, onCancel }: Pr
                 className={
                   'rounded-lg border px-3 py-1.5 text-sm transition ' +
                   (values.location === loc.name
-                    ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                    ? 'bg-brand-orange border-brand-orange text-on-accent'
                     : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
                 }
               >
@@ -141,7 +141,7 @@ export function HACCPCheckForm({ locations, submitting, onSubmit, onCancel }: Pr
               className={
                 'h-11 w-11 rounded-xl border text-sm font-semibold transition ' +
                 (values.unit === u
-                  ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                  ? 'bg-brand-orange border-brand-orange text-on-accent'
                   : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
               }
             >

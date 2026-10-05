@@ -219,7 +219,7 @@ export function HACCPBlankFormDrawer({ open, onClose, locations }: Props) {
                     className={
                       'rounded-lg border px-3 py-1.5 text-sm transition ' +
                       (title === loc.name
-                        ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                        ? 'bg-brand-orange border-brand-orange text-on-accent'
                         : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
                     }
                   >

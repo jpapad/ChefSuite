@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Map as MapIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -45,6 +46,14 @@ const STATUS_COLOR: Record<string, string> = {
   low:   '#f59e0b',
   empty: '#ef4444',
 }
+
+const STATUS_TEXT: Record<string, string> = {
+  full:  '#15803d',
+  low:   '#b45309',
+  empty: '#b91c1c',
+}
+
+const CARD_SHADOW = 'shadow-[0_1px_2px_rgba(15,18,16,0.05),0_10px_30px_-18px_rgba(15,18,16,0.25)]'
 
 const STATUS_LABEL: Record<string, string> = {
   full:  'Διαθέσιμο',
@@ -196,22 +205,21 @@ export default function BuffetMapPublic() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#070c12' }}>
-        <div className="h-10 w-10 rounded-full border-2 border-white/10 border-t-white/50 animate-spin"/>
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F2EE]">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-ink/15 border-t-ink/60"/>
       </div>
     )
   }
 
   if (notFound) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center"
-        style={{ background: 'linear-gradient(135deg, #f8f6f3 0%, #fdfcfb 50%, #f8f6f3 100%)' }}
-      >
-        <div className="text-5xl">🗺️</div>
-        <h1 className="text-xl font-bold text-neutral-800">Δεν βρέθηκε χάρτης μπουφέ</h1>
-        <p className="text-sm text-neutral-500 max-w-xs">Ο χάρτης δεν έχει δημιουργηθεί ακόμα.</p>
-        <p className="text-xs text-neutral-400 mt-4">Powered by ChefSuite</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F2EE] p-4 text-ink">
+        <div className={`flex w-full max-w-sm flex-col items-center gap-3 rounded-[2rem] bg-white-fixed p-8 text-center ${CARD_SHADOW}`}>
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lime"><MapIcon className="h-6 w-6"/></span>
+          <h1 className="text-2xl font-medium tracking-[-0.02em]">Δεν βρέθηκε χάρτης μπουφέ</h1>
+          <p className="text-sm text-ink/55">Ο χάρτης δεν έχει δημιουργηθεί ακόμα.</p>
+          <p className="mt-2 text-xs text-ink/35">Powered by ChefSuite</p>
+        </div>
       </div>
     )
   }
@@ -220,161 +228,113 @@ export default function BuffetMapPublic() {
 
   const totalSlots = stations.reduce((a, s) => a + s.slotCount, 0)
   const assignedSlots = Object.keys(slots).length
+  const counts = { full: 0, low: 0, empty: 0 }
+  for (const v of Object.values(slots)) {
+    const st = statusMap[v.menuItemId]
+    if (st) counts[st]++
+  }
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: '#070c12' }}
-      onClick={() => setPopup(null)}
-    >
-      {/* Header */}
-      <div className="px-4 pt-5 pb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="h-9 w-9 rounded-xl flex items-center justify-center text-lg"
-            style={{ background: 'rgba(196,149,106,0.15)', border: '1px solid rgba(196,149,106,0.3)' }}
-          >
-            🗺️
-          </div>
+    <div className="min-h-screen bg-[#F1F2EE] px-3 py-3 text-ink sm:py-6" onClick={() => setPopup(null)}>
+      <div className="mx-auto flex max-w-5xl flex-col gap-3">
+        {/* Header */}
+        <header className="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] bg-ink px-6 pb-6 pt-5 text-white-fixed">
           <div>
-            <h1 className="text-white font-bold text-base leading-tight">Χάρτης Μπουφέ</h1>
-            <p className="text-white/40 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-lime px-3 py-1 text-[11px] font-semibold text-ink">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink"/>
+              {lastUpdated ? `Live · ${secondsSince}δ` : 'Live'}
+            </span>
+            <h1 className="mt-4 text-4xl font-medium tracking-[-0.03em]">Χάρτης Μπουφέ</h1>
+            <p className="mt-1 capitalize text-white-fixed/55">
               {new Date().toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-          <span className="text-xs text-white/40">
-            {lastUpdated ? `${secondsSince}δ` : 'Live'}
-          </span>
-        </div>
-      </div>
+          <div className="flex gap-2">
+            {(['full', 'low', 'empty'] as const).map((k) => (
+              <div key={k} className="min-w-[5.5rem] rounded-2xl bg-white-fixed/[0.06] px-3 py-2.5">
+                <span className="flex items-center gap-1.5 text-[11px] text-white-fixed/55">
+                  <span className="h-2 w-2 rounded-full" style={{ background: STATUS_COLOR[k] }}/>{STATUS_LABEL[k]}
+                </span>
+                <span className="mt-0.5 block text-2xl font-medium tabular-nums">{counts[k]}</span>
+              </div>
+            ))}
+          </div>
+        </header>
 
-      {/* Map canvas */}
-      <div className="flex-1 px-2 sm:px-4 pb-4">
-        <div
-          className="w-full rounded-2xl overflow-hidden relative"
-          style={{ border: '1px solid rgba(255,255,255,0.07)' }}
-        >
-          <svg
-            ref={svgRef}
-            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-            className="w-full block"
-            style={{ background: '#070c12' }}
-          >
-            {/* Grid */}
+        {/* Map canvas */}
+        <div className={`overflow-hidden rounded-3xl bg-white-fixed p-2 ${CARD_SHADOW}`}>
+          <svg ref={svgRef} viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="block w-full rounded-2xl" style={{ background: '#FAFAF7' }}>
             <defs>
               <pattern id="dots" width="30" height="30" patternUnits="userSpaceOnUse">
-                <circle cx="15" cy="15" r="0.8" fill="rgba(255,255,255,0.06)"/>
+                <circle cx="15" cy="15" r="1" fill="rgba(15,18,16,0.09)"/>
               </pattern>
-              {stations.map((s) => (
-                <filter key={`glow-${s.id}`} id={`glow-pub-${s.id}`} x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="6" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-              ))}
               {stations.map((s) => (
                 <clipPath key={`clip-pub-${s.id}`} id={`clip-pub-${s.id}`}>
                   {s.shape === 'circle'
                     ? <ellipse cx={s.x + s.width/2} cy={s.y + s.height/2} rx={s.width/2 - 2} ry={s.height/2 - 2}/>
-                    : <rect x={s.x + 1} y={s.y + 1} width={s.width - 2} height={s.height - 2} rx="7"/>}
+                    : <rect x={s.x + 1} y={s.y + 1} width={s.width - 2} height={s.height - 2} rx="12"/>}
                 </clipPath>
               ))}
             </defs>
             <rect width={SVG_W} height={SVG_H} fill="url(#dots)"/>
 
-            {/* Background image */}
             {bgImage && (
               <image href={bgImage} x="0" y="0" width={SVG_W} height={SVG_H}
-                preserveAspectRatio="xMidYMid slice" opacity="0.2"
-                style={{ pointerEvents: 'none' }}/>
+                preserveAspectRatio="xMidYMid slice" opacity="0.15" style={{ pointerEvents: 'none' }}/>
             )}
 
-            {/* Stations */}
             {stations.map((s) => {
               const slotW = s.width / s.slotCount
               const cx = s.x + s.width / 2
               const cy = s.y + s.height / 2
 
-              const stationStatuses = Array.from({ length: s.slotCount }, (_, i) => {
-                const assignment = slots[slotKey(s.id, i)]
-                return assignment ? (statusMap[assignment.menuItemId] ?? null) : null
-              }).filter(Boolean) as string[]
-
-              const hasEmpty  = stationStatuses.includes('empty')
-              const hasLow    = stationStatuses.includes('low')
-              const glowColor = hasEmpty ? '#ef4444' : hasLow ? '#f59e0b' : s.color
-
               return (
-                <g key={s.id} transform={`rotate(${s.rotation ?? 0},${cx},${cy})`} filter={`url(#glow-pub-${s.id})`}>
-                  {/* Outer glow ring */}
-                  {s.shape === 'circle' ? (
-                    <ellipse cx={cx} cy={cy} rx={s.width/2 + 3} ry={s.height/2 + 3}
-                      fill="none" stroke={glowColor} strokeWidth="1" strokeOpacity="0.2"/>
-                  ) : (
-                    <rect x={s.x - 2} y={s.y - 2} width={s.width + 4} height={s.height + 4}
-                      rx="10" fill="none" stroke={glowColor} strokeWidth="1" strokeOpacity="0.2"/>
-                  )}
-
-                  {/* Station body */}
+                <g key={s.id} transform={`rotate(${s.rotation ?? 0},${cx},${cy})`}>
                   {s.shape === 'circle' ? (
                     <ellipse cx={cx} cy={cy} rx={s.width/2} ry={s.height/2}
-                      fill={`${s.color}14`} stroke={s.color} strokeWidth="1.5"/>
+                      fill="#ffffff" stroke={s.color} strokeWidth="2"/>
                   ) : (
                     <rect x={s.x} y={s.y} width={s.width} height={s.height}
-                      rx="8" fill={`${s.color}14`} stroke={s.color} strokeWidth="1.5"/>
+                      rx="12" fill="#ffffff" stroke={s.color} strokeWidth="2"/>
                   )}
 
-                  {/* Station label */}
-                  <text x={cx} y={s.y - 8} textAnchor="middle"
-                    fill={s.color} fontSize="10.5" fontWeight="700" letterSpacing="1.2"
-                    fontFamily="'Apple Color Emoji','Segoe UI Emoji','Plus Jakarta Sans',sans-serif">
-                    {s.icon ? `${s.icon} ${s.name.toUpperCase()}` : s.name.toUpperCase()}
+                  <text x={cx} y={s.y - 9} textAnchor="middle"
+                    fill="#0F1210" fontSize="11" fontWeight="600" letterSpacing="0.6"
+                    fontFamily="Geologica, sans-serif">
+                    {s.name.toUpperCase()}
                   </text>
 
-                  {/* Slots (clipped) */}
                   <g clipPath={`url(#clip-pub-${s.id})`}>
                     {Array.from({ length: s.slotCount }).map((_, i) => {
-                      const key        = slotKey(s.id, i)
-                      const assignment = slots[key]
-                      const st         = assignment ? (statusMap[assignment.menuItemId] ?? null) : null
-                      const statusColor = st ? STATUS_COLOR[st]! : 'rgba(255,255,255,0.15)'
-                      const sx         = s.x + i * slotW
+                      const assignment = slots[slotKey(s.id, i)]
+                      const st = assignment ? (statusMap[assignment.menuItemId] ?? null) : null
+                      const statusColor = st ? STATUS_COLOR[st]! : 'rgba(15,18,16,0.2)'
+                      const sx = s.x + i * slotW
 
                       return (
                         <g key={i}>
                           {i > 0 && (
                             <line x1={sx} y1={s.y + 8} x2={sx} y2={s.y + s.height - 8}
-                              stroke={s.color} strokeWidth="0.5" strokeOpacity="0.25"/>
+                              stroke="#0F1210" strokeWidth="0.6" strokeOpacity="0.12"/>
                           )}
-
                           {assignment && (
-                            <rect x={sx + 1} y={s.y + 1} width={slotW - 2} height={s.height - 2}
-                              rx="6" fill="transparent" stroke="transparent"
+                            <rect x={sx + 3} y={s.y + 3} width={slotW - 6} height={s.height - 6}
+                              rx="8" fill={`${s.color}1f`}
                               style={{ cursor: 'pointer' }}
                               onClick={(e) => { e.stopPropagation(); openPopup(s, i, e) }}/>
                           )}
-
-                          {assignment && (
-                            <rect x={sx + 3} y={s.y + 3} width={slotW - 6} height={s.height - 6}
-                              rx="5" fill={`${statusColor}10`} style={{ pointerEvents: 'none' }}/>
-                          )}
-
-                          <text x={sx + slotW / 2} y={s.y + s.height / 2 + (assignment ? 6 : 4)}
-                            textAnchor="middle" fill="white" fontSize="9"
-                            opacity={assignment ? 0.9 : 0.2}
-                            fontFamily="'Plus Jakarta Sans',sans-serif"
+                          <text x={sx + slotW / 2} y={s.y + s.height / 2 + 4}
+                            textAnchor="middle" fill="#0F1210" fontSize="9.5"
+                            opacity={assignment ? 0.9 : 0.25}
+                            fontFamily="Geologica, sans-serif"
                             fontWeight={assignment ? '600' : '400'}
                             style={{ pointerEvents: 'none' }}>
                             {assignment
                               ? (assignment.dishName.length > 14 ? assignment.dishName.slice(0, 13) + '…' : assignment.dishName)
                               : '—'}
                           </text>
-
                           {assignment && (
-                            <PulseDot cx={sx + slotW - 9} cy={s.y + 9}
-                              color={statusColor} pulse={st === 'low'}/>
+                            <PulseDot cx={sx + slotW - 9} cy={s.y + 9} color={statusColor} pulse={st === 'low'}/>
                           )}
                         </g>
                       )
@@ -385,87 +345,80 @@ export default function BuffetMapPublic() {
             })}
           </svg>
         </div>
+
+        {/* Stations list — readable on phones */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {stations.map((s) => {
+            const dishes = Array.from({ length: s.slotCount }, (_, i) => ({ i, a: slots[slotKey(s.id, i)] }))
+              .filter((d): d is { i: number; a: SlotValue } => !!d.a)
+            if (dishes.length === 0) return null
+            return (
+              <section key={s.id} className={`rounded-3xl bg-white-fixed p-4 ${CARD_SHADOW}`}>
+                <h2 className="mb-2 flex items-center gap-2 text-sm font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }}/>{s.name}
+                </h2>
+                <ul className="flex flex-col">
+                  {dishes.map(({ i, a }) => {
+                    const st = statusMap[a.menuItemId] ?? null
+                    return (
+                      <li key={i}>
+                        <button type="button"
+                          onClick={(e) => { e.stopPropagation(); setPopup({ station: s, slotIndex: i, dishName: a.dishName, status: st, x: 0, y: 0 }) }}
+                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-[#F1F2EE]">
+                          <span className="w-5 text-xs tabular-nums text-ink/35">{i + 1}</span>
+                          <span className={`min-w-0 flex-1 truncate text-[15px] ${st === 'empty' ? 'text-ink/40 line-through' : ''}`}>{a.dishName}</span>
+                          {st && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: STATUS_COLOR[st] }}/>}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )
+          })}
+        </div>
+
+        <p className="pb-2 text-center text-xs text-ink/35">
+          {assignedSlots}/{totalSlots} θέσεις · Powered by ChefSuite
+        </p>
       </div>
 
-      {/* Popup overlay */}
+      {/* Dish sheet */}
       {popup && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setPopup(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl p-5 space-y-4"
-            style={{
-              background: 'rgba(12,22,36,0.97)',
-              border: `1px solid ${popup.station.color}40`,
-              boxShadow: `0 0 40px ${popup.station.color}25`,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-3 backdrop-blur-sm sm:items-center"
+          onClick={() => setPopup(null)}>
+          <div className={`flex w-full max-w-sm flex-col gap-4 rounded-[2rem] bg-white-fixed p-5 text-ink ${CARD_SHADOW}`}
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: popup.station.color }}>
-                  {popup.station.name}
+                <p className="flex items-center gap-1.5 text-xs font-medium text-ink/55">
+                  <span className="h-2 w-2 rounded-full" style={{ background: popup.station.color }}/>{popup.station.name}
                 </p>
-                <h2 className="text-xl font-bold text-white mt-1">{popup.dishName}</h2>
+                <h2 className="mt-1 text-2xl font-medium tracking-[-0.02em]">{popup.dishName}</h2>
               </div>
               {popup.status && (
-                <div
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                  style={{
-                    background: `${STATUS_COLOR[popup.status]}20`,
-                    color: STATUS_COLOR[popup.status],
-                    border: `1px solid ${STATUS_COLOR[popup.status]}40`,
-                  }}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      background: STATUS_COLOR[popup.status],
-                      boxShadow: popup.status === 'low' ? `0 0 6px ${STATUS_COLOR[popup.status]}` : 'none',
-                    }}
-                  />
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                  style={{ background: `${STATUS_COLOR[popup.status]}1f`, color: STATUS_TEXT[popup.status] }}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: STATUS_COLOR[popup.status] }}/>
                   {STATUS_LABEL[popup.status]}
-                </div>
+                </span>
               )}
             </div>
-
-            <div
-              className="rounded-xl p-3 text-sm text-white/60"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-            >
-              <p>Θέση <strong className="text-white">{popup.slotIndex + 1}</strong> από τα αριστερά στον σταθμό <strong style={{ color: popup.station.color }}>{popup.station.name}</strong></p>
+            <div className="flex items-center gap-3 rounded-2xl bg-[#F1F2EE] p-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lime text-lg font-semibold tabular-nums">
+                {popup.slotIndex + 1}
+              </span>
+              <p className="text-sm text-ink/65">
+                Θέση <strong className="text-ink">{popup.slotIndex + 1}</strong> από τα αριστερά στον σταθμό <strong className="text-ink">{popup.station.name}</strong>
+              </p>
             </div>
-
-            <button
-              onClick={() => setPopup(null)}
-              className="w-full py-2.5 rounded-xl text-sm font-medium text-white/60 hover:text-white transition"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-            >
+            <button onClick={() => setPopup(null)}
+              className="h-12 rounded-full bg-ink text-[15px] font-medium text-white-fixed hover:bg-ink/90">
               Κλείσιμο
             </button>
           </div>
         </div>
       )}
-
-      {/* Status legend */}
-      <div className="px-4 pb-5 flex items-center justify-center gap-5 flex-wrap">
-        {(['full', 'low', 'empty'] as const).map((s) => (
-          <div key={s} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLOR[s] }}/>
-            <span className="text-xs text-white/40">{STATUS_LABEL[s]}</span>
-          </div>
-        ))}
-        <span className="text-xs text-white/25 ml-2">
-          {assignedSlots}/{totalSlots} θέσεις
-        </span>
-      </div>
-
-      {/* Footer */}
-      <div className="pb-4 text-center">
-        <p className="text-xs text-white/20">Powered by ChefSuite</p>
-      </div>
     </div>
   )
 }

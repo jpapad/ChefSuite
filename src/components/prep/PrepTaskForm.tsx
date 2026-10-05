@@ -141,9 +141,9 @@ export function PrepTaskForm({
               onChange={(e) => setValues((v) => ({ ...v, workstation_id: e.target.value || null }))}
               className="flex-1 bg-transparent outline-none text-base text-white"
             >
-              <option value="" className="bg-[#f5ede0]">{t('prep.form.noWorkstation')}</option>
+              <option value="" className="bg-bg-card">{t('prep.form.noWorkstation')}</option>
               {workstations.map((w) => (
-                <option key={w.id} value={w.id} className="bg-[#f5ede0]">{w.name}</option>
+                <option key={w.id} value={w.id} className="bg-bg-card">{w.name}</option>
               ))}
             </select>
           </div>
@@ -161,9 +161,9 @@ export function PrepTaskForm({
             onChange={(e) => setValues((v) => ({ ...v, recipe_id: e.target.value || null }))}
             className="flex-1 bg-transparent outline-none text-base text-white"
           >
-            <option value="" className="bg-[#f5ede0]">{t('prep.form.noRecipe')}</option>
+            <option value="" className="bg-bg-card">{t('prep.form.noRecipe')}</option>
             {recipes.map((r) => (
-              <option key={r.id} value={r.id} className="bg-[#f5ede0]">{r.title}</option>
+              <option key={r.id} value={r.id} className="bg-bg-card">{r.title}</option>
             ))}
           </select>
         </div>
@@ -196,9 +196,9 @@ export function PrepTaskForm({
             onChange={(e) => setValues((v) => ({ ...v, assignee_id: e.target.value || null }))}
             className="flex-1 bg-transparent outline-none text-base text-white"
           >
-            <option value="" className="bg-[#f5ede0]">{t('prep.form.noAssignee')}</option>
+            <option value="" className="bg-bg-card">{t('prep.form.noAssignee')}</option>
             {members.map((m) => (
-              <option key={m.id} value={m.id} className="bg-[#f5ede0]">
+              <option key={m.id} value={m.id} className="bg-bg-card">
                 {m.full_name ?? t('common.unnamed')}
               </option>
             ))}

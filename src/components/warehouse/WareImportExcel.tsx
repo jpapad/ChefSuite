@@ -299,7 +299,7 @@ export function WareImportExcel() {
                 'flex-1 rounded-xl py-2.5 text-sm font-semibold transition',
                 importing || validCount === 0
                   ? 'bg-white/10 text-white/30 cursor-not-allowed'
-                  : 'bg-brand-orange text-white hover:bg-brand-orange/90',
+                  : 'bg-brand-orange text-on-accent hover:bg-brand-orange/90',
               )}
             >
               {importing ? 'Εισαγωγή…' : `Εισαγωγή ${validCount} Προϊόντων`}
@@ -344,7 +344,7 @@ export function WareImportExcel() {
               'w-full rounded-xl py-3 text-sm font-semibold transition flex items-center justify-center gap-2',
               invImporting
                 ? 'bg-white/5 text-white/30 cursor-not-allowed'
-                : 'bg-brand-orange/15 text-brand-orange hover:bg-brand-orange hover:text-white border border-brand-orange/30',
+                : 'bg-brand-orange/15 text-brand-orange hover:bg-brand-orange hover:text-on-accent border border-brand-orange/30',
             )}
           >
             <Upload className="h-4 w-4" />

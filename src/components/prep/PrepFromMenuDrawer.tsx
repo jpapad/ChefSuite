@@ -274,9 +274,9 @@ export function PrepFromMenuDrawer({
                 onChange={(e) => setSelectedMenuId(e.target.value || null)}
                 className="flex-1 bg-transparent outline-none text-sm text-white"
               >
-                <option value="" className="bg-[#f5ede0]">— {t('prep.fromMenu.chooseMenu')} —</option>
+                <option value="" className="bg-bg-card">— {t('prep.fromMenu.chooseMenu')} —</option>
                 {menus.map((m) => (
-                  <option key={m.id} value={m.id} className="bg-[#f5ede0]">{m.name}</option>
+                  <option key={m.id} value={m.id} className="bg-bg-card">{m.name}</option>
                 ))}
               </select>
             </div>
@@ -413,9 +413,9 @@ export function PrepFromMenuDrawer({
                                   onChange={(e) => setAssignment(item.id, { workstation_id: e.target.value || null })}
                                   className="flex-1 bg-transparent outline-none text-xs text-white py-1.5"
                                 >
-                                  <option value="" className="bg-[#f5ede0]">—</option>
+                                  <option value="" className="bg-bg-card">—</option>
                                   {workstations.map((w) => (
-                                    <option key={w.id} value={w.id} className="bg-[#f5ede0]">{w.name}</option>
+                                    <option key={w.id} value={w.id} className="bg-bg-card">{w.name}</option>
                                   ))}
                                 </select>
                               </div>
@@ -435,9 +435,9 @@ export function PrepFromMenuDrawer({
                                 onChange={(e) => setAssignment(item.id, { assignee_id: e.target.value || null })}
                                 className="flex-1 bg-transparent outline-none text-xs text-white py-1.5"
                               >
-                                <option value="" className="bg-[#f5ede0]">—</option>
+                                <option value="" className="bg-bg-card">—</option>
                                 {membersOnShift.map((m) => (
-                                  <option key={m.id} value={m.id} className="bg-[#f5ede0]">
+                                  <option key={m.id} value={m.id} className="bg-bg-card">
                                     {m.full_name ?? m.id}
                                   </option>
                                 ))}

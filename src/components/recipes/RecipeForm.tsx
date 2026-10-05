@@ -284,7 +284,7 @@ export function RecipeForm({
               onClick={() => setValues((v) => ({ ...v, category: v.category === cat ? null : cat }))}
               className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
                 values.category === cat
-                  ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                  ? 'bg-brand-orange border-brand-orange text-on-accent'
                   : 'border-white/20 text-white/60 hover:text-white hover:border-white/40'
               }`}
             >

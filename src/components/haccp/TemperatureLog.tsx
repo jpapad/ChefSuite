@@ -195,7 +195,7 @@ function ApplianceCard({ appliance, shift, onLog }: ApplianceCardProps) {
           'w-full rounded-xl py-3 text-sm font-semibold transition',
           form.saving || !hasTemp || needsCA
             ? 'bg-white/5 text-white/30 cursor-not-allowed'
-            : 'bg-brand-orange text-white hover:bg-brand-orange/90 active:scale-[0.98]',
+            : 'bg-brand-orange text-on-accent hover:bg-brand-orange/90 active:scale-[0.98]',
         )}
       >
         {form.saving ? t('tempLog.saving') : t('tempLog.save')}

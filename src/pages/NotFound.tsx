@@ -1,24 +1,20 @@
 import { Link } from 'react-router-dom'
-import { Flame } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useLightTheme } from '../lib/useLightTheme'
 
 export default function NotFound() {
   const { t } = useTranslation()
+  useLightTheme()
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-chef-dark gap-6 p-6 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-        <Flame className="h-8 w-8" />
-      </div>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-bg-surface p-6 text-center">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-lime text-sm font-bold text-ink">CS</span>
+      <p className="text-[9rem] font-medium leading-none tracking-[-0.06em] tabular-nums">404</p>
       <div>
-        <h1 className="text-6xl font-bold text-brand-orange">404</h1>
-        <p className="text-xl font-semibold mt-2">{t('notFound.title')}</p>
-        <p className="text-white/60 mt-1">{t('notFound.description')}</p>
+        <h1 className="text-3xl font-medium tracking-[-0.02em]">{t('notFound.title')}</h1>
+        <p className="mt-2 max-w-md text-white/55">{t('notFound.description')}</p>
       </div>
-      <Link
-        to="/"
-        className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-6 py-3 font-semibold text-white hover:bg-brand-orange/90 transition"
-      >
+      <Link to="/" className="inline-flex h-12 items-center rounded-full bg-brand-orange px-6 font-medium text-on-accent hover:bg-brand-orange/85">
         {t('notFound.backToDashboard')}
       </Link>
     </div>

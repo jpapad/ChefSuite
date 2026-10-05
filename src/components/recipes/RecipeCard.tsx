@@ -45,9 +45,9 @@ function fmtMin(min: number) {
 }
 
 const DIFFICULTY_STYLE = {
-  easy: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  medium: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  hard: 'bg-red-500/20 text-red-300 border-red-500/30',
+  easy: 'bg-emerald-500/10 text-emerald-500 border-transparent',
+  medium: 'bg-amber-500/12 text-amber-500 border-transparent',
+  hard: 'bg-red-500/10 text-red-500 border-transparent',
 }
 
 export function RecipeCard({ recipe, ingredients, inventory, onView, onEdit, onDelete, onConsume, onHistory }: RecipeCardProps) {
@@ -74,103 +74,83 @@ export function RecipeCard({ recipe, ingredients, inventory, onView, onEdit, onD
 
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl cursor-pointer h-64 bg-white/5"
+      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl bg-bg-card p-2 shadow-card transition-transform hover:-translate-y-0.5"
       onClick={() => onView(recipe)}
     >
-      {/* Background image */}
-      {recipe.image_url ? (
-        <img
-          src={recipe.image_url}
-          alt={recipe.title}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-white/5 to-white/10">
-          <ChefHat className="h-16 w-16 text-white/10" />
-        </div>
-      )}
-
-      {/* Top actions */}
-      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <button type="button" onClick={(e) => { e.stopPropagation(); onHistory(recipe) }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/70 text-white-fixed backdrop-blur-sm transition hover:bg-black/90">
-          <History className="h-4 w-4" />
-        </button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(recipe) }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/70 text-white-fixed backdrop-blur-sm transition hover:bg-black/90">
-          <Pencil className="h-4 w-4" />
-        </button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(recipe) }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/70 text-white-fixed backdrop-blur-sm transition hover:text-red-400 hover:bg-black/90">
-          <Trash2 className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* Bottom content — solid dark panel for guaranteed readability */}
-      <div className="absolute inset-x-0 bottom-0 bg-black/75 backdrop-blur-sm p-4 space-y-1.5">
-        {/* Category */}
-        {recipe.category && (
-          <span className="inline-block rounded-md px-2 py-0.5 text-xs font-medium text-white-fixed" style={{ background: 'rgba(255,255,255,0.15)' }}>
-            {t(`recipes.categories.${recipe.category}`)}
+      {/* Photo */}
+      <div className="relative h-44 overflow-hidden rounded-[18px] bg-white/[0.05]">
+        {recipe.image_url ? (
+          <img
+            src={recipe.image_url}
+            alt={recipe.title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <ChefHat className="h-12 w-12 text-white/15" />
+          </div>
+        )}
+        {foodCostPct != null && (
+          <span className={`absolute left-3 top-3 rounded-full bg-white-fixed px-2.5 py-1 text-xs font-semibold tabular-nums ${foodCostPct <= 30 ? 'text-emerald-700' : foodCostPct <= 40 ? 'text-amber-700' : 'text-red-700'}`}>
+            FC {foodCostPct.toFixed(0)}%
           </span>
         )}
+        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {[
+            { icon: History, label: t('recipes.versions.title', 'History'), on: () => onHistory(recipe), cls: '' },
+            { icon: Pencil, label: t('common.edit', 'Edit'), on: () => onEdit(recipe), cls: '' },
+            { icon: Trash2, label: t('common.delete', 'Delete'), on: () => onDelete(recipe), cls: 'hover:text-red-600' },
+          ].map(({ icon: Icon, label, on, cls }) => (
+            <button
+              key={label}
+              type="button"
+              aria-label={label}
+              title={label}
+              onClick={(e) => { e.stopPropagation(); on() }}
+              className={`flex h-9 w-9 items-center justify-center rounded-full bg-white-fixed text-ink shadow transition ${cls}`}
+            >
+              <Icon className="h-4 w-4" />
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Title */}
-        <h3 style={{ color: '#ffffff' }} className="text-base font-bold leading-snug line-clamp-2">
+      {/* Body */}
+      <div className="flex flex-1 flex-col gap-2 px-3 pb-2 pt-3">
+        <div className="flex items-center gap-2 text-xs text-white/55">
+          {recipe.category && <span>{t(`recipes.categories.${recipe.category}`)}</span>}
+          {totalTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{fmtMin(totalTime)}</span>}
+          {recipe.servings && <span className="flex items-center gap-1"><Users className="h-3 w-3" />{recipe.servings}</span>}
+          {recipe.difficulty && (
+            <span className={`ml-auto rounded-full border px-2 py-0.5 font-medium ${DIFFICULTY_STYLE[recipe.difficulty]}`}>
+              {t(`recipes.form.difficulty${recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1)}`)}
+            </span>
+          )}
+        </div>
+
+        <h3 className="text-base font-medium leading-snug line-clamp-2">
           {translatedTitle ?? recipe.title}
         </h3>
 
-        {/* Time / servings / difficulty row */}
-        {(totalTime || recipe.servings || recipe.difficulty) && (
-          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            {totalTime && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />{fmtMin(totalTime)}
+        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+            {cost != null && (
+              <span className="flex items-center gap-0.5 tabular-nums text-white/70">
+                <Euro className="h-3 w-3" />{cost.toFixed(2)}{partial && <span className="text-amber-500">*</span>}
+                {recipe.selling_price != null && <span className="text-white/40"> / {recipe.selling_price.toFixed(2)}</span>}
               </span>
             )}
-            {recipe.servings && (
-              <span className="flex items-center gap-1">
-                <Users className="h-3 w-3" />{recipe.servings}
-              </span>
-            )}
-            {recipe.difficulty && (
-              <span className={`rounded-md border px-1.5 py-0.5 font-medium ${DIFFICULTY_STYLE[recipe.difficulty]}`}>
-                {t(`recipes.form.difficulty${recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1)}`)}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Cost / stock / make row */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
             {stock && (
-              <span className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 ${
-                stock.canMake ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
-                              : 'border-amber-500/40 bg-amber-500/20 text-amber-300'}`}>
+              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 ${stock.canMake ? 'bg-emerald-500/12 text-emerald-500' : 'bg-amber-500/12 text-amber-500'}`}>
                 {stock.canMake ? <PackageCheck className="h-3 w-3" /> : <PackageX className="h-3 w-3" />}
                 {stock.canMake ? t('recipes.detail.inStock')
                   : stock.missing.slice(0, 1).join(', ') + (stock.missing.length > 1 ? ` +${stock.missing.length - 1}` : '')}
               </span>
             )}
-            {cost != null && (
-              <span className="flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                <Euro className="h-3 w-3" />{cost.toFixed(2)}{partial && <span className="text-amber-300">*</span>}
-              </span>
-            )}
-            {foodCostPct != null && (
-              <span className={`font-medium ${foodCostPct <= 30 ? 'text-emerald-400' : foodCostPct <= 40 ? 'text-amber-400' : 'text-red-400'}`}>
-                FC {foodCostPct.toFixed(0)}%
-              </span>
-            )}
             {recipe.allergens.length > 0 && (
               <span className="flex items-center gap-0.5">
-                {recipe.allergens.slice(0, 3).map((a) => (
-                  <AllergenDot key={a} allergen={a} />
-                ))}
-                {recipe.allergens.length > 3 && (
-                  <span className="text-[10px] text-white/40 ml-0.5">+{recipe.allergens.length - 3}</span>
-                )}
+                {recipe.allergens.slice(0, 4).map((a) => <AllergenDot key={a} allergen={a} />)}
+                {recipe.allergens.length > 4 && <span className="ml-0.5 text-[10px] text-white/45">+{recipe.allergens.length - 4}</span>}
               </span>
             )}
           </div>
@@ -180,7 +160,7 @@ export function RecipeCard({ recipe, ingredients, inventory, onView, onEdit, onD
               type="button"
               onClick={handleMake}
               disabled={consuming || (stock ? !stock.canMake : false)}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-orange px-3 py-1.5 text-xs font-medium text-white-fixed disabled:opacity-40 hover:bg-brand-orange/90 transition"
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-orange px-3.5 py-2 text-xs font-medium text-on-accent transition hover:bg-brand-orange/85 disabled:opacity-40"
             >
               <UtensilsCrossed className="h-3.5 w-3.5" />
               {consuming ? '…' : t('recipes.detail.make')}

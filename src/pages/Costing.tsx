@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Calculator, Search, Check, TrendingUp, Package, AlertTriangle,
+  Check, Package,
   ChevronDown, ChevronUp, History, Target, PieChart, CalendarDays, Loader2,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
 import { ErrorState } from '../components/ui/ErrorState'
+import { Page, PageHeader, PillButton, StatRow, StatTile, Segmented, SearchField } from '../components/ui/page'
 import { costStatus } from '../lib/foodCost'
 import { useTeamSettings } from '../hooks/useTeamSettings'
 import { EventCostingDrawer } from '../components/costing/EventCostingDrawer'
@@ -261,141 +262,113 @@ export default function Costing() {
     setBulkSaving(false)
   }
 
+  const priced = recipes.filter((r) => r.cost_per_portion != null && (r.selling_price ?? 0) > 0)
+  const avgFc = priced.length ? priced.reduce((sum, r) => sum + pct(r.cost_per_portion!, r.selling_price!), 0) / priced.length : null
+  const missingCost = ingredients.filter((i) => i.cost_per_unit == null).length
+
   return (
-    <div className="p-6 flex flex-col gap-5 h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange/15">
-          <Calculator className="h-5 w-5 text-brand-orange" />
-        </div>
-        <div className="flex-1">
-          <h1 className="text-xl font-semibold leading-none">{t('costing.title')}</h1>
-          <p className="text-xs text-white/40 mt-0.5">{t('costing.subtitle')}</p>
-        </div>
-        {/* Γ — Event costing button */}
-        <button type="button" onClick={() => setEventOpen(true)}
-          className="flex items-center gap-2 rounded-xl border border-brand-orange/30 bg-brand-orange/8 px-3 py-2 text-sm font-medium text-brand-orange hover:bg-brand-orange/15 transition">
-          <CalendarDays className="h-4 w-4" />
-          Εκδήλωση
-        </button>
-      </div>
+    <Page>
+      <PageHeader
+        title={t('costing.title')}
+        subtitle={t('costing.subtitle')}
+        actions={<PillButton icon={CalendarDays} onClick={() => setEventOpen(true)}>{t('costing.v2.event')}</PillButton>}
+      />
 
       {error && <ErrorState message={error} onRetry={load} />}
 
-      {/* Stats row */}
-      {stats && (
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: t('costing.totalItems'), value: String(stats.count), icon: Package, color: 'text-sky-400' },
-            { label: t('costing.avgCost'), value: fmt(stats.avg), icon: TrendingUp, color: 'text-brand-orange' },
-            { label: t('costing.mostExpensive'), value: `${stats.max.name} · ${fmt(stats.max.cost_per_unit ?? 0)}`, icon: AlertTriangle, color: 'text-red-400' },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="glass gradient-border rounded-2xl px-4 py-3 flex items-center gap-3">
-              <Icon className={cn('h-5 w-5 shrink-0', color)} />
-              <div className="min-w-0">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider leading-none">{label}</p>
-                <p className="text-sm font-semibold mt-0.5 truncate">{value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <StatRow>
+        <StatTile
+          tone="ink"
+          label={t('recipes.v2.avgFc')}
+          value={avgFc != null ? `${avgFc.toFixed(1)}%` : '—'}
+          hint={t('costing.v2.target', { target })}
+        />
+        <StatTile
+          label={t('costing.v2.aboveTarget')}
+          value={aboveTarget.length}
+          tone={aboveTarget.length ? 'warn' : 'good'}
+          hint={aboveTarget.length ? t('costing.v2.optimizeHint') : t('costing.v2.allOnTarget')}
+          onClick={aboveTarget.length ? () => { setTab('recipes'); setBulkOpen(true); setBulkSelected(new Set()) } : undefined}
+        />
+        <StatTile label={t('costing.totalItems')} value={stats?.count ?? 0} hint={stats ? `${t('costing.avgCost')} ${fmt(stats.avg)}` : undefined} icon={Package} />
+        <StatTile tone="lime" label={t('costing.v2.missingCost')} value={missingCost} hint={stats ? `${t('costing.mostExpensive')}: ${stats.max.name}` : undefined} onClick={missingCost ? () => setTab('ingredients') : undefined} />
+      </StatRow>
 
-      {/* Tabs + Search */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-1.5">
-          {(['ingredients', 'recipes'] as Tab[]).map((t_) => (
-            <button key={t_} type="button"
-              onClick={() => { setTab(t_); setSearch(''); setEditId(null); setExpandedRecipeId(null); setBulkOpen(false) }}
-              className={cn(
-                'rounded-xl px-4 py-2 text-sm font-medium transition-all',
-                tab === t_ ? 'bg-brand-orange text-white-fixed' : 'glass text-white/55 hover:text-white/80',
-              )}>
-              {t(`costing.tab${t_.charAt(0).toUpperCase() + t_.slice(1)}`)}
-            </button>
-          ))}
-        </div>
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('costing.search')}
-            className="w-full rounded-xl bg-white-fixed/55 border border-white/50 text-white text-sm pl-9 pr-3 py-2 placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/40" />
-        </div>
-        {/* Β — Bulk optimizer button (recipes tab only) */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Segmented
+          value={tab}
+          onChange={(v) => { setTab(v); setSearch(''); setEditId(null); setExpandedRecipeId(null); setBulkOpen(false) }}
+          options={(['ingredients', 'recipes'] as Tab[]).map((v) => ({ value: v, label: t(`costing.tab${v.charAt(0).toUpperCase() + v.slice(1)}`) }))}
+        />
+        <SearchField value={search} onChange={setSearch} placeholder={t('costing.search')} className="flex-1 max-w-md" />
         {tab === 'recipes' && aboveTarget.length > 0 && (
-          <button type="button" onClick={() => { setBulkOpen((v) => !v); setBulkSelected(new Set()) }}
-            className={cn(
-              'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition',
-              bulkOpen
-                ? 'border-amber-400/50 bg-amber-400/10 text-amber-300'
-                : 'border-amber-400/30 bg-amber-400/5 text-amber-400/70 hover:text-amber-300',
-            )}>
-            <Target className="h-4 w-4" />
-            Βελτιστοποίηση ({aboveTarget.length})
-          </button>
+          <PillButton icon={Target} variant={bulkOpen ? 'primary' : 'secondary'} onClick={() => { setBulkOpen((v) => !v); setBulkSelected(new Set()) }}>
+            {t('costing.v2.optimize', { count: aboveTarget.length })}
+          </PillButton>
         )}
       </div>
 
-      {/* Β — Bulk optimizer panel */}
+      {/* ── Bulk price optimizer ── */}
       {tab === 'recipes' && bulkOpen && aboveTarget.length > 0 && (
-        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-amber-300">
-              {aboveTarget.length} συνταγές πάνω από τον στόχο ({target}%)
-            </p>
-            <button type="button" onClick={() => {
-              const allIds = new Set(aboveTarget.map((r) => r.id))
-              setBulkSelected((prev) => prev.size === aboveTarget.length ? new Set() : allIds)
-            }} className="text-xs text-amber-400/60 hover:text-amber-300 transition">
-              {bulkSelected.size === aboveTarget.length ? 'Καθαρισμός' : 'Επιλογή όλων'}
+        <section className="flex flex-col gap-3 rounded-3xl bg-lime p-5 text-ink">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-lg font-medium">{t('costing.v2.optimizerTitle', { count: aboveTarget.length, target })}</p>
+              <p className="text-sm text-ink/70">{t('costing.v2.optimizerHint')}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBulkSelected((prev) => prev.size === aboveTarget.length ? new Set() : new Set(aboveTarget.map((r) => r.id)))}
+              className="rounded-full bg-ink/10 px-4 py-2 text-sm font-medium"
+            >
+              {bulkSelected.size === aboveTarget.length ? t('common.deselectAll') : t('common.selectAll', { count: aboveTarget.length })}
             </button>
           </div>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+          <div className="grid max-h-64 gap-1.5 overflow-y-auto sm:grid-cols-2">
             {aboveTarget.map((r) => {
               const fp = pct(r.cost_per_portion!, r.selling_price!)
               const suggested = Math.round((r.cost_per_portion! / (target / 100)) * 100) / 100
               const sel = bulkSelected.has(r.id)
               return (
-                <button key={r.id} type="button"
+                <button
+                  key={r.id}
+                  type="button"
+                  aria-pressed={sel}
                   onClick={() => setBulkSelected((prev) => { const n = new Set(prev); sel ? n.delete(r.id) : n.add(r.id); return n })}
-                  className={cn(
-                    'w-full flex items-center gap-3 rounded-xl px-3 py-2 text-sm border transition text-left',
-                    sel ? 'border-amber-400/30 bg-amber-400/10' : 'border-white/8 bg-white/3',
-                  )}>
-                  <div className={cn('h-3.5 w-3.5 shrink-0 rounded border flex items-center justify-center',
-                    sel ? 'border-amber-400 bg-amber-400' : 'border-white/20')}>
-                    {sel && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                  </div>
-                  <span className="flex-1 truncate text-white/80">{r.title}</span>
-                  <span className="text-red-400 text-xs tabular-nums shrink-0">{fp.toFixed(1)}%</span>
-                  <span className="text-white/40 text-[10px] shrink-0">→</span>
-                  <span className="text-emerald-400 text-xs tabular-nums shrink-0">{fmt(suggested)}</span>
+                  className={cn('flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition', sel ? 'bg-ink text-white-fixed' : 'bg-white-fixed/60')}
+                >
+                  <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border', sel ? 'border-lime bg-lime text-ink' : 'border-ink/30')}>
+                    {sel && <Check className="h-3 w-3" strokeWidth={3} />}
+                  </span>
+                  <span className="flex-1 truncate">{r.title}</span>
+                  <span className="shrink-0 tabular-nums text-xs opacity-70">{fp.toFixed(1)}%</span>
+                  <span className="shrink-0 text-xs opacity-50">→</span>
+                  <span className="shrink-0 font-medium tabular-nums">{fmt(suggested)}</span>
                 </button>
               )
             })}
           </div>
-          <div className="flex gap-2 pt-1">
-            <button type="button" onClick={() => setBulkOpen(false)}
-              className="flex-1 rounded-xl border border-white/10 py-2 text-sm text-white/40 hover:text-white/70 transition">
-              Άκυρο
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setBulkOpen(false)} className="h-11 flex-1 rounded-full bg-ink/10 text-sm font-medium">
+              {t('common.cancel')}
             </button>
-            <button type="button" onClick={() => void saveBulkPrices()}
+            <button
+              type="button"
+              onClick={() => void saveBulkPrices()}
               disabled={bulkSelected.size === 0 || bulkSaving}
-              className="flex-1 rounded-xl bg-brand-orange/20 border border-brand-orange/40 py-2 text-sm font-medium text-brand-orange hover:bg-brand-orange/30 transition disabled:opacity-40">
-              {bulkSaving
-                ? <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                : `Αποθήκευση ${bulkSelected.size > 0 ? `(${bulkSelected.size})` : ''}`
-              }
+              className="h-11 flex-1 rounded-full bg-ink text-sm font-medium text-white-fixed disabled:opacity-40"
+            >
+              {bulkSaving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : `${t('costing.v2.applyPrices')}${bulkSelected.size > 0 ? ` (${bulkSelected.size})` : ''}`}
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Content */}
-      <div className="glass gradient-border rounded-2xl overflow-hidden flex-1">
+      <div className="rounded-3xl bg-bg-card p-2 shadow-card overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-2">
-            {[...Array(8)].map((_, i) => <div key={i} className="h-10 glass rounded-xl animate-pulse" />)}
+            {[...Array(8)].map((_, i) => <div key={i} className="h-11 rounded-2xl bg-white/[0.05] animate-pulse" />)}
           </div>
         ) : tab === 'ingredients' ? (
           filteredIngredients.length === 0 ? (
@@ -404,17 +377,17 @@ export default function Costing() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/8">
-                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40">{t('costing.ingredient')}</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-24">{t('costing.unit')}</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-48">{t('costing.costPerUnit')}</th>
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-white/50">{t('costing.ingredient')}</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-white/50 w-24">{t('costing.unit')}</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-white/50 w-48">{t('costing.costPerUnit')}</th>
                     <th className="w-10" />
                   </tr>
                 </thead>
                 <tbody>
                   {filteredIngredients.map((item) => (
                     <>
-                      <tr key={item.id} className="border-b border-white/5 hover:bg-white/3 transition-colors group">
+                      <tr key={item.id} className="border-t border-white/[0.06] hover:bg-white/[0.03] transition-colors group">
                         <td className="px-4 py-2.5 font-medium text-white/90">{item.name}</td>
                         <td className="px-4 py-2.5 text-white/40 text-xs">{item.unit}</td>
                         <td className="px-4 py-2.5 text-right">
@@ -428,17 +401,17 @@ export default function Costing() {
                                   if (e.key === 'Enter') void saveIngredientCost(item.id)
                                   if (e.key === 'Escape') setEditId(null)
                                 }}
-                                className="w-24 rounded-lg bg-white-fixed/55 border border-brand-orange/50 text-white text-right text-sm px-2 py-1 outline-none focus:ring-1 focus:ring-brand-orange/60"
+                                className="h-9 w-28 rounded-full bg-white/[0.06] px-3 text-right text-sm tabular-nums outline-none ring-2 ring-brand-orange/40"
                               />
                               <button type="button" onClick={() => void saveIngredientCost(item.id)}
                                 disabled={saving}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange/20 text-brand-orange hover:bg-brand-orange/30 transition-all">
+                                aria-label={t('common.save')} className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-orange text-on-accent transition-all">
                                 <Check className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           ) : (
                             <button type="button" onClick={() => startEdit(item)}
-                              className="rounded-lg px-3 py-1 text-sm font-medium transition-all hover:bg-white/8">
+                              className="rounded-full px-3 py-1.5 text-sm font-medium tabular-nums transition-all hover:bg-white/[0.06]">
                               {item.cost_per_unit != null
                                 ? <span className="text-white/90">{fmt(item.cost_per_unit)}</span>
                                 : <span className="text-white/25 group-hover:text-brand-orange/70 transition-colors">{t('costing.noCost')} {t('costing.editCost')}</span>
@@ -451,7 +424,7 @@ export default function Costing() {
                           <button type="button" onClick={() => void loadHistory(item.id)}
                             title="Ιστορικό τιμών"
                             className={cn(
-                              'h-7 w-7 flex items-center justify-center rounded-lg transition',
+                              'h-9 w-9 flex items-center justify-center rounded-full transition',
                               historyId === item.id
                                 ? 'bg-sky-400/15 text-sky-400'
                                 : 'text-white/20 hover:text-white/50 hover:bg-white/5',
@@ -544,12 +517,12 @@ export default function Costing() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/8">
-                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40">{t('costing.recipe')}</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-32">{t('costing.costPerPortion')}</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-32">{t('costing.sellingPrice')}</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-28">{t('costing.foodCostPct')}</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/40 w-32">{t('costing.margin')}</th>
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-white/50">{t('costing.recipe')}</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-white/50 w-32">{t('costing.costPerPortion')}</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-white/50 w-32">{t('costing.sellingPrice')}</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-white/50 w-28">{t('costing.foodCostPct')}</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-white/50 w-32">{t('costing.margin')}</th>
                     <th className="w-10" />
                   </tr>
                 </thead>
@@ -566,7 +539,7 @@ export default function Costing() {
 
                     return (
                       <>
-                        <tr key={recipe.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                        <tr key={recipe.id} className="border-t border-white/[0.06] hover:bg-white/[0.03] transition-colors">
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-white/90">{recipe.title}</span>
@@ -610,7 +583,7 @@ export default function Costing() {
                             <button type="button" onClick={() => void loadBreakdown(recipe.id)}
                               title="Ανάλυση κόστους υλικών"
                               className={cn(
-                                'h-7 w-7 flex items-center justify-center rounded-lg transition',
+                                'h-9 w-9 flex items-center justify-center rounded-full transition',
                                 isExpanded
                                   ? 'bg-purple-400/15 text-purple-400'
                                   : 'text-white/20 hover:text-white/50 hover:bg-white/5',
@@ -671,6 +644,6 @@ export default function Costing() {
       {teamId && (
         <EventCostingDrawer open={eventOpen} onClose={() => setEventOpen(false)} teamId={teamId} />
       )}
-    </div>
+    </Page>
   )
 }

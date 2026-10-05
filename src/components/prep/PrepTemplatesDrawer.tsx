@@ -179,9 +179,9 @@ export function PrepTemplatesDrawer({ open, onClose, recipes, workstations, onAp
                                 <select value={itemForm.workstation_id}
                                   onChange={(e) => setItemForm((v) => ({ ...v, workstation_id: e.target.value }))}
                                   className="flex-1 bg-transparent outline-none text-sm text-white">
-                                  <option value="" className="bg-[#f5ede0]">—</option>
+                                  <option value="" className="bg-bg-card">—</option>
                                   {workstations.map((w) => (
-                                    <option key={w.id} value={w.id} className="bg-[#f5ede0]">{w.name}</option>
+                                    <option key={w.id} value={w.id} className="bg-bg-card">{w.name}</option>
                                   ))}
                                 </select>
                               </div>
@@ -193,9 +193,9 @@ export function PrepTemplatesDrawer({ open, onClose, recipes, workstations, onAp
                               <select value={itemForm.recipe_id}
                                 onChange={(e) => setItemForm((v) => ({ ...v, recipe_id: e.target.value }))}
                                 className="flex-1 bg-transparent outline-none text-sm text-white">
-                                <option value="" className="bg-[#f5ede0]">— {t('prep.form.noRecipe')} —</option>
+                                <option value="" className="bg-bg-card">— {t('prep.form.noRecipe')} —</option>
                                 {recipes.map((r) => (
-                                  <option key={r.id} value={r.id} className="bg-[#f5ede0]">{r.title}</option>
+                                  <option key={r.id} value={r.id} className="bg-bg-card">{r.title}</option>
                                 ))}
                               </select>
                             </div>
@@ -243,7 +243,7 @@ export function PrepTemplatesDrawer({ open, onClose, recipes, workstations, onAp
               className="flex-1 min-w-0 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-brand-orange"
             />
             <button type="button" onClick={() => void handleCreateTemplate()} disabled={savingTemplate}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange text-white-fixed hover:bg-brand-orange/80 transition">
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange text-on-accent hover:bg-brand-orange/80 transition">
               <Check className="h-4 w-4" />
             </button>
             <button type="button" onClick={() => { setAddingTemplate(false); setNewTemplateName('') }}

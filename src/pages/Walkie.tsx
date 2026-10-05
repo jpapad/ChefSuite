@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, MicOff, Radio, Trash2, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
 import { useAuth } from '../contexts/AuthContext'
 import { useWalkie } from '../hooks/useWalkie'
 import { cn } from '../lib/cn'
@@ -129,109 +128,75 @@ export default function Walkie() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-2rem)]">
-      <header className="flex-none mb-4">
-        <h1 className="text-3xl font-semibold flex items-center gap-2">
-          <Radio className="h-7 w-7 text-brand-orange" />
-          {t('walkie.title')}
-        </h1>
-        <p className="text-white/60 mt-1">{t('walkie.subtitle')}</p>
-      </header>
-
-      {!supported && (
-        <GlassCard className="flex-none border border-amber-500/40 text-amber-300 mb-4 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+    <div className="mx-auto grid h-[calc(100vh-10rem)] w-full max-w-[1360px] min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+      {/* ── Transcript feed ── */}
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white/[0.03]">
+        <header className="flex flex-none items-center gap-3 px-5 py-4">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-lime text-ink"><Radio className="h-5 w-5" /></span>
           <div>
-            <p className="font-medium">{t('walkie.noSpeechSupport')}</p>
-            <p className="text-sm mt-0.5 text-amber-300/70">{t('walkie.noSpeechSupportHint')}</p>
+            <h1 className="text-xl font-medium">{t('walkie.title')}</h1>
+            <p className="text-xs text-white/50">{t('walkie.subtitle')}</p>
           </div>
-        </GlassCard>
-      )}
+        </header>
 
-      {error && (
-        <GlassCard className="flex-none border border-red-500/40 text-red-300 mb-4">{error}</GlassCard>
-      )}
-
-      <GlassCard className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-        {loading ? (
-          <p className="text-white/60 text-center py-8">{t('walkie.loading')}</p>
-        ) : messages.length === 0 && !recording ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-12">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-              <Radio className="h-7 w-7" />
+        {!supported && (
+          <div className="mx-4 mb-3 flex items-start gap-3 rounded-2xl bg-amber-500/12 p-4 text-amber-600">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-medium">{t('walkie.noSpeechSupport')}</p>
+              <p className="mt-0.5 text-sm opacity-80">{t('walkie.noSpeechSupportHint')}</p>
             </div>
-            <p className="text-white/60">{t('walkie.empty')}</p>
           </div>
-        ) : (
-          <>
-            {messages.map((msg) => {
-              const isOwn = msg.sender_id === profile?.id
-              return (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    'flex items-start gap-3 group',
-                    isOwn && 'flex-row-reverse',
-                  )}
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange/20 text-brand-orange text-xs font-semibold">
-                    {initialsFor(msg.sender_name)}
-                  </div>
+        )}
+        {error && <div className="mx-4 mb-3 rounded-2xl bg-red-500/10 p-4 text-sm text-red-500">{error}</div>}
 
-                  <div className={cn('flex flex-col max-w-[72%]', isOwn && 'items-end')}>
-                    <div className={cn(
-                      'flex items-baseline gap-2 mb-1',
-                      isOwn ? 'flex-row-reverse' : 'flex-row',
-                    )}>
-                      <span className="text-xs font-semibold text-white/80">
-                        {isOwn ? t('common.you') : (msg.sender_name ?? t('common.unknown'))}
-                      </span>
-                      <span className="text-xs text-white/40">{formatTime(msg.created_at)}</span>
-                    </div>
-
-                    <div className={cn(
-                      'relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
-                      isOwn
-                        ? 'bg-brand-orange text-white-fixed rounded-br-sm'
-                        : 'bg-white/10 text-white rounded-bl-sm',
-                    )}>
-                      <span className="inline-flex items-center gap-1 text-xs opacity-60 mr-2">
-                        <Mic className="h-3 w-3" />
-                      </span>
-                      {msg.transcript}
-
-                      {isOwn && (
-                        <button
-                          type="button"
-                          onClick={() => deleteMessage(msg.id)}
-                          aria-label={t('walkie.deleteMessage')}
-                          className="absolute -left-8 top-1 hidden group-hover:flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-5">
+          {loading ? (
+            <p className="py-8 text-center text-white/55">{t('walkie.loading')}</p>
+          ) : messages.length === 0 && !recording ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
+              <Radio className="h-10 w-10 text-white/25" />
+              <p className="text-white/55">{t('walkie.empty')}</p>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg) => {
+                const isOwn = msg.sender_id === profile?.id
+                return (
+                  <div key={msg.id} className={cn('group flex items-start gap-3', isOwn && 'flex-row-reverse')}>
+                    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold', isOwn ? 'bg-lime text-ink' : 'bg-white/[0.07]')}>
+                      {initialsFor(msg.sender_name)}
+                    </span>
+                    <div className={cn('flex max-w-[75%] flex-col', isOwn && 'items-end')}>
+                      <div className={cn('mb-1 flex items-baseline gap-2', isOwn ? 'flex-row-reverse' : 'flex-row')}>
+                        <span className="text-xs font-medium text-white/70">{isOwn ? t('common.you') : (msg.sender_name ?? t('common.unknown'))}</span>
+                        <span className="text-xs tabular-nums text-white/45">{formatTime(msg.created_at)}</span>
+                      </div>
+                      <div className={cn('relative rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', isOwn ? 'rounded-br-md bg-brand-orange text-on-accent' : 'rounded-bl-md bg-bg-card shadow-card')}>
+                        <Mic className="mr-1.5 inline h-3.5 w-3.5 opacity-50" />
+                        {msg.transcript}
+                        {isOwn && (
+                          <button type="button" onClick={() => deleteMessage(msg.id)} aria-label={t('walkie.deleteMessage')}
+                            className="absolute -left-10 top-1 hidden h-8 w-8 items-center justify-center rounded-full text-white/40 hover:bg-red-500/10 hover:text-red-500 group-hover:flex">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-
-            {recording && (
-              <div className="flex items-start gap-3 flex-row-reverse">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange text-white-fixed text-xs font-semibold animate-pulse">
-                  {initialsFor(profile?.full_name ?? null)}
-                </div>
-                <div className="flex flex-col items-end max-w-[72%]">
-                  <div className="rounded-2xl rounded-br-sm bg-brand-orange/40 border border-brand-orange/60 px-3.5 py-2.5 text-sm text-white/80 min-w-[80px]">
+                )
+              })}
+              {recording && (
+                <div className="flex flex-row-reverse items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 animate-pulse items-center justify-center rounded-full bg-lime text-xs font-semibold text-ink">
+                    {initialsFor(profile?.full_name ?? null)}
+                  </span>
+                  <div className="min-w-[90px] max-w-[75%] rounded-3xl rounded-br-md bg-lime/40 px-4 py-2.5 text-[15px]">
                     {liveText || (
-                      <span className="flex items-center gap-1.5 text-white/50">
+                      <span className="flex items-center gap-1.5 text-white/60">
                         <span className="flex gap-0.5">
                           {[0, 1, 2].map((i) => (
-                            <span
-                              key={i}
-                              className="block w-1 h-1 rounded-full bg-white/60 animate-bounce"
-                              style={{ animationDelay: `${i * 0.15}s` }}
-                            />
+                            <span key={i} className="block h-1.5 w-1.5 animate-bounce rounded-full bg-current" style={{ animationDelay: `${i * 0.15}s` }} />
                           ))}
                         </span>
                         {t('walkie.listening')}
@@ -239,21 +204,18 @@ export default function Walkie() {
                     )}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+              <div ref={bottomRef} />
+            </>
+          )}
+        </div>
+      </section>
 
-            <div ref={bottomRef} />
-          </>
-        )}
-      </GlassCard>
-
-      <div className="flex-none flex flex-col items-center gap-3 mt-4">
-        {recording && (
-          <p className="text-sm text-brand-orange animate-pulse font-medium">
-            {t('walkie.recording')}
-          </p>
-        )}
-
+      {/* ── Push to talk ── */}
+      <section className="flex flex-col items-center justify-center gap-5 rounded-3xl bg-ink p-6 text-center text-white-fixed">
+        <p className={cn('text-sm font-medium', recording ? 'animate-pulse text-lime' : 'text-[#C9CEC8]')}>
+          {recording ? t('walkie.recording') : t('walkie.holdToTalk')}
+        </p>
         <button
           type="button"
           disabled={!supported || sending}
@@ -264,27 +226,17 @@ export default function Walkie() {
           onTouchEnd={handlePressEnd}
           aria-label={recording ? t('walkie.releaseToSend') : t('walkie.holdToTalk')}
           className={cn(
-            'select-none flex flex-col items-center justify-center gap-1.5 rounded-full transition-all duration-150',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
+            'flex select-none flex-col items-center justify-center gap-2 rounded-full font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40',
             recording
-              ? 'h-24 w-24 bg-brand-orange text-white-fixed shadow-[0_0_0_12px_rgba(249,115,22,0.25)] scale-110'
-              : 'h-20 w-20 bg-brand-orange/20 border-2 border-brand-orange text-brand-orange hover:bg-brand-orange/30',
+              ? 'h-56 w-56 scale-105 bg-lime text-ink shadow-[0_0_0_16px_rgba(200,240,60,0.18)]'
+              : 'h-52 w-52 bg-lime text-ink shadow-[0_0_0_10px_rgba(200,240,60,0.08)] hover:brightness-95',
           )}
         >
-          {recording ? (
-            <Mic className="h-8 w-8" />
-          ) : (
-            <MicOff className="h-7 w-7" />
-          )}
-          <span className="text-[10px] font-semibold uppercase tracking-wide">
-            {recording ? t('walkie.live') : t('walkie.ptt')}
-          </span>
+          {recording ? <Mic className="h-12 w-12" /> : <MicOff className="h-10 w-10" />}
+          <span className="text-base uppercase tracking-wide">{recording ? t('walkie.live') : t('walkie.ptt')}</span>
         </button>
-
-        <p className="text-xs text-white/30">
-          {supported ? t('walkie.holdHint') : t('walkie.chromeRequired')}
-        </p>
-      </div>
+        <p className="max-w-[16rem] text-xs text-[#A7ADA6]">{supported ? t('walkie.holdHint') : t('walkie.chromeRequired')}</p>
+      </section>
     </div>
   )
 }

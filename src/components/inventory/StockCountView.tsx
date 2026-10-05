@@ -182,7 +182,7 @@ export function StockCountView({ items, locations, teamId, onSave, onExit }: Sto
   return (
     <div className="flex flex-col min-h-screen pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0f0f0f]/95 backdrop-blur-md border-b border-glass-border px-4 py-3">
+      <div className="sticky top-0 z-20 bg-bg-surface/95 backdrop-blur-md border-b border-glass-border px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-base">Απογραφή</h2>
@@ -227,7 +227,7 @@ export function StockCountView({ items, locations, teamId, onSave, onExit }: Sto
                 className={cn(
                   'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition whitespace-nowrap',
                   locationTab === opt.id
-                    ? 'bg-brand-orange text-white-fixed'
+                    ? 'bg-brand-orange text-on-accent'
                     : 'bg-white/10 text-white/60 hover:bg-white/15',
                 )}
               >
@@ -256,7 +256,7 @@ export function StockCountView({ items, locations, teamId, onSave, onExit }: Sto
       </div>
 
       {/* Sticky bottom action bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-glass-border bg-[#0f0f0f]/95 backdrop-blur-md px-4 py-3 safe-area-pb">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-glass-border bg-bg-surface/95 backdrop-blur-md px-4 py-3 safe-area-pb">
         <div className="flex gap-3 max-w-2xl mx-auto">
           <Button
             variant="secondary"

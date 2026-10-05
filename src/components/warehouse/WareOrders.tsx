@@ -311,7 +311,7 @@ export function WareOrders() {
         </div>
         <button
           onClick={openNewOrder}
-          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-white hover:bg-brand-orange/90 transition"
+          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-on-accent hover:bg-brand-orange/90 transition"
         >
           <Plus className="h-4 w-4" /> Νέα
         </button>
@@ -326,7 +326,7 @@ export function WareOrders() {
             className={cn(
               'rounded-full px-3 py-1 text-xs font-semibold transition',
               statusFilter === s
-                ? 'bg-brand-orange text-white'
+                ? 'bg-brand-orange text-on-accent'
                 : 'bg-white/5 text-white/40 hover:text-white',
             )}
           >
@@ -544,7 +544,7 @@ export function WareOrders() {
               'w-full rounded-xl py-3 text-sm font-semibold transition',
               saving || draftItems.length === 0
                 ? 'bg-white/10 text-white/30 cursor-not-allowed'
-                : 'bg-brand-orange text-white hover:bg-brand-orange/90',
+                : 'bg-brand-orange text-on-accent hover:bg-brand-orange/90',
             )}
           >
             {saving ? 'Αποθήκευση…' : `Αποστολή Παραγγελίας (${draftItems.length} προϊόντα)`}

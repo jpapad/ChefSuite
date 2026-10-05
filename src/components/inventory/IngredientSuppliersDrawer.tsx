@@ -272,7 +272,7 @@ function AddLinkForm({
         <button
           disabled={saving || !price || !supplierId}
           onClick={submit}
-          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-brand-orange hover:bg-brand-orange/80 disabled:opacity-40 py-2.5 text-xs font-bold text-white transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-brand-orange hover:bg-brand-orange/80 disabled:opacity-40 py-2.5 text-xs font-bold text-on-accent transition-colors"
         >
           <Plus className="h-3.5 w-3.5" /> Προσθήκη
         </button>

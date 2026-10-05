@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Flame } from 'lucide-react'
+import { Page, PageHeader } from '../components/ui/page'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { cn } from '../lib/cn'
@@ -276,21 +276,13 @@ export default function SpiceGuide() {
   })
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/15">
-          <Flame className="h-5 w-5 text-amber-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Οδηγός Μπαχαρικών</h1>
-          <p className="text-sm text-white/40 mt-0.5">Γεύσεις, χρήσεις & συνδυασμοί για {SPICES.length} βασικά μπαχαρικά</p>
-        </div>
-      </div>
+    <Page>
+      <PageHeader title="Οδηγός μπαχαρικών" subtitle={`Γεύσεις, χρήσεις και συνδυασμοί για ${SPICES.length} βασικά μπαχαρικά`} />
 
       <div className="flex items-center gap-3 flex-wrap">
         <input type="text" placeholder="Αναζήτηση μπαχαρικών…" value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="glass rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:ring-1 focus:ring-brand-orange/50 max-w-sm w-full" />
+          className="rounded-full bg-bg-card shadow-card px-4 h-11 text-sm text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-brand-orange/40 max-w-sm w-full" />
         <div className="flex gap-2 text-xs text-white/35">
           {[1, 2, 3].map((i) => (
             <span key={i} className={INTENSITY_COLOR[i as 1 | 2 | 3]}>
@@ -309,6 +301,6 @@ export default function SpiceGuide() {
           ))}
         </div>
       )}
-    </div>
+    </Page>
   )
 }

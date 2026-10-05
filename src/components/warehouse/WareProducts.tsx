@@ -184,7 +184,7 @@ export function WareProducts({ initialFilter }: Props) {
             {discontinuedCount > 0 && <span className="text-white/25 ml-2">· {discontinuedCount} ακυρωμένα</span>}
           </p>
         </div>
-        <button onClick={openNew} className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-white hover:bg-brand-orange/90 transition">
+        <button onClick={openNew} className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-on-accent hover:bg-brand-orange/90 transition">
           <Plus className="h-4 w-4" /> {t('wareProducts.new')}
         </button>
       </div>
@@ -197,17 +197,17 @@ export function WareProducts({ initialFilter }: Props) {
             className="w-full rounded-xl border border-glass-border bg-white/5 pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-brand-orange/50" />
         </div>
         <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
-          className="rounded-xl border border-glass-border bg-[#1a1a2e] px-3 py-2 text-sm text-white focus:outline-none min-w-[130px]">
+          className="rounded-xl border border-glass-border bg-bg-card px-3 py-2 text-sm text-white focus:outline-none min-w-[130px]">
           <option value="">{t('wareProducts.filterCategory')}</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select value={filterSup} onChange={(e) => setFilterSup(e.target.value)}
-          className="rounded-xl border border-glass-border bg-[#1a1a2e] px-3 py-2 text-sm text-white focus:outline-none min-w-[130px]">
+          className="rounded-xl border border-glass-border bg-bg-card px-3 py-2 text-sm text-white focus:outline-none min-w-[130px]">
           <option value="">{t('wareProducts.filterSupplier')}</option>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select value={filterStu} onChange={(e) => setFilterStu(e.target.value)}
-          className="rounded-xl border border-glass-border bg-[#1a1a2e] px-3 py-2 text-sm text-white focus:outline-none min-w-[120px]">
+          className="rounded-xl border border-glass-border bg-bg-card px-3 py-2 text-sm text-white focus:outline-none min-w-[120px]">
           <option value="">{t('wareProducts.filterLocation')}</option>
           {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
@@ -312,10 +312,10 @@ export function WareProducts({ initialFilter }: Props) {
       {detail && (
         <div className="fixed inset-0 z-40 flex justify-end" onClick={() => setDetail(null)}>
           <div
-            className="relative h-full w-full max-w-sm bg-[#13131f] border-l border-glass-border shadow-2xl overflow-y-auto"
+            className="relative h-full w-full max-w-sm bg-bg-card border-l border-glass-border shadow-2xl overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-glass-border bg-[#13131f]">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-glass-border bg-bg-card">
               <div className="flex items-center gap-2">
                 {detail.discontinued
                   ? <Ban className="h-4 w-4 text-red-400/60" />
@@ -423,7 +423,7 @@ export function WareProducts({ initialFilter }: Props) {
       {/* Edit/New Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-glass-border bg-[#1a1a2e] p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl border border-glass-border bg-bg-card p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-white">{editing ? t('wareProducts.editTitle') : t('wareProducts.newTitle')}</h3>
 
             <div className="grid grid-cols-2 gap-3">
@@ -502,7 +502,7 @@ export function WareProducts({ initialFilter }: Props) {
               </button>
               <button onClick={() => void save()} disabled={saving || !form.name.trim()}
                 className={cn('flex-1 rounded-xl py-2.5 text-sm font-semibold transition',
-                  saving || !form.name.trim() ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-brand-orange text-white hover:bg-brand-orange/90')}>
+                  saving || !form.name.trim() ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-brand-orange text-on-accent hover:bg-brand-orange/90')}>
                 {saving ? t('common.saving') : t('common.save')}
               </button>
             </div>

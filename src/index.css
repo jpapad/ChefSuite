@@ -11,10 +11,24 @@
   }
 }
 
-/* ── INVENTRA Design Tokens ── */
+/* ── Design tokens ──────────────────────────────────────────────────────────
+   :root          legacy dark look — public pages, Login, fullscreen buffet screens
+   html.theme-c   "Bento & Lime" light theme — set by AppShell for the whole app
+   .theme-dark    dark kitchen-floor scope (KDS, Timeclock, buffet tablets)
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: dark;
   --app-white: 255 255 255;
+
+  /* Surfaces as RGB channels (Tailwind colours with alpha) */
+  --c-accent:    79 142 247;
+  --c-on-accent: 255 255 255;
+  --c-card:      30 34 53;
+  --c-card-2:    37 40 64;
+  --c-surface:   15 17 22;
+  --c-input:     19 22 28;
+  --c-border:    45 49 84;
+  --c-chef-dark: 11 13 16;
 
   /* Backgrounds */
   --bg:        #0b0d10;
@@ -29,9 +43,11 @@
   --muted:  rgba(242, 240, 236, 0.42);
   --subtle: #9ca3af;
 
-  /* Borders */
-  --hairline: rgba(242, 240, 236, 0.08);
-  --border:   #2d3154;
+  /* Borders and depth */
+  --hairline:    rgba(242, 240, 236, 0.08);
+  --border:      #2d3154;
+  --card-border: 1px solid var(--border);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.40);
 
   /* Brand */
   --accent:     #4f8ef7;
@@ -42,8 +58,78 @@
   --info:       #a78bfa;
 
   /* Typography */
-  --sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --sans: 'Geologica', ui-sans-serif, system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html.theme-c {
+  color-scheme: light;
+  --app-white: 15 18 16;
+
+  --c-accent:    15 18 16;
+  --c-on-accent: 255 255 255;
+  --c-card:      255 255 255;
+  --c-card-2:    234 235 230;
+  --c-surface:   241 242 238;
+  --c-input:     255 255 255;
+  --c-border:    227 228 223;
+  --c-chef-dark: 241 242 238;
+
+  --bg:        #F1F2EE;
+  --bg-2:      #FFFFFF;
+  --bg-3:      #FFFFFF;
+  --bg-card:   #FFFFFF;
+  --bg-card-2: #F6F7F3;
+  --bg-deep:   #EAEBE6;
+
+  --fg:     #0F1210;
+  --muted:  rgba(15, 18, 16, 0.55);
+  --subtle: #676C66;
+
+  --hairline:    rgba(15, 18, 16, 0.08);
+  --border:      #E3E4DF;
+  --card-border: 1px solid transparent;
+  --shadow-card: 0 1px 2px rgba(15, 18, 16, 0.04), 0 8px 24px rgba(15, 18, 16, 0.06);
+
+  --accent:    #0F1210;
+  --accent-bg: rgba(15, 18, 16, 0.06);
+  --lime:      #C8F03C;
+}
+
+.theme-dark {
+  color-scheme: dark;
+  --app-white: 243 245 240;
+
+  --c-accent:    200 240 60;
+  --c-on-accent: 15 18 16;
+  --c-card:      26 30 27;
+  --c-card-2:    35 40 36;
+  --c-surface:   15 18 16;
+  --c-input:     20 24 21;
+  --c-border:    46 52 47;
+  --c-chef-dark: 10 12 11;
+
+  --bg:        #0F1210;
+  --bg-2:      #141815;
+  --bg-3:      #141815;
+  --bg-card:   #1A1E1B;
+  --bg-card-2: #232824;
+  --bg-deep:   #141815;
+
+  --fg:     #F3F5F0;
+  --muted:  rgba(243, 245, 240, 0.5);
+  --subtle: #A7ADA6;
+
+  --hairline:    rgba(243, 245, 240, 0.08);
+  --border:      #2E342F;
+  --card-border: 1px solid #2E342F;
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.40);
+
+  --accent:    #C8F03C;
+  --accent-bg: rgba(200, 240, 60, 0.12);
+
+  background-color: var(--bg);
+  color: var(--fg);
 }
 
 html,
@@ -129,14 +215,14 @@ body {
 /* ── Card utilities (replaces glassmorphism) ── */
 .glass {
   background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  border: var(--card-border);
+  box-shadow: var(--shadow-card);
 }
 
 .glass-strong {
   background-color: var(--bg-card-2);
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  border: var(--card-border);
+  box-shadow: var(--shadow-card);
 }
 
 /* gradient-border is now a subtle accent border */
@@ -153,9 +239,9 @@ body {
   padding: 1px;
   background: linear-gradient(
     145deg,
-    rgba(79, 142, 247, 0.15) 0%,
-    rgba(255, 255, 255, 0.04) 50%,
-    rgba(79, 142, 247, 0.08) 100%
+    rgb(var(--c-accent) / 0.15) 0%,
+    rgb(var(--app-white) / 0.04) 50%,
+    rgb(var(--c-accent) / 0.08) 100%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -176,8 +262,8 @@ body {
 
 .card-hover:hover {
   transform: translateY(-1px);
-  border-color: rgba(79, 142, 247, 0.3);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.50);
+  border-color: rgb(var(--c-accent) / 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
 }
 
 /* Shimmer on hover */
@@ -196,7 +282,7 @@ body {
   background: linear-gradient(
     105deg,
     transparent 30%,
-    rgba(79, 142, 247, 0.06) 50%,
+    rgb(var(--c-accent) / 0.06) 50%,
     transparent 70%
   );
   transition: left 0.5s ease;

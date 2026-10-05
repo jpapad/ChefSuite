@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Send, Sparkles, Loader2, ChefHat, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
 import { useRecipes } from '../hooks/useRecipes'
 import { useInventory } from '../contexts/InventoryContext'
 import { useWasteLog } from '../hooks/useWasteLog'
@@ -89,111 +88,96 @@ export default function ChefCopilot() {
   }
 
   return (
-    <div className="flex h-full flex-col max-h-[calc(100vh-80px)]">
-      <header className="shrink-0 px-4 pt-6 pb-4 md:px-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-            <ChefHat className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">{t('copilot.title')}</h1>
-            <p className="text-sm text-white/50">{t('copilot.subtitle')}</p>
+    <div className="mx-auto grid h-[calc(100vh-10rem)] w-full max-w-[1360px] min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      {/* ── Conversation ── */}
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white/[0.03]">
+        <header className="flex flex-none items-center gap-3 px-5 py-4">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-500/15 text-violet-500"><Sparkles className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-medium">{t('copilot.title')}</h1>
+            <p className="truncate text-xs text-white/50">{t('copilot.subtitle')}</p>
           </div>
           {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={() => { setMessages([]); setError(null) }}
-              className="ml-auto flex items-center gap-1.5 rounded-xl border border-glass-border px-3 py-1.5 text-xs text-white/40 hover:text-white hover:bg-white/5 transition"
-            >
-              <RotateCcw className="h-3 w-3" />
-              {t('copilot.newChat')}
+            <button type="button" onClick={() => { setMessages([]); setError(null) }}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-bg-card px-4 text-sm font-medium shadow-card hover:bg-white/[0.04]">
+              <RotateCcw className="h-4 w-4" />{t('copilot.newChat')}
             </button>
           )}
-        </div>
-      </header>
+        </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 md:px-6 space-y-4">
-        {messages.length === 0 && (
-          <div className="mt-4 space-y-4">
-            <GlassCard className="border border-brand-orange/20 bg-brand-orange/5">
-              <div className="flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-brand-orange mt-0.5 shrink-0" />
-                <p className="text-sm text-white/80 leading-relaxed">{t('copilot.welcome')}</p>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4">
+          {messages.length === 0 && (
+            <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-10 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/15 text-violet-500"><Sparkles className="h-7 w-7" /></span>
+              <p className="text-lg leading-relaxed text-white/75">{t('copilot.welcome')}</p>
+            </div>
+          )}
+
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${msg.role === 'user' ? 'bg-lime text-ink' : 'bg-violet-500/15 text-violet-500'}`}>
+                {msg.role === 'user' ? 'U' : <ChefHat className="h-4 w-4" />}
+              </span>
+              <div className={`max-w-[80%] whitespace-pre-wrap rounded-3xl px-4 py-3 text-[15px] leading-relaxed ${msg.role === 'user' ? 'rounded-tr-md bg-brand-orange text-on-accent' : 'rounded-tl-md bg-bg-card shadow-card'}`}>
+                {msg.text}
               </div>
-            </GlassCard>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {STARTER_PROMPTS.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => void send(t(key))}
-                  className="text-left rounded-xl border border-glass-border px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 hover:border-white/20 transition"
-                >
-                  {t(key)}
-                </button>
-              ))}
             </div>
-          </div>
-        )}
+          ))}
 
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${msg.role === 'user' ? 'bg-brand-orange/20 text-brand-orange' : 'bg-white/10 text-white/60'}`}>
-              {msg.role === 'user' ? 'U' : <ChefHat className="h-4 w-4" />}
+          {loading && (
+            <div className="flex gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-500"><ChefHat className="h-4 w-4" /></span>
+              <div className="rounded-3xl rounded-tl-md bg-bg-card px-4 py-3 shadow-card"><Loader2 className="h-4 w-4 animate-spin text-white/50" /></div>
             </div>
-            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user' ? 'bg-brand-orange/15 text-white rounded-tr-sm' : 'glass text-white/90 rounded-tl-sm'}`}>
-              {msg.text}
-            </div>
-          </div>
-        ))}
+          )}
 
-        {loading && (
-          <div className="flex gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/60">
-              <ChefHat className="h-4 w-4" />
-            </div>
-            <div className="glass rounded-2xl rounded-tl-sm px-4 py-3">
-              <Loader2 className="h-4 w-4 animate-spin text-white/40" />
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-            {error}
-          </div>
-        )}
-
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div className="shrink-0 border-t border-glass-border bg-chef-dark px-4 py-3 md:px-6">
-        <div className="flex items-end gap-3">
-          <textarea
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder={t('copilot.placeholder')}
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-glass-border bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:ring-1 focus:ring-brand-orange max-h-32 overflow-y-auto"
-            style={{ fieldSizing: 'content' } as React.CSSProperties}
-            disabled={loading}
-          />
-          <button
-            type="button"
-            onClick={() => void send(draft)}
-            disabled={!draft.trim() || loading}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange text-white-fixed hover:bg-brand-orange/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Send className="h-4 w-4" />
-          </button>
+          {error && <div className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-500">{error}</div>}
+          <div ref={bottomRef} />
         </div>
-        <p className="mt-1.5 text-[11px] text-white/25 text-center">{t('copilot.disclaimer')}</p>
-      </div>
+
+        <div className="flex-none p-3">
+          <div className="flex items-end gap-2 rounded-[28px] bg-bg-card p-2 shadow-card">
+            <textarea
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder={t('copilot.placeholder')}
+              rows={1}
+              aria-label={t('copilot.placeholder')}
+              className="max-h-32 flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2.5 text-[15px] outline-none placeholder:text-white/40"
+              style={{ fieldSizing: 'content' } as React.CSSProperties}
+              disabled={loading}
+            />
+            <button type="button" onClick={() => void send(draft)} disabled={!draft.trim() || loading} aria-label="Send"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-orange text-on-accent transition hover:bg-brand-orange/85 disabled:cursor-not-allowed disabled:opacity-40">
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-1.5 text-center text-[11px] text-white/40">{t('copilot.disclaimer')}</p>
+        </div>
+      </section>
+
+      {/* ── Context and prompts ── */}
+      <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
+        <section className="rounded-3xl bg-ink p-5 text-white-fixed">
+          <p className="text-sm text-[#C9CEC8]">{t('copilot.v2.knows')}</p>
+          <ul className="mt-3 flex flex-col gap-2 text-sm">
+            <li className="flex items-center justify-between"><span>{t('nav.recipes')}</span><span className="font-medium tabular-nums text-lime">{recipes.length}</span></li>
+            <li className="flex items-center justify-between"><span>{t('nav.inventory')}</span><span className="font-medium tabular-nums text-lime">{inventoryItems.length}</span></li>
+            <li className="flex items-center justify-between"><span>{t('nav.wasteLog')}</span><span className="font-medium tabular-nums text-lime">{wasteEntries.length}</span></li>
+          </ul>
+        </section>
+        <section className="flex flex-col gap-2 rounded-3xl bg-bg-card p-4 shadow-card">
+          <p className="px-1 text-sm font-medium">{t('copilot.v2.try')}</p>
+          {STARTER_PROMPTS.map((key) => (
+            <button key={key} type="button" onClick={() => void send(t(key))} disabled={loading}
+              className="rounded-2xl bg-white/[0.04] px-4 py-3 text-left text-sm text-white/75 transition hover:bg-white/[0.07] hover:text-white disabled:opacity-50">
+              {t(key)}
+            </button>
+          ))}
+        </section>
+      </aside>
     </div>
   )
 }

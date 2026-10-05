@@ -220,7 +220,7 @@ export function WareTransfers() {
         </div>
         <button
           onClick={() => { setShowForm(true); resetForm() }}
-          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-white hover:bg-brand-orange/90 transition"
+          className="flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-semibold text-on-accent hover:bg-brand-orange/90 transition"
         >
           <Plus className="h-4 w-4" /> Νέα Μεταφορά
         </button>
@@ -233,7 +233,7 @@ export function WareTransfers() {
             key={key}
             onClick={() => setTab(key)}
             className={cn('rounded-xl px-4 py-2 text-sm font-medium transition',
-              tab === key ? 'bg-brand-orange text-white' : 'border border-glass-border text-white/40 hover:text-white')}
+              tab === key ? 'bg-brand-orange text-on-accent' : 'border border-glass-border text-white/40 hover:text-white')}
           >
             {label}
           </button>
@@ -361,7 +361,7 @@ export function WareTransfers() {
       {/* New Transfer Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-glass-border bg-[#1a1a2e] p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl border border-glass-border bg-bg-card p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-white">Νέα Μεταφορά</h3>
               <button onClick={() => setShowForm(false)} className="text-white/30 hover:text-white transition"><X className="h-5 w-5" /></button>
@@ -441,7 +441,7 @@ export function WareTransfers() {
                 onClick={() => void createTransfer()}
                 disabled={saving || !fromLoc || !toLoc || draftItems.every((i) => !i.product_id)}
                 className={cn('flex-1 rounded-xl py-2.5 text-sm font-semibold transition',
-                  saving || !fromLoc || !toLoc ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-brand-orange text-white hover:bg-brand-orange/90')}
+                  saving || !fromLoc || !toLoc ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-brand-orange text-on-accent hover:bg-brand-orange/90')}
               >
                 {saving ? 'Αποθήκευση…' : 'Δημιουργία'}
               </button>
@@ -457,7 +457,7 @@ export function WareTransfers() {
         const items = tr.wh_transfer_items ?? []
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md rounded-2xl border border-glass-border bg-[#1a1a2e] p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-md rounded-2xl border border-glass-border bg-bg-card p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-white">Εκτέλεση Μεταφοράς</h3>
                 <button onClick={() => setFulfillId(null)} className="text-white/30 hover:text-white transition"><X className="h-5 w-5" /></button>
@@ -506,7 +506,7 @@ export function WareTransfers() {
       {/* Reject Modal */}
       {rejectId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-glass-border bg-[#1a1a2e] p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl border border-glass-border bg-bg-card p-6 space-y-4 shadow-2xl">
             <div className="flex items-center gap-2 text-red-400">
               <XCircle className="h-5 w-5" />
               <h3 className="font-bold text-white">Απόρριψη Μεταφοράς</h3>

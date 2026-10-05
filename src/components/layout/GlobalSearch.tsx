@@ -84,7 +84,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
 
   return (
     <div ref={containerRef} className="relative flex-1 max-w-xl">
-      <div className="glass flex items-center gap-3 rounded-xl px-4 min-h-[48px] focus-within:ring-2 focus-within:ring-brand-orange">
+      <div className="glass flex items-center gap-3 rounded-full px-5 min-h-[48px] focus-within:ring-2 focus-within:ring-brand-orange">
         <Search className="h-5 w-5 text-white/60 shrink-0" />
         <input
           ref={inputRef}

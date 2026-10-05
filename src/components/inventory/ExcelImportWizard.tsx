@@ -95,7 +95,7 @@ function StepIndicator({ current }: { current: Step }) {
           <div className={cn(
             'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors',
             i < idx  ? 'bg-emerald-500 text-white'
-            : i === idx ? 'bg-brand-orange text-white'
+            : i === idx ? 'bg-brand-orange text-on-accent'
             : 'bg-white/10 text-white/40',
           )}>
             {i < idx ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
@@ -309,7 +309,7 @@ export function ExcelImportWizard({ onClose }: Props) {
             <button
               onClick={buildPreview}
               disabled={!Object.values(mappings).includes('name') || !Object.values(mappings).includes('unit')}
-              className="px-5 py-2 rounded-xl bg-brand-orange hover:bg-brand-orange/80 disabled:opacity-40 text-sm font-bold text-white transition-colors"
+              className="px-5 py-2 rounded-xl bg-brand-orange hover:bg-brand-orange/80 disabled:opacity-40 text-sm font-bold text-on-accent transition-colors"
             >
               Προεπισκόπηση →
             </button>

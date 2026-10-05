@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Plus, Trash2, Trash, TrendingDown, Euro, ChevronLeft, ChevronRight,
+  Plus, Trash2, Trash, TrendingDown, ChevronLeft, ChevronRight,
   Package2, UtensilsCrossed, AlertCircle, BadgeDollarSign,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, StatRow, StatTile, Panel, EmptyState, Notice } from '../components/ui/page'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -31,10 +31,10 @@ const REASON_LABEL: Record<WasteReasonCode, string> = {
 }
 
 const REASON_COLOR: Record<WasteReasonCode, string> = {
-  spoilage:         'bg-red-500/15 text-red-400 border-red-500/30',
-  kitchen_mistake:  'bg-orange-500/15 text-orange-400 border-orange-500/30',
-  supplier_damaged: 'bg-amber-400/15 text-amber-400 border-amber-400/30',
-  customer_return:  'bg-blue-400/15 text-blue-400 border-blue-400/30',
+  spoilage:         'bg-red-500/10 text-red-500',
+  kitchen_mistake:  'bg-orange-500/10 text-orange-500',
+  supplier_damaged: 'bg-amber-500/12 text-amber-500',
+  customer_return:  'bg-sky-500/10 text-sky-500',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -237,165 +237,107 @@ export default function WasteLog() {
     ? recipes.find((r) => r.id === selectedMenuItem.recipe_id)
     : null
 
+  const reasonRows = REASON_CODES.map((code) => ({ code, ...(byReason[code] ?? { count: 0, cost: 0 }) }))
+  const topReason = [...reasonRows].sort((a, b) => b.cost - a.cost || b.count - a.count)[0]
+  const reasonMax = Math.max(...reasonRows.map((r) => r.cost || r.count), 1)
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold">{t('waste.title')}</h1>
-          <p className="text-white/60 mt-1">{t('waste.subtitle')}</p>
-        </div>
-        <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate}>
-          Καταγραφή αποβλήτου
-        </Button>
-      </header>
+    <Page>
+      <PageHeader
+        title={t('waste.title')}
+        subtitle={t('waste.subtitle')}
+        actions={
+          <>
+            <div className="flex items-center gap-1 rounded-full bg-bg-card p-1 shadow-card">
+              <button type="button" aria-label="−1" onClick={() => setMonth((m) => shiftMonth(m, -1))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="min-w-[140px] text-center text-sm font-medium first-letter:uppercase">{monthLabel(month + '-01')}</span>
+              <button type="button" aria-label="+1" onClick={() => setMonth((m) => shiftMonth(m, 1))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <PillButton icon={Plus} variant="primary" onClick={openCreate}>Καταγραφή απώλειας</PillButton>
+          </>
+        }
+      />
 
-      {error && <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>}
+      {error && <Notice>{error}</Notice>}
 
-      {/* Month navigator */}
-      <GlassCard className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => setMonth((m) => shiftMonth(m, -1))}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <span className="text-lg font-semibold capitalize">{monthLabel(month + '-01')}</span>
-        <button type="button" onClick={() => setMonth((m) => shiftMonth(m, 1))}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/5">
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </GlassCard>
+      <StatRow>
+        <StatTile tone="ink" label="Κόστος απωλειών" value={totalCost > 0 ? `€${totalCost.toFixed(2)}` : '—'} hint={monthLabel(month + '-01')} />
+        <StatTile label="Καταχωρήσεις" value={monthEntries.length} />
+        <StatTile label="Πιστωτικά προμηθευτών" value={creditCount} tone={creditCount ? 'warn' : 'default'} icon={BadgeDollarSign} hint="κατεστραμμένα από παραλαβή" />
+        <StatTile tone="lime" label="Κύρια αιτία" value={topReason && (topReason.count > 0) ? REASON_LABEL[topReason.code] : '—'}
+          hint={topReason && topReason.cost > 0 ? `€${topReason.cost.toFixed(0)}` : undefined}
+          className="[&>span:nth-child(2)]:text-2xl" />
+      </StatRow>
 
-      {/* Summary cards */}
-      {monthEntries.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <GlassCard className="space-y-0.5">
-            <p className="text-xs text-white/50">Καταχωρήσεις</p>
-            <p className="text-2xl font-bold">{monthEntries.length}</p>
-          </GlassCard>
-          <GlassCard className="space-y-0.5">
-            <p className="text-xs text-white/50">Κόστος αποβλήτων</p>
-            <p className="text-2xl font-bold text-red-400">
-              {totalCost > 0 ? `€${totalCost.toFixed(2)}` : '—'}
-            </p>
-          </GlassCard>
-          {creditCount > 0 && (
-            <GlassCard className="space-y-0.5 border border-amber-500/30">
-              <p className="text-xs text-white/50 flex items-center gap-1">
-                <BadgeDollarSign className="h-3.5 w-3.5 text-amber-400" />
-                Πιστωτικά προμ/τών
-              </p>
-              <p className="text-2xl font-bold text-amber-400">{creditCount}</p>
-            </GlassCard>
-          )}
-          {Object.entries(byReason)
-            .sort(([, a], [, b]) => b.cost - a.cost)
-            .slice(0, creditCount > 0 ? 1 : 2)
-            .map(([code, data]) => (
-              <GlassCard key={code} className="space-y-0.5">
-                <p className="text-xs text-white/50">{REASON_LABEL[code as WasteReasonCode] ?? code}</p>
-                <p className="text-2xl font-bold">{data.count}
-                  {data.cost > 0 && <span className="text-sm text-red-400 ml-1">€{data.cost.toFixed(0)}</span>}
-                </p>
-              </GlassCard>
-            ))}
-        </div>
-      )}
-
-      {/* Entries table */}
       {loading ? (
-        <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+        <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
       ) : monthEntries.length === 0 ? (
-        <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/15 text-red-400">
-            <Trash className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-semibold">Δεν υπάρχουν καταχωρήσεις αυτό τον μήνα</h2>
-          <p className="text-white/60 max-w-sm">Καταγράψτε τα απόβλητα για παρακολούθηση κόστους.</p>
-          <Button leftIcon={<Plus className="h-5 w-5" />} onClick={openCreate} className="mt-2">
-            Πρώτη καταχώρηση
-          </Button>
-        </GlassCard>
+        <EmptyState
+          icon={Trash}
+          title="Δεν υπάρχουν καταχωρήσεις αυτό τον μήνα"
+          body="Κατέγραψε τις απώλειες για να βλέπεις πού χάνονται χρήματα."
+          action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>Πρώτη καταχώρηση</PillButton>}
+        />
       ) : (
-        <GlassCard className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-glass-border bg-white/5">
-                <th className="text-left px-4 py-3 text-xs text-white/50 font-medium">Τύπος / Είδος</th>
-                <th className="text-left px-4 py-3 text-xs text-white/50 font-medium hidden sm:table-cell">Αιτία</th>
-                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium">Ποσ.</th>
-                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">Κόστος</th>
-                <th className="text-right px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">Ημερ.</th>
-                <th className="w-14" />
-              </tr>
-            </thead>
-            <tbody>
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          {/* ── Entries ── */}
+          <Panel padded={false}>
+            <ul className="flex flex-col divide-y divide-white/[0.06] p-2">
               {monthEntries.map((entry) => (
-                <tr key={entry.id} className="border-b border-glass-border/50 last:border-0 hover:bg-white/5">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={cn(
-                        'shrink-0 flex h-6 w-6 items-center justify-center rounded-md',
-                        entry.ingredient_id
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-purple-500/15 text-purple-400',
-                      )}>
-                        {entry.ingredient_id
-                          ? <Package2 className="h-3.5 w-3.5" />
-                          : <UtensilsCrossed className="h-3.5 w-3.5" />}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{displayName(entry)}</p>
-                        {entry.notes && (
-                          <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{entry.notes}</p>
-                        )}
-                      </div>
+                <li key={entry.id} className="group flex items-center gap-3 px-3 py-3">
+                  <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', entry.ingredient_id ? 'bg-emerald-500/10 text-emerald-500' : 'bg-violet-500/10 text-violet-500')}>
+                    {entry.ingredient_id ? <Package2 className="h-4 w-4" /> : <UtensilsCrossed className="h-4 w-4" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{displayName(entry)}</p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-white/50">
+                      <span className={cn('rounded-full px-2 py-0.5 font-medium', REASON_COLOR[entry.reason_code])}>{REASON_LABEL[entry.reason_code]}</span>
+                      <span className="tabular-nums">{entry.quantity} {entry.unit}</span>
+                      <span>{new Date(entry.created_at).toLocaleDateString('el-GR')}</span>
+                      {entry.notes && <span className="truncate">· {entry.notes}</span>}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <span className={cn('inline-flex rounded-lg border px-2 py-0.5 text-xs font-medium', REASON_COLOR[entry.reason_code])}>
-                      {REASON_LABEL[entry.reason_code]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-white/70">
-                    {entry.quantity} <span className="text-white/40">{entry.unit}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums hidden md:table-cell">
-                    {entry.calculated_cost != null
-                      ? <span className="text-red-400 font-semibold">€{entry.calculated_cost.toFixed(2)}</span>
-                      : <span className="text-white/20">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-right text-white/50 text-xs hidden md:table-cell">
-                    {new Date(entry.created_at).toLocaleDateString('el-GR')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => handleDelete(entry)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 ml-auto">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
-                </tr>
+                  </div>
+                  <span className="shrink-0 font-medium tabular-nums">
+                    {entry.calculated_cost != null ? `€${entry.calculated_cost.toFixed(2)}` : <span className="text-white/30">—</span>}
+                  </span>
+                  <button type="button" onClick={() => handleDelete(entry)} aria-label={t('common.delete')}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40 opacity-0 transition hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus:opacity-100">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
               ))}
-            </tbody>
+            </ul>
             {totalCost > 0 && (
-              <tfoot>
-                <tr className="border-t border-glass-border bg-white/5">
-                  <td colSpan={3} className="px-4 py-3 text-xs text-white/50 font-medium hidden md:table-cell">
-                    Συνολικό κόστος αποβλήτων
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold text-red-400 hidden md:table-cell">
-                    <span className="flex items-center justify-end gap-1">
-                      <TrendingDown className="h-4 w-4" />€{totalCost.toFixed(2)}
-                    </span>
-                  </td>
-                  <td colSpan={2} className="px-4 py-3 md:hidden">
-                    <div className="flex items-center justify-end gap-1 font-bold text-red-400">
-                      <Euro className="h-4 w-4" />{totalCost.toFixed(2)}
-                    </div>
-                  </td>
-                </tr>
-              </tfoot>
+              <div className="flex items-center justify-between border-t border-white/[0.06] px-5 py-4">
+                <span className="text-sm text-white/55">Συνολικό κόστος</span>
+                <span className="flex items-center gap-1 text-lg font-medium tabular-nums text-red-500"><TrendingDown className="h-4 w-4" />€{totalCost.toFixed(2)}</span>
+              </div>
             )}
-          </table>
-        </GlassCard>
+          </Panel>
+
+          {/* ── By reason ── */}
+          <Panel title="Ανά αιτία" className="xl:sticky xl:top-24">
+            <ul className="flex flex-col gap-4">
+              {reasonRows.map((r) => (
+                <li key={r.code} className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{REASON_LABEL[r.code]}</span>
+                    <span className="tabular-nums text-white/60">{r.count} · €{r.cost.toFixed(0)}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/[0.06]">
+                    <div className="h-2 rounded-full bg-ink" style={{ width: `${((r.cost || r.count) / reasonMax) * 100}%` }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        </div>
       )}
 
       {/* ── Log Drawer ── */}
@@ -447,9 +389,9 @@ export default function WasteLog() {
                   className="flex-1 bg-transparent outline-none text-base text-white"
                   required
                 >
-                  <option value="" className="bg-[#1a1a1a]">— επιλέξτε υλικό —</option>
+                  <option value="" className="bg-bg-card">— επιλέξτε υλικό —</option>
                   {inventoryItems.map((item) => (
-                    <option key={item.id} value={item.id} className="bg-[#1a1a1a]">
+                    <option key={item.id} value={item.id} className="bg-bg-card">
                       {item.name} ({item.quantity} {item.unit})
                     </option>
                   ))}
@@ -473,9 +415,9 @@ export default function WasteLog() {
                   className="flex-1 bg-transparent outline-none text-base text-white"
                   required
                 >
-                  <option value="" className="bg-[#1a1a1a]">— επιλέξτε πιάτο —</option>
+                  <option value="" className="bg-bg-card">— επιλέξτε πιάτο —</option>
                   {menuItems.map((mi) => (
-                    <option key={mi.id} value={mi.id} className="bg-[#1a1a1a]">{mi.name}</option>
+                    <option key={mi.id} value={mi.id} className="bg-bg-card">{mi.name}</option>
                   ))}
                 </select>
               </div>
@@ -556,9 +498,9 @@ export default function WasteLog() {
                     className="flex-1 bg-transparent outline-none text-base text-white"
                     required
                   >
-                    <option value="" className="bg-[#1a1a1a]">— επιλέξτε προμηθευτή —</option>
+                    <option value="" className="bg-bg-card">— επιλέξτε προμηθευτή —</option>
                     {suppliers.map((s) => (
-                      <option key={s.id} value={s.id} className="bg-[#1a1a1a]">{s.name}</option>
+                      <option key={s.id} value={s.id} className="bg-bg-card">{s.name}</option>
                     ))}
                   </select>
                 </div>
@@ -600,6 +542,6 @@ export default function WasteLog() {
           </div>
         </form>
       </Drawer>
-    </div>
+    </Page>
   )
 }

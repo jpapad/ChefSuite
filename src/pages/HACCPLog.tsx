@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Plus, Thermometer, CheckCircle2, XCircle, Trash2, Settings2, FileDown, ClipboardList, Bell, BellRing } from 'lucide-react'
+import { Plus, Thermometer, CheckCircle2, XCircle, Trash2, Settings2, FileDown, ClipboardList, Bell, BellRing, CalendarDays } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, ActionMenu, StatRow, StatTile, Panel, EmptyState, Notice } from '../components/ui/page'
+import { cn } from '../lib/cn'
 import { Button } from '../components/ui/Button'
 import { Drawer } from '../components/ui/Drawer'
 import { Input } from '../components/ui/Input'
@@ -188,158 +189,104 @@ export default function HACCPLog() {
         </p>
       </div>
 
-      <div className="space-y-6 no-print">
-        <header className="flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-semibold">{t('haccp.title')}</h1>
-            <p className="text-white/60 mt-1">{t('haccp.subtitle')}</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {checks.length > 0 && (
-              <Button
-                variant="secondary"
-                leftIcon={<FileDown className="h-5 w-5" />}
-                onClick={exportPdf}
+      <div className="no-print">
+      <Page>
+        <PageHeader
+          title={t('haccp.title')}
+          subtitle={t('haccp.subtitle')}
+          actions={
+            <>
+              <label className="flex h-11 items-center gap-2 rounded-full bg-bg-card px-4 shadow-card">
+                <CalendarDays className="h-4 w-4 text-white/50" />
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t('haccp.tableHeaders.time')} className="bg-transparent text-sm outline-none" />
+              </label>
+              <button
+                type="button"
+                onClick={() => setRemindersOpen(true)}
+                className={cn('relative inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-medium transition', overdueCount > 0 ? 'bg-red-600 text-white-fixed' : 'bg-bg-card shadow-card hover:bg-white/[0.04]')}
               >
-                {t('haccp.exportPdf')}
-              </Button>
-            )}
-            <button
-              type="button"
-              onClick={() => setRemindersOpen(true)}
-              className="relative flex items-center gap-2 rounded-xl border border-glass-border px-3 py-2 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition"
-            >
-              {overdueCount > 0 ? <BellRing className="h-4 w-4 text-red-400 animate-pulse" /> : <Bell className="h-4 w-4" />}
-              {t('haccp.reminders.title')}
-              {overdueCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center">{overdueCount}</span>
-              )}
-            </button>
-            <Button
-              variant="secondary"
-              leftIcon={<ClipboardList className="h-5 w-5" />}
-              onClick={() => setBlankFormOpen(true)}
-            >
-              {t('haccp.blankForm.button')}
-            </Button>
-            <Button
-              variant="secondary"
-              leftIcon={<Settings2 className="h-5 w-5" />}
-              onClick={() => setLocDrawerOpen(true)}
-            >
-              {t('haccp.locations')}
-            </Button>
-            <Button
-              leftIcon={<Plus className="h-5 w-5" />}
-              onClick={() => setLogDrawerOpen(true)}
-            >
-              {t('haccp.logCheck')}
-            </Button>
-          </div>
-        </header>
+                {overdueCount > 0 ? <BellRing className="h-4 w-4 animate-pulse" /> : <Bell className="h-4 w-4" />}
+                {t('haccp.reminders.title')}
+                {overdueCount > 0 && <span className="rounded-full bg-white-fixed px-2 text-xs font-semibold text-red-700">{overdueCount}</span>}
+              </button>
+              <ActionMenu
+                label={t('haccp.v2.more')}
+                actions={[
+                  { label: t('haccp.exportPdf'), icon: FileDown, onClick: exportPdf, hidden: checks.length === 0 },
+                  { label: t('haccp.blankForm.button'), icon: ClipboardList, onClick: () => setBlankFormOpen(true) },
+                  { label: t('haccp.locations'), icon: Settings2, onClick: () => setLocDrawerOpen(true) },
+                ]}
+              />
+              <PillButton icon={Plus} variant="primary" onClick={() => setLogDrawerOpen(true)}>{t('haccp.logCheck')}</PillButton>
+            </>
+          }
+        />
 
-        {error && (
-          <GlassCard className="border border-red-500/40 text-red-300">{error}</GlassCard>
-        )}
+        {error && <Notice>{error}</Notice>}
 
-        <div className="flex flex-wrap items-center gap-4">
-          <Input
-            type="date"
-            name="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-auto"
+        <StatRow>
+          <StatTile tone="ink" label={t('haccp.v2.checks')} value={checks.length} hint={t('haccp.v2.locationsCount', { count: locations.length })} />
+          <StatTile label={t('haccp.v2.pass')} value={passCount} tone={passCount ? 'good' : 'default'} icon={CheckCircle2} />
+          <StatTile label={t('haccp.v2.fail')} value={failCount} tone={failCount ? 'bad' : 'default'} icon={XCircle} />
+          <StatTile
+            tone="lime"
+            label={t('haccp.v2.compliance')}
+            value={passRate != null ? `${passRate}%` : '—'}
+            hint={overdueCount > 0 ? t('haccp.v2.overdue', { count: overdueCount }) : undefined}
+            onClick={overdueCount > 0 ? () => setRemindersOpen(true) : undefined}
           />
-          {checks.length > 0 && (
-            <div className="flex items-center gap-4 text-sm">
-              <span className="flex items-center gap-1.5 text-emerald-300">
-                <CheckCircle2 className="h-4 w-4" />
-                {t('haccp.pass_other', { count: passCount })}
-              </span>
-              <span className="flex items-center gap-1.5 text-red-300">
-                <XCircle className="h-4 w-4" />
-                {t('haccp.fail_other', { count: failCount })}
-              </span>
-              {passRate !== null && (
-                <span className={`font-semibold ${passRate === 100 ? 'text-emerald-300' : passRate >= 80 ? 'text-amber-300' : 'text-red-300'}`}>
-                  {t('haccp.compliance', { pct: passRate })}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        </StatRow>
 
         {loading ? (
-          <GlassCard><p className="text-white/60">{t('common.loading')}</p></GlassCard>
+          <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
         ) : checks.length === 0 ? (
-          <GlassCard className="flex flex-col items-center text-center gap-3 py-12">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
-              <Thermometer className="h-7 w-7" />
-            </div>
-            <h2 className="text-xl font-semibold">{t('haccp.empty.title')}</h2>
-            <p className="text-white/60 max-w-sm">
-              {date === todayIso()
-                ? t('haccp.empty.descriptionToday')
-                : t('haccp.empty.descriptionDate', { date })}
-            </p>
-            <Button leftIcon={<Plus className="h-5 w-5" />} onClick={() => setLogDrawerOpen(true)} className="mt-2">
-              {t('haccp.logCheck')}
-            </Button>
-          </GlassCard>
+          <EmptyState
+            icon={Thermometer}
+            title={t('haccp.empty.title')}
+            body={date === todayIso() ? t('haccp.empty.descriptionToday') : t('haccp.empty.descriptionDate', { date })}
+            action={<PillButton icon={Plus} variant="primary" onClick={() => setLogDrawerOpen(true)}>{t('haccp.logCheck')}</PillButton>}
+          />
         ) : (
-          <GlassCard className="p-0 overflow-hidden">
-            <div className="hidden md:grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 text-xs uppercase tracking-wide text-white/50 border-b border-glass-border">
-              <span>{t('haccp.tableHeaders.location')}</span>
-              <span>{t('haccp.tableHeaders.temperature')}</span>
-              <span>{t('haccp.tableHeaders.range')}</span>
-              <span>{t('haccp.tableHeaders.time')}</span>
-              <span>{t('haccp.tableHeaders.checkedBy')}</span>
-              <span />
-            </div>
-            <ul className="divide-y divide-glass-border">
-              {checks.map((c) => {
-                const pass = isPass(c)
-                return (
-                  <li key={c.id} className="grid gap-2 md:gap-4 px-5 py-4 items-start md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_auto]">
-                    <div>
-                      <div className="flex items-center gap-2 font-medium">
-                        {pass
-                          ? <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                          : <XCircle className="h-4 w-4 text-red-400 shrink-0" />}
-                        {c.location}
-                      </div>
-                      {!pass && c.corrective_action && (
-                        <p className="mt-1 ml-6 text-xs text-amber-300 leading-snug">
-                          ↳ {c.corrective_action}
-                        </p>
-                      )}
-                    </div>
-                    <span className={`text-lg font-semibold ${pass ? 'text-emerald-300' : 'text-red-300'}`}>
-                      {c.temperature}°{c.unit}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {checks.map((c) => {
+              const pass = isPass(c)
+              return (
+                <article key={c.id} className="group flex flex-col overflow-hidden rounded-3xl bg-bg-card shadow-card">
+                  <div className={cn('flex items-center justify-between gap-2 px-5 py-3 text-sm font-medium', pass ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500')}>
+                    <span className="flex items-center gap-1.5">
+                      {pass ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      {pass ? t('haccp.v2.inRange') : t('haccp.v2.outOfRange')}
                     </span>
-                    <span className="text-white/60 text-sm">
-                      {c.min_temp}–{c.max_temp}°{c.unit}
-                    </span>
-                    <span className="text-white/50 text-sm">
+                    <span className="tabular-nums text-white/55">
                       {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {c.notes && <span className="block text-xs truncate max-w-[140px]">{c.notes}</span>}
                     </span>
-                    <span className="text-white/60 text-sm truncate">
-                      {c.checked_by_name ?? <span className="text-white/30">—</span>}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(c.id)}
-                      aria-label={t('haccp.deleteCheckLabel')}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl text-white/40 hover:text-red-400 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </GlassCard>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 p-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-lg font-medium leading-snug">{c.location}</h3>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(c.id)}
+                        aria-label={t('haccp.deleteCheckLabel')}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40 opacity-0 transition hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <p className={cn('text-5xl font-medium tracking-[-0.04em] tabular-nums', !pass && 'text-red-500')}>
+                      {c.temperature}°<span className="text-2xl">{c.unit}</span>
+                    </p>
+                    <p className="text-sm text-white/55 tabular-nums">{t('haccp.tableHeaders.range')}: {c.min_temp}–{c.max_temp}°{c.unit}</p>
+                    {!pass && c.corrective_action && (
+                      <p className="rounded-2xl bg-amber-500/10 px-3 py-2 text-sm text-amber-500">{c.corrective_action}</p>
+                    )}
+                    {c.notes && <p className="text-sm text-white/55">{c.notes}</p>}
+                    <p className="mt-auto pt-1 text-xs text-white/45">{c.checked_by_name ?? '—'}</p>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
         )}
 
         <Drawer open={logDrawerOpen} onClose={() => { if (!submitting) setLogDrawerOpen(false) }} title={t('haccp.logTemperatureCheck')}>
@@ -391,7 +338,7 @@ export default function HACCPLog() {
                       className={
                         'h-11 w-11 rounded-xl border text-sm font-semibold transition ' +
                         (locUnit === u
-                          ? 'bg-brand-orange border-brand-orange text-white-fixed'
+                          ? 'bg-brand-orange border-brand-orange text-on-accent'
                           : 'border-glass-border text-white/60 hover:text-white hover:bg-white/5')
                       }
                     >
@@ -431,6 +378,7 @@ export default function HACCPLog() {
             )}
           </div>
         </Drawer>
+      </Page>
       </div>
 
       <HACCPBlankFormDrawer

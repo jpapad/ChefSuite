@@ -13,26 +13,26 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  'inline-flex items-center justify-center gap-2 font-mono font-bold uppercase tracking-[0.14em] ' +
+  'inline-flex items-center justify-center gap-2 rounded-full font-sans font-medium ' +
   'transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 ' +
-  'focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0d10] ' +
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface ' +
   'disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]'
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-orange text-[#0b0d10] rounded-sm hover:opacity-80',
+    'bg-brand-orange text-on-accent hover:bg-brand-orange/85',
   secondary:
-    'bg-white/[0.04] border border-[rgba(242,240,236,0.08)] text-white/70 rounded-sm hover:bg-white/[0.08] hover:text-white',
+    'bg-bg-card border border-white/15 text-white/80 hover:bg-white/[0.06] hover:text-white',
   ghost:
-    'text-white/50 hover:text-white hover:bg-white/[0.06] rounded-sm',
+    'text-white/60 hover:text-white hover:bg-white/[0.06]',
   danger:
-    'bg-red-600/90 text-white rounded-sm hover:bg-red-500 hover:shadow-[0_0_20px_rgba(220,38,38,0.35)]',
+    'bg-red-600 text-white-fixed hover:bg-red-500',
 }
 
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-8  px-3  text-[10px]',
-  md: 'h-10 px-5  text-[11px]',
-  lg: 'h-12 px-7  text-[12px]',
+  sm: 'h-9  px-4  text-[13px]',
+  md: 'h-11 px-5  text-sm',
+  lg: 'h-12 px-7  text-[15px]',
 }
 
 export function Button({

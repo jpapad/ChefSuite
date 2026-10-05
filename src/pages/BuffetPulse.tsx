@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Activity, Tablet, Monitor, ChefHat, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Tablet, Monitor, ChefHat, CheckCircle2, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Page, PageHeader, PillButton, Panel, Notice } from '../components/ui/page'
+import { cn } from '../lib/cn'
 
 interface BuffetMenu {
   id: string
@@ -91,149 +92,80 @@ export default function BuffetPulse() {
   const selectedMenu = menus.find((m) => m.id === todayMenuId)
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <header>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange">
-            <Activity className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-semibold">{t('buffetPulse.title')}</h1>
-            <p className="text-white/50 mt-0.5 text-sm">
-              {t('buffetPulse.liveIndicator')} — Supabase Realtime
-            </p>
-          </div>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        eyebrow={<span className="inline-flex items-center gap-2"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />{t('buffetPulse.liveIndicator')}</span>}
+        title={t('buffetPulse.title')}
+        subtitle="Διάλεξε το σημερινό μενού και άνοιξε τις οθόνες της αίθουσας και της κουζίνας."
+        actions={<PillButton icon={RefreshCw} onClick={() => void loadMenus()}>Ανανέωση</PillButton>}
+      />
 
-      {/* ── Step 1: Today's Menu ── */}
-      <GlassCard className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange/15 text-brand-orange text-xs font-black">1</div>
-            <h2 className="font-semibold text-base">Σημερινό Μενού Μπουφέ</h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadMenus()}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/8 transition"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </div>
-
-        {loading ? (
-          <p className="text-white/40 text-sm">Φόρτωση μενού…</p>
-        ) : menus.length === 0 ? (
-          <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm text-amber-300">
-            Δεν υπάρχουν ενεργά μενού τύπου «Μπουφέ». Δημιούργησε ένα από τη σελίδα Μενού.
-          </div>
-        ) : (
-          <div className="grid gap-2">
-            {menus.map((m) => {
-              const selected = m.id === todayMenuId
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => selectMenu(m.id)}
-                  className={[
-                    'flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-all border',
-                    selected
-                      ? 'bg-brand-orange/15 border-brand-orange/50 text-white'
-                      : 'bg-white/4 border-white/8 text-white/60 hover:bg-white/8 hover:text-white',
-                  ].join(' ')}
-                >
-                  <div className={['flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors', selected ? 'bg-brand-orange text-white-fixed' : 'bg-white/8 text-white/40'].join(' ')}>
-                    {selected ? <CheckCircle2 className="h-4 w-4" /> : <ChefHat className="h-4 w-4" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm leading-tight">{m.name}</p>
-                    <p className="text-xs text-white/40 mt-0.5">{m.itemCount} πιάτα</p>
-                  </div>
-                  {selected && (
-                    <span className="shrink-0 rounded-full bg-brand-orange/20 px-2 py-0.5 text-[10px] font-bold text-brand-orange uppercase tracking-wider">
-                      Σήμερα
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+        {/* ── Step 1: today's menu ── */}
+        <Panel title={<span className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-lime text-sm font-semibold text-ink">1</span>Σημερινό μενού</span>}>
+          {loading ? (
+            <p className="text-sm text-white/55">Φόρτωση μενού…</p>
+          ) : menus.length === 0 ? (
+            <Notice tone="warn">Δεν υπάρχουν ενεργά μενού τύπου «Μπουφέ». Δημιούργησε ένα από τη σελίδα Μενού.</Notice>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {menus.map((m) => {
+                const selected = m.id === todayMenuId
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => selectMenu(m.id)}
+                    className={cn('flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition', selected ? 'bg-ink text-white-fixed' : 'bg-white/[0.04] hover:bg-white/[0.07]')}
+                  >
+                    <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', selected ? 'bg-lime text-ink' : 'bg-white/[0.06] text-white/55')}>
+                      {selected ? <CheckCircle2 className="h-5 w-5" /> : <ChefHat className="h-5 w-5" />}
                     </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </GlassCard>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{m.name}</span>
+                      <span className={cn('block text-xs', selected ? 'text-white-fixed/60' : 'text-white/50')}>{m.itemCount} πιάτα</span>
+                    </span>
+                    {selected && <span className="shrink-0 rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink">Σήμερα</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </Panel>
 
-      {/* ── Step 2: Launch screens ── */}
-      <GlassCard className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-orange/15 text-brand-orange text-xs font-black">2</div>
-          <h2 className="font-semibold text-base">Εκκίνηση</h2>
-        </div>
-
-        {!todayMenuId && (
-          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/50">
-            ⬆ Επίλεξε πρώτα ποιο μενού τρέχει σήμερα
-          </div>
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Buffet Monitor */}
-          <button
-            onClick={openMonitor}
-            disabled={!todayMenuId}
-            className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <GlassCard
-              hover
-              className="flex flex-col gap-4 h-full border border-emerald-500/20 hover:border-emerald-500/50 transition-colors"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15">
-                <Tablet className="h-7 w-7 text-emerald-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-emerald-300">{t('buffetPulse.monitorMode')}</h3>
-                <p className="text-white/50 text-sm mt-1">{t('buffetPulse.monitorDesc')}</p>
-                {selectedMenu && (
-                  <p className="text-emerald-400/70 text-xs mt-2 font-medium">📋 {selectedMenu.name}</p>
+        {/* ── Step 2: launch screens ── */}
+        <Panel title={<span className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-lime text-sm font-semibold text-ink">2</span>Εκκίνηση οθονών</span>}>
+          {!todayMenuId && <p className="-mt-1 text-sm text-white/55">Επίλεξε πρώτα ποιο μενού τρέχει σήμερα.</p>}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { onClick: openMonitor, icon: Tablet, title: t('buffetPulse.monitorMode'), desc: t('buffetPulse.monitorDesc'), cta: t('buffetPulse.openMonitor'), dark: false },
+              { onClick: openKds, icon: Monitor, title: t('buffetPulse.kdsMode'), desc: t('buffetPulse.kdsDesc'), cta: t('buffetPulse.openKds'), dark: true },
+            ].map(({ onClick, icon: Icon, title, desc, cta, dark }) => (
+              <button
+                key={title}
+                type="button"
+                onClick={onClick}
+                disabled={!todayMenuId}
+                className={cn(
+                  'flex min-h-[220px] flex-col gap-4 rounded-3xl p-5 text-left transition-transform hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-40',
+                  dark ? 'bg-ink text-white-fixed' : 'bg-lime text-ink',
                 )}
-              </div>
-              <div className="mt-auto pt-4 border-t border-white/10">
-                <span className="text-sm font-medium text-emerald-400">
-                  {t('buffetPulse.openMonitor')} →
+              >
+                <span className={cn('flex h-12 w-12 items-center justify-center rounded-full', dark ? 'bg-lime text-ink' : 'bg-ink text-lime')}>
+                  <Icon className="h-6 w-6" />
                 </span>
-              </div>
-            </GlassCard>
-          </button>
-
-          {/* Kitchen KDS */}
-          <button
-            onClick={openKds}
-            disabled={!todayMenuId}
-            className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <GlassCard
-              hover
-              className="flex flex-col gap-4 h-full border border-red-500/20 hover:border-red-500/50 transition-colors"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/15">
-                <Monitor className="h-7 w-7 text-red-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-red-300">{t('buffetPulse.kdsMode')}</h3>
-                <p className="text-white/50 text-sm mt-1">{t('buffetPulse.kdsDesc')}</p>
-                {selectedMenu && (
-                  <p className="text-red-400/70 text-xs mt-2 font-medium">📋 {selectedMenu.name}</p>
-                )}
-              </div>
-              <div className="mt-auto pt-4 border-t border-white/10">
-                <span className="text-sm font-medium text-red-400">
-                  {t('buffetPulse.openKds')} →
+                <span>
+                  <span className="block text-xl font-medium">{title}</span>
+                  <span className={cn('mt-1 block text-sm', dark ? 'text-white-fixed/65' : 'text-ink/70')}>{desc}</span>
                 </span>
-              </div>
-            </GlassCard>
-          </button>
-        </div>
-      </GlassCard>
-    </div>
+                {selectedMenu && <span className={cn('text-xs font-medium', dark ? 'text-lime' : 'text-ink/70')}>{selectedMenu.name}</span>}
+                <span className="mt-auto text-sm font-semibold">{cta} →</span>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    </Page>
   )
 }

@@ -104,25 +104,25 @@ export function ProductionSheetDrawer({ open, onClose, menu, members, recipes }:
   const progressPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0
 
   const S = {
-    section:      { border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px', overflow: 'hidden', marginBottom: '16px' } as React.CSSProperties,
-    wsHead:       { background: 'rgba(234,88,12,0.12)', padding: '11px 16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)' } as React.CSSProperties,
+    section:      { border: '1px solid rgb(var(--app-white) / 0.12)', borderRadius: '14px', overflow: 'hidden', marginBottom: '16px' } as React.CSSProperties,
+    wsHead:       { background: 'rgba(234,88,12,0.12)', padding: '11px 16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgb(var(--app-white) / 0.1)' } as React.CSSProperties,
     wsHeadText:   { fontWeight: 700, fontSize: '14px', color: '#ffffff', flex: 1 } as React.CSSProperties,
-    wsCount:      { fontSize: '12px', color: 'rgba(255,255,255,0.45)', fontWeight: 600 } as React.CSSProperties,
-    recipeHead:   { background: 'rgba(255,255,255,0.04)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.06)' } as React.CSSProperties,
-    recipeTitle:  { fontWeight: 600, fontSize: '12px', color: 'rgba(255,255,255,0.7)', flex: 1 } as React.CSSProperties,
-    recipeMeta:   { fontSize: '11px', color: 'rgba(255,255,255,0.35)' } as React.CSSProperties,
-    taskRow:      { padding: '9px 16px 9px 36px', display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)' } as React.CSSProperties,
-    taskRowDone:  { padding: '9px 16px 9px 36px', display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: 0.4 } as React.CSSProperties,
-    taskTitle:    { fontWeight: 600, fontSize: '13px', color: 'rgba(255,255,255,0.88)', lineHeight: 1.3 } as React.CSSProperties,
-    taskDesc:     { fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic', marginTop: '3px', lineHeight: 1.4 } as React.CSSProperties,
-    taskAssignee: { fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' } as React.CSSProperties,
+    wsCount:      { fontSize: '12px', color: 'rgb(var(--app-white) / 0.45)', fontWeight: 600 } as React.CSSProperties,
+    recipeHead:   { background: 'rgb(var(--app-white) / 0.04)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgb(var(--app-white) / 0.06)' } as React.CSSProperties,
+    recipeTitle:  { fontWeight: 600, fontSize: '12px', color: 'rgb(var(--app-white) / 0.7)', flex: 1 } as React.CSSProperties,
+    recipeMeta:   { fontSize: '11px', color: 'rgb(var(--app-white) / 0.35)' } as React.CSSProperties,
+    taskRow:      { padding: '9px 16px 9px 36px', display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: '1px solid rgb(var(--app-white) / 0.05)' } as React.CSSProperties,
+    taskRowDone:  { padding: '9px 16px 9px 36px', display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: '1px solid rgb(var(--app-white) / 0.05)', opacity: 0.4 } as React.CSSProperties,
+    taskTitle:    { fontWeight: 600, fontSize: '13px', color: 'rgb(var(--app-white) / 0.88)', lineHeight: 1.3 } as React.CSSProperties,
+    taskDesc:     { fontSize: '11px', color: 'rgb(var(--app-white) / 0.4)', fontStyle: 'italic', marginTop: '3px', lineHeight: 1.4 } as React.CSSProperties,
+    taskAssignee: { fontSize: '11px', color: 'rgb(var(--app-white) / 0.35)', marginTop: '2px' } as React.CSSProperties,
     badge:        { flexShrink: 0, fontSize: '11px', fontWeight: 600, padding: '2px 7px', borderRadius: '6px', marginTop: '1px' } as React.CSSProperties,
-    progress:     { height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' } as React.CSSProperties,
+    progress:     { height: '5px', borderRadius: '3px', background: 'rgb(var(--app-white) / 0.08)', overflow: 'hidden' } as React.CSSProperties,
     progressFill: { height: '100%', background: '#ea580c', borderRadius: '3px', transition: 'width 0.3s', width: `${progressPct}%` } as React.CSSProperties,
   }
 
-  const statusBg:   Record<string, string> = { done: 'rgba(16,185,129,0.18)', in_progress: 'rgba(234,88,12,0.18)', pending: 'rgba(255,255,255,0.07)' }
-  const statusFg:   Record<string, string> = { done: 'rgb(16,185,129)', in_progress: '#ea580c', pending: 'rgba(255,255,255,0.35)' }
+  const statusBg:   Record<string, string> = { done: 'rgba(16,185,129,0.18)', in_progress: 'rgba(234,88,12,0.18)', pending: 'rgb(var(--app-white) / 0.07)' }
+  const statusFg:   Record<string, string> = { done: 'rgb(16,185,129)', in_progress: '#ea580c', pending: 'rgb(var(--app-white) / 0.35)' }
   const statusLabel: Record<string, string> = { done: '✓', in_progress: '⟳', pending: '○' }
 
   return (
@@ -194,7 +194,7 @@ export function ProductionSheetDrawer({ open, onClose, menu, members, recipes }:
                       <div key={ri}>
                         {/* Recipe header */}
                         <div style={S.recipeHead}>
-                          <UtensilsCrossed style={{ width: '12px', height: '12px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                          <UtensilsCrossed style={{ width: '12px', height: '12px', color: 'rgb(var(--app-white) / 0.3)', flexShrink: 0 }} />
                           <span style={S.recipeTitle}>
                             {rg.recipe?.title ?? t('menus.productionSheet.noRecipe')}
                           </span>
@@ -213,7 +213,7 @@ export function ProductionSheetDrawer({ open, onClose, menu, members, recipes }:
                             <div key={task.id} style={isDone ? S.taskRowDone : S.taskRow}>
                               {isDone
                                 ? <CheckSquare style={{ width: '14px', height: '14px', color: 'rgb(16,185,129)', flexShrink: 0, marginTop: '2px' }} />
-                                : <Square style={{ width: '14px', height: '14px', color: 'rgba(255,255,255,0.18)', flexShrink: 0, marginTop: '2px' }} />
+                                : <Square style={{ width: '14px', height: '14px', color: 'rgb(var(--app-white) / 0.18)', flexShrink: 0, marginTop: '2px' }} />
                               }
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={S.taskTitle}>{task.title}</p>

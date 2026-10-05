@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ChefHat, ArrowRight, Plus, Key } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { AuthShell } from '../components/layout/AuthShell'
 
 function roleLabel(role: string): string {
   const map: Record<string, string> = {
@@ -36,24 +37,14 @@ export default function TeamPicker() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-chef-dark px-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl font-black text-lg text-white mb-4"
-            style={{ background: 'linear-gradient(135deg, #d8b08c 0%, #C5A059 100%)' }}
-          >
-            CS
-          </div>
-          <h1 className="text-2xl font-bold text-white">Επιλογή Κουζίνας</h1>
-          <p className="text-sm text-white/50">
-            Ο λογαριασμός σου ανήκει σε {myTeams.length} κουζίνες. Επίλεξε με ποια θέλεις να συνδεθείς.
-          </p>
+    <AuthShell>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h2 className="text-4xl font-medium tracking-[-0.03em]">Σε ποια κουζίνα μπαίνεις;</h2>
+          <p className="mt-1.5 text-white/55">Ο λογαριασμός σου ανήκει σε {myTeams.length} κουζίνες.</p>
         </div>
 
-        {/* Team list */}
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {myTeams.map((team) => {
             const isCurrent = profile?.active_team_id === team.id
             const isLoading = selecting === team.id
@@ -63,57 +54,32 @@ export default function TeamPicker() {
                 type="button"
                 disabled={!!selecting}
                 onClick={() => void handleSelect(team.id)}
-                className="w-full flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 disabled:opacity-60"
-                style={
-                  isCurrent
-                    ? {
-                        background: 'rgba(197,160,89,0.12)',
-                        borderColor: 'rgba(197,160,89,0.4)',
-                      }
-                    : {
-                        background: 'rgba(255,255,255,0.04)',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                      }
-                }
+                className={`flex w-full items-center gap-4 rounded-3xl p-4 text-left transition disabled:opacity-60 ${isCurrent ? 'bg-ink text-white-fixed' : 'bg-bg-card shadow-card hover:-translate-y-0.5'}`}
               >
-                <div
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                  style={{ background: 'rgba(197,160,89,0.15)' }}
-                >
-                  <ChefHat className="h-5 w-5 text-[#C5A059]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white truncate">{team.name}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{roleLabel(team.role)}</p>
-                </div>
-                {isLoading ? (
-                  <div className="h-5 w-5 rounded-full border-2 border-[#C5A059]/30 border-t-[#C5A059] animate-spin shrink-0" />
-                ) : (
-                  <ArrowRight className="h-4 w-4 text-white/25 shrink-0" />
-                )}
+                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${isCurrent ? 'bg-lime text-ink' : 'bg-white/[0.06]'}`}>
+                  <ChefHat className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-lg font-medium">{team.name}</span>
+                  <span className={`block text-sm ${isCurrent ? 'text-white-fixed/60' : 'text-white/50'}`}>{roleLabel(team.role)}</span>
+                </span>
+                {isLoading
+                  ? <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                  : <ArrowRight className="h-5 w-5 shrink-0 opacity-50" />}
               </button>
             )
           })}
         </div>
 
-        {/* Footer actions */}
-        <div className="flex items-center gap-3 pt-2">
-          <Link
-            to="/onboarding"
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/4 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:border-white/20 transition"
-          >
-            <Plus className="h-4 w-4" />
-            Νέα κουζίνα
+        <div className="grid grid-cols-2 gap-2">
+          <Link to="/onboarding" className="flex h-12 items-center justify-center gap-2 rounded-full bg-bg-card text-sm font-medium shadow-card hover:bg-white/[0.04]">
+            <Plus className="h-4 w-4" />Νέα κουζίνα
           </Link>
-          <Link
-            to="/onboarding"
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/4 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:border-white/20 transition"
-          >
-            <Key className="h-4 w-4" />
-            Εγγραφή με κωδικό
+          <Link to="/onboarding" className="flex h-12 items-center justify-center gap-2 rounded-full bg-bg-card text-sm font-medium shadow-card hover:bg-white/[0.04]">
+            <Key className="h-4 w-4" />Με κωδικό πρόσκλησης
           </Link>
         </div>
       </div>
-    </div>
+    </AuthShell>
   )
 }
