@@ -12,9 +12,10 @@
 }
 
 /* ── Design tokens ──────────────────────────────────────────────────────────
-   :root          legacy dark look — public pages, Login, fullscreen buffet screens
-   html.theme-c   "Bento & Lime" light theme — set by AppShell for the whole app
-   .theme-dark    dark kitchen-floor scope (KDS, Timeclock, buffet tablets)
+   :root          legacy dark look — fullscreen buffet screens
+   html.theme-c   "Station Board" day theme — set by AppShell for the whole app
+   .theme-dark    "Station Board" night scope — kitchen screens (KDS, Prep,
+                  HACCP, cook mode), the global header and the mobile bar
    ───────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: dark;
@@ -29,6 +30,7 @@
   --c-input:     19 22 28;
   --c-border:    45 49 84;
   --c-chef-dark: 11 13 16;
+  --c-signal:    255 79 0;
 
   /* Backgrounds */
   --bg:        #0b0d10;
@@ -58,79 +60,112 @@
   --info:       #a78bfa;
 
   /* Typography */
-  --sans: 'Geologica', ui-sans-serif, system-ui, sans-serif;
+  --sans: 'Fira Sans', ui-sans-serif, system-ui, sans-serif;
+  --display: 'Fira Sans Extra Condensed', 'Arial Narrow', sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+/* Day: white paper, ink rules, one signal colour. Cards are framed by a 2px
+   ink rule (drawn as an inset shadow so existing shadow-card classes get it). */
 html.theme-c {
   color-scheme: light;
-  --app-white: 15 18 16;
+  --app-white: 10 10 10;
 
-  --c-accent:    15 18 16;
+  --c-accent:    10 10 10;
   --c-on-accent: 255 255 255;
   --c-card:      255 255 255;
-  --c-card-2:    234 235 230;
-  --c-surface:   241 242 238;
+  --c-card-2:    242 242 242;
+  --c-surface:   255 255 255;
   --c-input:     255 255 255;
-  --c-border:    227 228 223;
-  --c-chef-dark: 241 242 238;
+  --c-border:    10 10 10;
+  --c-chef-dark: 242 242 242;
+  --c-signal:    255 79 0;
 
-  --bg:        #F1F2EE;
+  --bg:        #FFFFFF;
   --bg-2:      #FFFFFF;
   --bg-3:      #FFFFFF;
   --bg-card:   #FFFFFF;
-  --bg-card-2: #F6F7F3;
-  --bg-deep:   #EAEBE6;
+  --bg-card-2: #F2F2F2;
+  --bg-deep:   #F2F2F2;
 
-  --fg:     #0F1210;
-  --muted:  rgba(15, 18, 16, 0.55);
-  --subtle: #676C66;
+  --fg:     #0A0A0A;
+  --muted:  rgba(10, 10, 10, 0.66);
+  --subtle: #525252;
 
-  --hairline:    rgba(15, 18, 16, 0.08);
-  --border:      #E3E4DF;
-  --card-border: 1px solid transparent;
-  --shadow-card: 0 1px 2px rgba(15, 18, 16, 0.04), 0 8px 24px rgba(15, 18, 16, 0.06);
+  --hairline:    rgba(10, 10, 10, 0.14);
+  --border:      #0A0A0A;
+  --card-border: 2px solid #0A0A0A;
+  --shadow-card: inset 0 0 0 2px #0A0A0A;
 
-  --accent:    #0F1210;
-  --accent-bg: rgba(15, 18, 16, 0.06);
-  --lime:      #C8F03C;
+  --accent:    #0A0A0A;
+  --accent-bg: rgba(10, 10, 10, 0.06);
+  --lime:      #FF4F00;
 }
 
+/* Night: the kitchen floor. White is the primary action, orange the signal. */
 .theme-dark {
   color-scheme: dark;
-  --app-white: 243 245 240;
+  --app-white: 245 245 245;
 
-  --c-accent:    200 240 60;
-  --c-on-accent: 15 18 16;
-  --c-card:      26 30 27;
-  --c-card-2:    35 40 36;
-  --c-surface:   15 18 16;
-  --c-input:     20 24 21;
-  --c-border:    46 52 47;
-  --c-chef-dark: 10 12 11;
+  --c-accent:    245 245 245;
+  --c-on-accent: 10 10 10;
+  --c-card:      22 22 22;
+  --c-card-2:    31 31 31;
+  --c-surface:   10 10 10;
+  --c-input:     22 22 22;
+  --c-border:    58 58 58;
+  --c-chef-dark: 0 0 0;
+  --c-signal:    255 90 31;
 
-  --bg:        #0F1210;
-  --bg-2:      #141815;
-  --bg-3:      #141815;
-  --bg-card:   #1A1E1B;
-  --bg-card-2: #232824;
-  --bg-deep:   #141815;
+  --bg:        #0A0A0A;
+  --bg-2:      #121212;
+  --bg-3:      #121212;
+  --bg-card:   #161616;
+  --bg-card-2: #1F1F1F;
+  --bg-deep:   #000000;
 
-  --fg:     #F3F5F0;
-  --muted:  rgba(243, 245, 240, 0.5);
-  --subtle: #A7ADA6;
+  --fg:     #F5F5F5;
+  --muted:  rgba(245, 245, 245, 0.66);
+  --subtle: #A3A3A3;
 
-  --hairline:    rgba(243, 245, 240, 0.08);
-  --border:      #2E342F;
-  --card-border: 1px solid #2E342F;
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.40);
+  --hairline:    rgba(245, 245, 245, 0.12);
+  --border:      #2E2E2E;
+  --card-border: 2px solid #2E2E2E;
+  --shadow-card: inset 0 0 0 2px #2E2E2E;
 
-  --accent:    #C8F03C;
-  --accent-bg: rgba(200, 240, 60, 0.12);
+  --accent:    #F5F5F5;
+  --accent-bg: rgba(245, 245, 245, 0.10);
+  --lime:      #FF5A1F;
 
   background-color: var(--bg);
   color: var(--fg);
 }
+
+/* ── Readability floor ─────────────────────────────────────────────────────
+   Pages were written with very faint text (text-white/20…55) and 9–11px
+   labels. Inside the app themes faint text is lifted to ≥ 4.5:1 and tiny
+   text to 12px, so every screen reads under kitchen lighting without
+   rewriting each one. Purely decorative text-white/10–15 is left alone. */
+:is(.theme-c, .theme-dark) :is(
+  .text-white\/20, .text-white\/25, .text-white\/30, .text-white\/35,
+  .text-white\/40, .text-white\/45, .text-white\/50, .text-white\/55
+) {
+  color: rgb(var(--app-white) / 0.64);
+}
+:is(.theme-c, .theme-dark) :is(.text-\[9px\], .text-\[10px\], .text-\[11px\]) {
+  font-size: 12px;
+}
+
+/* Station Board type helpers */
+.sb-label {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sb-num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
 
 html,
 body,
@@ -292,4 +327,56 @@ body {
 
 .glass-shimmer:hover::before {
   left: 160%;
+}
+
+/* ── Login intro (IntroSplash) ───────────────────────────────────────────
+   ≈ 5.6 s: grid → brand mark + kitchen name typed → CHEFSUITE → word cycle
+   → split-flap cards → printed ticket stamped READY → the black sheet lifts
+   to reveal the sign-in form. Reduced motion: a still frame that fades. */
+.in-root{position:fixed;inset:0;z-index:100;background:#0A0A0A;color:#FFFFFF;overflow:hidden;animation:in-lift .8s 4.75s cubic-bezier(.8,0,.15,1) forwards}
+.in-under{position:fixed;inset:0;z-index:99;background:#FF4F00;animation:in-lift .8s 4.9s cubic-bezier(.8,0,.15,1) forwards}
+.in-gv{position:absolute;top:0;bottom:0;width:1px;background:#1C1C1C;transform:scaleY(0);transform-origin:top;animation:in-gy .9s cubic-bezier(.6,0,.2,1) forwards}
+.in-gh{position:absolute;left:0;right:0;height:1px;background:#1C1C1C;transform:scaleX(0);transform-origin:left;animation:in-gx .9s cubic-bezier(.6,0,.2,1) forwards}
+.in-rule{height:10px;background:#FF4F00;transform:scaleX(0);transform-origin:left;animation:in-grow .7s .7s cubic-bezier(.75,0,.2,1) forwards}
+.in-ltr{display:inline-block;overflow:hidden;vertical-align:bottom;line-height:.84;padding-top:.04em}
+.in-ltr>span{display:inline-block;transform:translateY(105%);filter:blur(14px);opacity:0;animation:in-rise .8s cubic-bezier(.2,.85,.2,1) forwards}
+.in-sweep{position:relative;display:inline-block;color:transparent;-webkit-text-stroke:2px #FF4F00}
+.in-sweep::after{content:attr(data-t);position:absolute;inset:0;color:#FF4F00;-webkit-text-stroke:0;clip-path:inset(0 100% 0 0);animation:in-fill .7s 1.55s cubic-bezier(.7,0,.2,1) forwards}
+.in-cyc{height:1.25em;overflow:hidden;display:inline-block;vertical-align:bottom}
+.in-cyc>span{display:flex;flex-direction:column;animation:in-cycle 2.2s 2.05s cubic-bezier(.7,0,.2,1) forwards}
+.in-cyc>span>b{height:1.25em;line-height:1.25em;font-weight:800;color:#FFFFFF}
+.in-fade{opacity:0;animation:in-fade .6s forwards}
+.in-flap{display:flex;flex-direction:column;gap:6px;padding:14px 18px 16px;background:#141414;border-top:3px solid #FF4F00;transform:perspective(500px) rotateX(-95deg);transform-origin:top;animation:in-flap .5s cubic-bezier(.3,1.45,.5,1) forwards}
+.in-load{height:3px;background:#FF4F00;transform:scaleX(0);transform-origin:left;animation:in-grow 4.4s .2s cubic-bezier(.4,0,.6,1) forwards}
+.in-printer{position:absolute;right:56px;top:120px;width:272px;height:440px;overflow:hidden}
+.in-rail{position:absolute;left:0;top:0;width:100%;height:6px;background:#2A2A2A;transform:scaleX(0);transform-origin:right;animation:in-gx .6s 2.5s cubic-bezier(.7,0,.2,1) forwards}
+.in-tkt{position:absolute;left:20px;top:6px;width:232px;background:#FAF7F0;color:#0A0A0A;padding:14px 16px 24px;box-sizing:border-box;transform:translateY(-100%);animation:in-print 1.2s 2.75s steps(10,end) forwards,in-bump .55s 4.35s cubic-bezier(.7,0,.2,1) forwards}
+.in-tkt::after{content:"";position:absolute;left:0;right:0;bottom:-10px;height:10px;background:linear-gradient(-45deg,transparent 7px,#FAF7F0 0) 0 0/14px 10px,linear-gradient(45deg,transparent 7px,#FAF7F0 0) 0 0/14px 10px}
+.in-stamp{position:absolute;right:18px;bottom:36px;padding:6px 10px;border:4px solid #FF4F00;color:#FF4F00;font:800 30px/1 var(--display);letter-spacing:.04em;opacity:0;transform:scale(2.2) rotate(-14deg);animation:in-stamp .28s 4.05s cubic-bezier(.5,1.8,.5,1) forwards}
+.in-mark{width:84px;height:84px;border:3px solid #FF4F00;display:flex;align-items:center;justify-content:center;flex:none;transform:scale(0) rotate(-90deg);animation:in-markin .65s .2s cubic-bezier(.3,1.5,.5,1) forwards}
+.in-mark svg{width:46px;height:46px;fill:none;stroke:#FFFFFF;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.in-mark path{stroke-dasharray:90;stroke-dashoffset:90;animation:in-draw 1s .45s cubic-bezier(.6,0,.2,1) forwards}
+.in-type{display:inline-block;clip-path:inset(0 100% 0 0);animation:in-type .8s .6s steps(17,end) forwards}
+.in-caret{display:inline-block;width:.42em;height:.78em;background:#FF4F00;margin-left:8px;opacity:0;animation:in-fade .01s .6s forwards,in-blink .55s 1.4s steps(1,end) infinite}
+@keyframes in-markin{to{transform:none}}
+@keyframes in-draw{to{stroke-dashoffset:0}}
+@keyframes in-type{to{clip-path:inset(0 0 0 0)}}
+@keyframes in-blink{50%{opacity:0}}
+@keyframes in-gy{to{transform:scaleY(1)}}
+@keyframes in-gx{to{transform:scaleX(1)}}
+@keyframes in-grow{to{transform:scaleX(1)}}
+@keyframes in-rise{to{transform:none;filter:blur(0);opacity:1}}
+@keyframes in-fill{to{clip-path:inset(0 0 0 0)}}
+@keyframes in-cycle{0%,16%{transform:translateY(0)}25%,41%{transform:translateY(-1.25em)}50%,66%{transform:translateY(-2.5em)}75%,100%{transform:translateY(-3.75em)}}
+@keyframes in-fade{to{opacity:1}}
+@keyframes in-flap{to{transform:perspective(500px) rotateX(0)}}
+@keyframes in-print{to{transform:translateY(0)}}
+@keyframes in-bump{to{transform:translateY(-130%)}}
+@keyframes in-stamp{to{opacity:1;transform:scale(1) rotate(-8deg)}}
+@keyframes in-lift{to{transform:translateY(-100%)}}
+@keyframes in-quiet{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){
+  .in-root,.in-under{animation:in-quiet .3s 1.4s forwards}
+  .in-gv,.in-gh,.in-rule,.in-ltr>span,.in-sweep::after,.in-cyc>span,.in-fade,.in-flap,.in-load,.in-rail,.in-tkt,.in-stamp,.in-mark,.in-type,.in-caret{animation:none;transform:none;filter:none;opacity:1;clip-path:none}
+  .in-mark path{animation:none;stroke-dashoffset:0}
 }

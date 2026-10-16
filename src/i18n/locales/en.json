@@ -851,7 +851,8 @@
       "start": "Start",
       "markReady": "Ready",
       "served": "Served"
-    }
+    },
+    "title": "Kitchen display"
   },
   "walkie": {
     "title": "Walkie Feed",
@@ -2726,5 +2727,50 @@
       "noSupplier_one": "{{count}} item has no supplier.",
       "noSupplier_other": "{{count}} items have no supplier."
     }
+  },
+  "station": {
+    "allSections": "All sections",
+    "sectionsCount": "{{n}} sections in {{g}} groups",
+    "searchPlaceholder": "Find a recipe or ingredient",
+    "noResults": "No results for \"{{q}}\"",
+    "signOut": "Sign out",
+    "profile": "Profile",
+    "language": "Language",
+    "close": "Close",
+    "menu": "Menu",
+    "account": "Account",
+    "continue": "Continue",
+    "shiftMorning": "Morning service",
+    "shiftLunch": "Lunch service",
+    "shiftEvening": "Evening service",
+    "introLoading": "Getting the kitchen ready",
+    "introSkip": "Skip →",
+    "introSound": "Sound",
+    "introMuted": "Muted",
+    "introTapSound": "Tap for sound",
+    "introOnePlace": "One place for",
+    "introW1": "tickets.",
+    "introW2": "prep.",
+    "introW3": "HACCP.",
+    "introW4": "everything.",
+    "introTickets": "Tickets",
+    "introMise": "Mise en place",
+    "introCovers": "Covers tonight",
+    "introConnected": "Connected",
+    "introReady": "READY",
+    "introTicketNew": "New · Hot",
+    "introReplay": "▶ Replay intro",
+    "loginHead1": "Your kitchen.",
+    "loginHead2": "In one place.",
+    "loginF1Title": "KDS",
+    "loginF1": "Tickets, prep, HACCP",
+    "loginF2Title": "Costs",
+    "loginF2": "Recipes and food cost",
+    "loginF3Title": "Stock",
+    "loginF3": "Reorder in one click",
+    "introTicketTitle": "SERVICE",
+    "introTicketItem1": "Mise en place",
+    "introTicketItem2": "Have a great service",
+    "introKitchen": "Your kitchen"
   }
 }

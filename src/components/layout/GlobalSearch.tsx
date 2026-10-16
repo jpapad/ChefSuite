@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search, ChefHat, Package, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useRecipes } from '../../hooks/useRecipes'
 import { useInventory } from '../../hooks/useInventory'
 
@@ -23,6 +24,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   const { recipes } = useRecipes()
   const { items } = useInventory()
@@ -36,7 +38,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
           .map((r) => ({
             id: `r-${r.id}`,
             label: r.title,
-            sub: r.description ?? 'Recipe',
+            sub: r.description ?? '',
             icon: 'recipe' as const,
             to: '/recipes',
             param: r.title,
@@ -47,7 +49,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
           .map((i) => ({
             id: `i-${i.id}`,
             label: i.name,
-            sub: `${i.quantity} ${i.unit} in stock`,
+            sub: `${i.quantity} ${i.unit}`,
             icon: 'inventory' as const,
             to: '/inventory',
             param: i.name,
@@ -65,9 +67,11 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
+  // Only the mobile overlay (which has a close button) grabs focus; the
+  // always-visible desktop field must not steal it on every page load.
   useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    if (onClose) inputRef.current?.focus()
+  }, [onClose])
 
   function onSelect(result: Result) {
     navigate(`${result.to}?q=${encodeURIComponent(result.param)}`)
@@ -84,15 +88,16 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
 
   return (
     <div ref={containerRef} className="relative flex-1 max-w-xl">
-      <div className="glass flex items-center gap-3 rounded-full px-5 min-h-[48px] focus-within:ring-2 focus-within:ring-brand-orange">
-        <Search className="h-5 w-5 text-white/60 shrink-0" />
+      <div className="flex items-center gap-3 rounded border-2 border-[#3A3A3A] bg-bg-card px-4 min-h-[48px] focus-within:border-signal">
+        <Search className="h-5 w-5 text-white/70 shrink-0" strokeWidth={2.2} />
         <input
           ref={inputRef}
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => query && setOpen(true)}
-          placeholder="Search recipes, ingredients…"
-          className="flex-1 bg-transparent outline-none text-base text-white placeholder:text-white/40"
+          placeholder={t('station.searchPlaceholder', 'Find a recipe or ingredient')}
+          aria-label={t('common.search', 'Search')}
+          className="flex-1 min-w-0 bg-transparent outline-none text-base text-white placeholder:text-white/50"
         />
         {query ? (
           <button type="button" onClick={clear} className="text-white/50 hover:text-white">
@@ -131,7 +136,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
 
       {open && q && results.length === 0 && (
         <div className="absolute left-0 top-full mt-2 w-full glass-strong border border-glass-border rounded-2xl shadow-xl z-50 px-4 py-6 text-center">
-          <p className="text-sm text-white/50">No results for "{query}"</p>
+          <p className="text-sm text-white/60">{t('station.noResults', { q: query, defaultValue: 'No results for "{{q}}"' })}</p>
         </div>
       )}
     </div>

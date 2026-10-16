@@ -50,12 +50,14 @@ export function Drawer({ open, onClose, title, children, footer }: DrawerProps) 
         aria-label={typeof title === 'string' ? title : undefined}
         className={cn(
           'absolute right-0 top-0 h-full w-full max-w-lg',
-          'flex flex-col transition-transform duration-300 ease-out border-l border-glass-border bg-bg-card shadow-2xl',
-          open ? 'translate-x-0' : 'translate-x-full',
+          'flex flex-col transition-[transform,visibility] duration-300 ease-out border-l-2 border-inv-border bg-bg-card',
+          // Closed drawers sit off-screen; hide them so their shadow can't
+          // bleed in at the right edge of the page.
+          open ? 'translate-x-0 shadow-2xl' : 'translate-x-full invisible',
         )}
       >
-        <header className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
-          <h2 className="text-xl font-semibold">{title}</h2>
+        <header className="flex items-center justify-between px-6 py-4 border-b-2 border-inv-border">
+          <h2 className="font-display text-3xl font-extrabold uppercase leading-none tracking-[0.01em]">{title}</h2>
           <button
             type="button"
             onClick={onClose}

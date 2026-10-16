@@ -71,6 +71,7 @@ const GuestFeedback = lazy(() => import('./pages/GuestFeedback'))
 const Training = lazy(() => import('./pages/Training'))
 const Catering = lazy(() => import('./pages/Catering'))
 const BuffetMapPublic         = lazy(() => import('./pages/BuffetMapPublic'))
+const AllSections             = lazy(() => import('./pages/AllSections'))
 
 export default function App() {
   return (
@@ -132,6 +133,7 @@ export default function App() {
                 <Route path="kds" element={<PermissionGuard module="kds"><KDS /></PermissionGuard>} />
                 <Route path="walkie" element={<PermissionGuard module="walkie"><Walkie /></PermissionGuard>} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="sections" element={<AllSections />} />
                 <Route path="menus" element={<PermissionGuard module="menus"><Menus /></PermissionGuard>} />
                 <Route path="menus/:id" element={<PermissionGuard module="menus"><MenuDetail /></PermissionGuard>} />
                 <Route path="suppliers" element={<PermissionGuard module="suppliers"><Suppliers /></PermissionGuard>} />
