@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus,
   ChevronLeft,
@@ -8,15 +8,13 @@ import {
   ClipboardList,
   UserCircle2,
   Utensils,
-  LayoutGrid,
-  ChevronRight as ArrowRight,
   X,
   Check,
   BookTemplate,
   UtensilsCrossed,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Page, PageHeader, PillButton, ActionMenu, Panel, EmptyState, Notice, Chip, ChipRow } from '../components/ui/page'
+import { Page, PageHeader, PillButton, ActionMenu, EmptyState, Notice, Chip, ChipRow } from '../components/ui/page'
 import { Drawer } from '../components/ui/Drawer'
 import {
   PrepTaskForm,
@@ -31,8 +29,10 @@ import { useInventory } from '../hooks/useInventory'
 import { useTeam } from '../hooks/useTeam'
 import { usePrepTaskSteps } from '../hooks/usePrepTaskSteps'
 import { createNotification } from '../lib/createNotification'
+import { play } from '../lib/sounds'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
+import { FlipNumber } from '../components/station/Station'
 import type { PrepTask, PrepTaskStatus, PrepTaskStep, Recipe, Workstation } from '../types/database.types'
 import type { PrepTemplateWithItems } from '../hooks/usePrepTemplates'
 
@@ -56,17 +56,14 @@ const STATUS_LABEL_KEY: Record<PrepTaskStatus, string> = {
   done: 'prep.kanban.done',
 }
 
-const STATUS_DOT: Record<PrepTaskStatus, string> = {
-  pending: 'bg-white/30',
-  in_progress: 'bg-amber-500',
-  done: 'bg-emerald-500',
-}
-
 const STATUS_NEXT_KEY: Record<PrepTaskStatus, string> = {
   pending: 'prep.kanban.moveInProgress',
   in_progress: 'prep.kanban.moveDone',
   done: 'prep.kanban.movePending',
 }
+
+/** Each workstation gets a pattern so stations read apart by shape, not only colour. */
+const PATTERNS = ['pat-hot', 'pat-cold', 'pat-grill', 'pat-pastry', 'pat-wash']
 
 // ── Kanban Column ──────────────────────────────────────────────────────────────
 
@@ -76,6 +73,7 @@ interface KanbanColumnProps {
   recipesById: Map<string, Recipe>
   membersById: Map<string, { full_name: string | null }>
   stepsByTaskId: Map<string, PrepTaskStep[]>
+  patternFor: (task: PrepTask) => string | null
   onCycle: (task: PrepTask) => void
   onEdit: (task: PrepTask) => void
   onDelete: (task: PrepTask) => void
@@ -83,155 +81,127 @@ interface KanbanColumnProps {
   t: (key: string, opts?: Record<string, unknown>) => string
 }
 
-function KanbanColumn({ status, tasks, recipesById, membersById, stepsByTaskId, onCycle, onEdit, onDelete, onToggleStep, t }: KanbanColumnProps) {
+function KanbanColumn({ status, tasks, recipesById, membersById, stepsByTaskId, patternFor, onCycle, onEdit, onDelete, onToggleStep, t }: KanbanColumnProps) {
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-3xl bg-white/[0.04] p-3">
-      {/* Column header */}
-      <div className="flex items-center gap-2 px-1 pt-1">
-        <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', STATUS_DOT[status])} />
-        <span className="font-medium">{t(STATUS_LABEL_KEY[status])}</span>
-        <span className="ml-auto rounded-full bg-bg-card px-2.5 py-0.5 text-xs font-medium tabular-nums shadow-card">{tasks.length}</span>
+    <section className="flex min-w-0 flex-col gap-2.5">
+      <div className={cn('mb-1 flex items-baseline gap-2.5 border-b-4 pb-2.5', status === 'in_progress' ? 'border-[#FFD60A]' : status === 'done' ? 'border-emerald-500' : 'border-white')}>
+        <h2 className={cn('font-display text-[30px] font-extrabold uppercase leading-none', status === 'done' && 'text-white/60')}>{t(STATUS_LABEL_KEY[status])}</h2>
+        <span className="font-mono text-[24px] font-bold tabular-nums text-white/60">{tasks.length}</span>
       </div>
 
-      {/* Cards */}
       {tasks.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
+        <div className="sb-label rounded border-2 border-dashed border-white/25 px-4 py-8 text-center text-white/60">
           {t('prep.kanban.empty')}
         </div>
       ) : (
         tasks.map((task) => {
           const recipe = task.recipe_id ? recipesById.get(task.recipe_id) : undefined
           const assignee = task.assignee_id ? membersById.get(task.assignee_id) : undefined
+          const steps = stepsByTaskId.get(task.id) ?? []
+          const stepsDone = steps.filter((s) => s.done).length
+          const pattern = patternFor(task)
+          const isDone = status === 'done'
           return (
-            <div key={task.id}
-              className={cn(
-                'group space-y-2.5 rounded-2xl bg-bg-card p-4 shadow-card transition',
-                status === 'done' ? 'opacity-60' : '',
-              )}
-            >
-              {/* Title row */}
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className={cn('font-medium', status === 'done' && 'line-through text-white/50')}>
+            <div key={task.id} className={cn('group relative flex flex-col gap-2.5 overflow-hidden rounded p-4 pl-6', isDone ? 'shadow-card' : 'bg-bg-card')}>
+              {pattern && <span className={cn('absolute inset-y-0 left-0 w-2.5 text-white', pattern)} aria-hidden="true" />}
+
+              <div className="flex items-start gap-3.5">
+                <button
+                  type="button"
+                  onClick={() => onCycle(task)}
+                  aria-label={t(STATUS_NEXT_KEY[status])}
+                  className={cn(
+                    'mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border-[3px] transition active:scale-95',
+                    isDone ? 'border-signal bg-signal text-ink'
+                      : status === 'in_progress' ? 'border-[#FFD60A] text-[#FFD60A]'
+                      : 'border-white text-transparent hover:text-white/40',
+                  )}
+                >
+                  <Check className="h-6 w-6" strokeWidth={3.2} />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className={cn('font-display text-[23px] font-bold leading-tight', isDone && 'text-white/60 line-through')}>
                     {task.title}
-                    {task.quantity != null && (
-                      <span className="ml-1.5 text-white/40 font-normal">×{task.quantity}</span>
-                    )}
+                    {task.quantity != null && <span className="ml-2 font-mono text-[0.75em] font-medium text-white/60">×{task.quantity}</span>}
                   </p>
-                  {task.description && (
-                    <p className="text-xs text-white/50 mt-0.5 line-clamp-2">{task.description}</p>
+                  {task.description && !isDone && (
+                    <p className="mt-1 line-clamp-2 text-[15px] text-white/60">{task.description}</p>
                   )}
                 </div>
-                {/* Actions — visible on hover */}
-                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition shrink-0">
+                <div className="flex shrink-0 gap-0.5 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100">
                   <button type="button" onClick={() => onEdit(task)} aria-label={t('common.edit')}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 hover:text-white hover:bg-white/[0.06]">
-                    <Pencil className="h-3.5 w-3.5" />
+                    className="flex h-10 w-10 items-center justify-center rounded text-white/60 hover:bg-white/[0.08] hover:text-white">
+                    <Pencil className="h-4 w-4" />
                   </button>
                   <button type="button" onClick={() => onDelete(task)} aria-label={t('common.delete')}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 hover:text-red-500 hover:bg-red-500/10">
-                    <Trash2 className="h-3.5 w-3.5" />
+                    className="flex h-10 w-10 items-center justify-center rounded text-white/60 hover:bg-red-500/15 hover:text-red-500">
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Meta */}
-              <div className="flex flex-wrap gap-1.5 text-xs text-white/60">
-                {recipe && (
-                  <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5">
-                    <Utensils className="h-3 w-3" />{recipe.title}
-                  </span>
-                )}
-                {assignee && (
-                  <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5">
-                    <UserCircle2 className="h-3 w-3" />{assignee.full_name ?? '—'}
-                  </span>
-                )}
-                {(() => {
-                  const steps = stepsByTaskId.get(task.id)
-                  if (!steps || steps.length === 0) return null
-                  const doneCount = steps.filter((s) => s.done).length
-                  return (
-                    <span className={cn(
-                      'flex items-center gap-1 font-medium',
-                      doneCount === steps.length ? 'text-emerald-400' : 'text-white/50'
-                    )}>
-                      <Check className="h-3 w-3" />
-                      {doneCount}/{steps.length}
+              {(recipe || assignee || steps.length > 0) && (
+                <div className="sb-label flex flex-wrap gap-x-4 gap-y-1 text-white/60">
+                  {recipe && <span className="flex items-center gap-1.5"><Utensils className="h-4 w-4" />{recipe.title}</span>}
+                  {assignee && <span className="flex items-center gap-1.5"><UserCircle2 className="h-4 w-4" />{assignee.full_name ?? '—'}</span>}
+                  {steps.length > 0 && (
+                    <span className={cn('flex items-center gap-1.5 font-mono normal-case tracking-normal', stepsDone === steps.length && 'text-emerald-500')}>
+                      <Check className="h-4 w-4" />{stepsDone}/{steps.length}
                     </span>
-                  )
-                })()}
-              </div>
+                  )}
+                </div>
+              )}
 
-              {/* Steps checklist */}
-              {(() => {
-                const steps = stepsByTaskId.get(task.id)
-                if (!steps || steps.length === 0) return null
-                return (
-                  <ul className="space-y-1">
-                    {steps.map((step) => (
-                      <li key={step.id} className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onToggleStep(step.id, !step.done)}
-                          aria-label={step.title}
-                          className={cn(
-                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition',
-                            step.done
-                              ? 'bg-emerald-600 border-emerald-600 text-white-fixed'
-                              : 'border-white/30 hover:border-white/60'
-                          )}
-                        >
-                          {step.done && <Check className="h-2.5 w-2.5" />}
-                        </button>
-                        <span className={cn('text-xs', step.done ? 'line-through text-white/30' : 'text-white/70')}>
-                          {step.title}
+              {steps.length > 0 && !isDone && (
+                <ul className="flex flex-col gap-1.5">
+                  {steps.map((step) => (
+                    <li key={step.id}>
+                      <button
+                        type="button"
+                        onClick={() => { play('check'); onToggleStep(step.id, !step.done) }}
+                        aria-pressed={step.done}
+                        className="flex min-h-[36px] w-full items-center gap-2.5 text-left"
+                      >
+                        <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border-2',
+                          step.done ? 'border-emerald-500 bg-emerald-500 text-ink' : 'border-white/60')}>
+                          {step.done && <Check className="h-4 w-4" strokeWidth={3} />}
                         </span>
-                      </li>
-                    ))}
-                  </ul>
-                )
-              })()}
+                        <span className={cn('text-[15px]', step.done ? 'text-white/60 line-through' : 'text-white')}>{step.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-              {/* Cycle button */}
-              {status !== 'done' ? (
+              {isDone && (
                 <button type="button" onClick={() => onCycle(task)}
-                  className={cn(
-                    'w-full flex items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-sm font-medium transition',
-                    status === 'pending'
-                      ? 'bg-brand-orange text-on-accent hover:bg-brand-orange/85'
-                      : 'bg-lime text-ink hover:brightness-95',
-                  )}>
-                  <ArrowRight className="h-3 w-3" />
-                  {t(STATUS_NEXT_KEY[status])}
-                </button>
-              ) : (
-                <button type="button" onClick={() => onCycle(task)}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-full bg-white/[0.05] text-white/60 hover:text-white px-3 py-2 text-xs font-medium transition">
-                  <X className="h-3 w-3" />
-                  {t(STATUS_NEXT_KEY[status])}
+                  className="sb-label flex items-center gap-1.5 self-start text-white/60 hover:text-white">
+                  <X className="h-4 w-4" />{t(STATUS_NEXT_KEY[status])}
                 </button>
               )}
             </div>
           )
         })
       )}
-    </div>
+    </section>
   )
 }
 
-// ── Workstation Sidebar ────────────────────────────────────────────────────────
+// ── Workstation list ───────────────────────────────────────────────────────────
 
 interface WorkstationSidebarProps {
   workstations: Workstation[]
   selected: string | null
+  leftFor: (id: string | null) => number
   onSelect: (id: string | null) => void
   onCreate: (name: string) => Promise<unknown>
   onDelete: (w: Workstation) => Promise<void>
   t: (key: string, opts?: Record<string, unknown>) => string
 }
 
-function WorkstationSidebar({ workstations, selected, onSelect, onCreate, onDelete, t }: WorkstationSidebarProps) {
+const stationBtn = 'flex min-h-[56px] flex-1 items-center gap-3 rounded border-2 px-3 text-left font-display text-[19px] font-extrabold uppercase tracking-[0.03em] transition min-w-0'
+
+function WorkstationSidebar({ workstations, selected, leftFor, onSelect, onCreate, onDelete, t }: WorkstationSidebarProps) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -248,49 +218,34 @@ function WorkstationSidebar({ workstations, selected, onSelect, onCreate, onDele
     }
   }
 
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="px-3 pb-1 pt-2 text-xs font-medium text-white/50">
-        {t('prep.workstations.title')}
-      </p>
+  const btn = (active: boolean) => cn(stationBtn, active ? 'border-white bg-white text-ink' : 'border-inv-border text-white hover:border-white')
 
-      {/* All tasks option */}
-      <button type="button"
-        onClick={() => onSelect(null)}
-        className={cn(
-          'flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition text-left',
-          selected === null
-            ? 'bg-brand-orange text-on-accent'
-            : 'text-white/70 hover:bg-white/[0.05] hover:text-white',
-        )}
-      >
-        <LayoutGrid className="h-4 w-4 shrink-0" />
-        {t('prep.workstations.all')}
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="sb-label text-white/60">{t('prep.workstations.title')}</p>
+
+      <button type="button" onClick={() => onSelect(null)} aria-pressed={selected === null} className={btn(selected === null)}>
+        <span className="pat-all h-8 w-3 shrink-0" aria-hidden="true" />
+        <span className="flex-1 truncate">{t('prep.workstations.all')}</span>
+        <span className="font-mono text-[18px]">{leftFor(null)}</span>
       </button>
 
-      {workstations.map((w) => (
-        <div key={w.id} className="group flex items-center gap-1">
-          <button type="button"
-            onClick={() => onSelect(w.id)}
-            className={cn(
-              'flex-1 flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition text-left min-w-0',
-              selected === w.id
-                ? 'bg-brand-orange text-on-accent'
-                : 'text-white/70 hover:bg-white/[0.05] hover:text-white',
-            )}
-          >
-            <span className="truncate">{w.name}</span>
+      {workstations.map((w, i) => (
+        <div key={w.id} className="group flex items-center gap-1.5">
+          <button type="button" onClick={() => onSelect(w.id)} aria-pressed={selected === w.id} className={btn(selected === w.id)}>
+            <span className={cn('h-8 w-3 shrink-0', PATTERNS[i % PATTERNS.length])} aria-hidden="true" />
+            <span className="flex-1 truncate">{w.name}</span>
+            <span className="font-mono text-[18px]">{leftFor(w.id)}</span>
           </button>
-          <button type="button"
-            onClick={() => onDelete(w)}
-            className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition shrink-0">
-            <Trash2 className="h-3.5 w-3.5" />
+          <button type="button" onClick={() => onDelete(w)} aria-label={t('common.delete')}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-white/60 opacity-0 transition hover:bg-red-500/15 hover:text-red-500 group-hover:opacity-100 focus:opacity-100">
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       ))}
 
       {adding ? (
-        <div className="flex items-center gap-1 mt-1">
+        <div className="mt-1 flex items-center gap-1.5">
           <input
             autoFocus
             value={newName}
@@ -300,22 +255,21 @@ function WorkstationSidebar({ workstations, selected, onSelect, onCreate, onDele
               if (e.key === 'Escape') { setAdding(false); setNewName('') }
             }}
             placeholder={t('prep.workstations.namePlaceholder')}
-            className="flex-1 min-w-0 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-brand-orange"
+            className="h-12 min-w-0 flex-1 rounded border-2 border-inv-border bg-bg-input px-3 text-base text-white outline-none placeholder:text-white/50 focus:border-signal"
           />
-          <button type="button" onClick={() => void handleAdd()} disabled={saving}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange text-on-accent hover:bg-brand-orange/80 transition shrink-0">
-            <Check className="h-4 w-4" />
+          <button type="button" onClick={() => void handleAdd()} disabled={saving} aria-label={t('common.save')}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-white text-ink">
+            <Check className="h-5 w-5" strokeWidth={3} />
           </button>
-          <button type="button" onClick={() => { setAdding(false); setNewName('') }}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 text-white/50 hover:text-white transition shrink-0">
-            <X className="h-4 w-4" />
+          <button type="button" onClick={() => { setAdding(false); setNewName('') }} aria-label={t('common.cancel')}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded border-2 border-inv-border text-white/60 hover:text-white">
+            <X className="h-5 w-5" />
           </button>
         </div>
       ) : (
         <button type="button" onClick={() => setAdding(true)}
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white/40 hover:text-white/70 hover:bg-white/5 transition mt-1">
-          <Plus className="h-3.5 w-3.5" />
-          {t('prep.workstations.add')}
+          className="sb-label mt-1 flex items-center gap-2 px-1 py-2 text-white/60 hover:text-white">
+          <Plus className="h-4 w-4" />{t('prep.workstations.add')}
         </button>
       )}
     </div>
@@ -334,7 +288,7 @@ export default function Prep() {
   const { items: inventory } = useInventory()
   const { members } = useTeam()
 
-  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
+  const taskIds = useMemo(() => tasks.map((x) => x.id), [tasks])
   const { stepsByTaskId, createSteps, replaceSteps, toggle: toggleStep } = usePrepTaskSteps(taskIds)
 
   const [selectedWorkstation, setSelectedWorkstation] = useState<string | null>(null)
@@ -349,20 +303,21 @@ export default function Prep() {
     const [y, m, d] = iso.split('-').map(Number)
     const dt = new Date(y, m - 1, d)
     const today = todayIso()
-    const tomorrow = shiftDate(today, 1)
-    const yesterday = shiftDate(today, -1)
     if (iso === today) return t('common.today')
-    if (iso === tomorrow) return t('common.tomorrow')
-    if (iso === yesterday) return t('common.yesterday')
+    if (iso === shiftDate(today, 1)) return t('common.tomorrow')
+    if (iso === shiftDate(today, -1)) return t('common.yesterday')
     return dt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
   }
 
   const recipesById = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes])
   const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members])
+  const patternById = useMemo(() => new Map(workstations.map((w, i) => [w.id, PATTERNS[i % PATTERNS.length]])), [workstations])
+  const patternFor = (task: PrepTask) => (task.workstation_id ? patternById.get(task.workstation_id) ?? null : null)
+  const leftFor = (id: string | null) => tasks.filter((x) => x.status !== 'done' && (id === null || x.workstation_id === id)).length
 
   const filteredTasks = useMemo(() => {
     if (selectedWorkstation === null) return tasks
-    return tasks.filter((t) => t.workstation_id === selectedWorkstation)
+    return tasks.filter((x) => x.workstation_id === selectedWorkstation)
   }, [tasks, selectedWorkstation])
 
   const byStatus = useMemo(() => {
@@ -376,6 +331,19 @@ export default function Prep() {
     }
     return { pending, in_progress, done }
   }, [filteredTasks])
+
+  // The pass bell when the last open task of the day is done.
+  const allDone = tasks.length > 0 && tasks.every((x) => x.status === 'done')
+  const wasAllDone = useRef(allDone)
+  useEffect(() => {
+    if (allDone && !wasAllDone.current) play('ding')
+    wasAllDone.current = allDone
+  }, [allDone])
+
+  function cycle(task: PrepTask) {
+    if (task.status !== 'done') play('check')
+    void cycleStatus(task)
+  }
 
   function openCreate() {
     setEditing(null)
@@ -478,7 +446,7 @@ export default function Prep() {
   }
 
   const activeTaskIds = useMemo(
-    () => filteredTasks.filter((t) => t.status !== 'done').map((t) => t.id),
+    () => filteredTasks.filter((x) => x.status !== 'done').map((x) => x.id),
     [filteredTasks],
   )
 
@@ -502,23 +470,24 @@ export default function Prep() {
   return (
     <Page>
       <PageHeader
+        no="05"
+        eyebrow={selectedWorkstationName ?? t('prep.subtitle')}
         title={t('prep.title')}
-        subtitle={selectedWorkstationName ?? t('prep.subtitle')}
         actions={
           <>
-            <div className="flex items-center gap-1 rounded-full bg-bg-card p-1 shadow-card">
+            <div className="flex items-center gap-1 rounded shadow-card">
               <button type="button" onClick={() => setDate((d) => shiftDate(d, -1))} aria-label={t('prep.prevDay')}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white">
-                <ChevronLeft className="h-4 w-4" />
+                className="flex h-12 w-12 items-center justify-center hover:bg-white/[0.08]">
+                <ChevronLeft className="h-5 w-5" strokeWidth={2.4} />
               </button>
-              <label className="relative flex min-w-[110px] cursor-pointer flex-col items-center px-1">
-                <span className="text-sm font-medium">{formatLabel(date)}</span>
+              <label className="relative flex min-w-[120px] cursor-pointer flex-col items-center px-1">
+                <span className="font-display text-[18px] font-bold uppercase">{formatLabel(date)}</span>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value || todayIso())} aria-label={t('prep.title')}
                   className="absolute inset-0 cursor-pointer opacity-0" />
               </label>
               <button type="button" onClick={() => setDate((d) => shiftDate(d, 1))} aria-label={t('prep.nextDay')}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white">
-                <ChevronRight className="h-4 w-4" />
+                className="flex h-12 w-12 items-center justify-center hover:bg-white/[0.08]">
+                <ChevronRight className="h-5 w-5" strokeWidth={2.4} />
               </button>
             </div>
             <ActionMenu
@@ -536,12 +505,26 @@ export default function Prep() {
 
       {error && <Notice>{error}</Notice>}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-        {/* ── Workstations ── */}
-        <aside className="hidden lg:block rounded-3xl bg-bg-card p-2 shadow-card lg:sticky lg:top-24">
+      <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        {/* ── Progress + workstations ── */}
+        <aside className="hidden flex-col gap-5 lg:sticky lg:top-24 lg:flex">
+          {!loading && filteredTasks.length > 0 && (
+            <div className="relative overflow-hidden">
+              <span aria-hidden="true" className="sb-ghost -right-3 top-2 text-[200px]">{progress}</span>
+              <p className="sb-label relative text-white/60">{t('prep.v2.progress')}</p>
+              <p className="relative font-mono text-[92px] font-bold leading-[0.85] tracking-[-0.04em] tabular-nums">
+                <FlipNumber value={progress} /><span className="text-[44px]">%</span>
+              </p>
+              <p className="relative mt-2 font-display text-[21px] font-bold">{t('station.readyOf', { done: doneCount, total: filteredTasks.length })}</p>
+              <div className="relative mt-3 flex gap-[3px]" aria-hidden="true">
+                {filteredTasks.map((x, i) => <i key={x.id} className={cn('h-3 flex-1', i < doneCount ? 'bg-signal' : 'bg-white/15')} />)}
+              </div>
+            </div>
+          )}
           <WorkstationSidebar
             workstations={workstations}
             selected={selectedWorkstation}
+            leftFor={leftFor}
             onSelect={setSelectedWorkstation}
             onCreate={createWorkstation}
             onDelete={handleDeleteWorkstation}
@@ -549,39 +532,34 @@ export default function Prep() {
           />
         </aside>
 
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* Mobile workstation picker */}
+        <div className="flex min-w-0 flex-col gap-5">
+          {/* Mobile: progress + workstation picker */}
+          {!loading && filteredTasks.length > 0 && (
+            <div className="flex items-center gap-4 lg:hidden">
+              <span className="font-mono text-[56px] font-bold leading-none tracking-[-0.04em]">{progress}%</span>
+              <div className="flex flex-1 flex-col gap-2">
+                <span className="font-display text-[19px] font-bold">{t('station.readyOf', { done: doneCount, total: filteredTasks.length })}</span>
+                <div className="flex gap-[3px]" aria-hidden="true">
+                  {filteredTasks.map((x, i) => <i key={x.id} className={cn('h-2.5 flex-1', i < doneCount ? 'bg-signal' : 'bg-white/15')} />)}
+                </div>
+              </div>
+            </div>
+          )}
           <ChipRow className="lg:hidden">
-            <Chip active={selectedWorkstation === null} onClick={() => setSelectedWorkstation(null)}>{t('prep.workstations.all')}</Chip>
+            <Chip active={selectedWorkstation === null} onClick={() => setSelectedWorkstation(null)} count={leftFor(null)}>{t('prep.workstations.all')}</Chip>
             {workstations.map((w) => (
-              <Chip key={w.id} active={selectedWorkstation === w.id} onClick={() => setSelectedWorkstation(w.id)}>{w.name}</Chip>
+              <Chip key={w.id} active={selectedWorkstation === w.id} onClick={() => setSelectedWorkstation(w.id)} count={leftFor(w.id)}>{w.name}</Chip>
             ))}
           </ChipRow>
 
-          {!loading && filteredTasks.length > 0 && (
-            <section className="flex flex-wrap items-center gap-6 rounded-3xl bg-ink p-5 sm:p-6 text-white-fixed">
-              <div>
-                <p className="text-sm text-[#C9CEC8]">{t('prep.v2.progress')}</p>
-                <p className="text-5xl font-medium tracking-[-0.04em] tabular-nums text-lime">{progress}%</p>
-              </div>
-              <div className="flex min-w-[200px] flex-1 flex-col gap-3">
-                <div className="h-3 overflow-hidden rounded-full bg-white-fixed/10">
-                  <div className="h-3 rounded-full bg-lime transition-all duration-700" style={{ width: `${progress}%` }} />
-                </div>
-                <div className="flex flex-wrap gap-4 text-sm text-[#C9CEC8]">
-                  {(['pending', 'in_progress', 'done'] as PrepTaskStatus[]).map((st) => (
-                    <span key={st} className="flex items-center gap-2">
-                      <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[st])} />
-                      {t(STATUS_LABEL_KEY[st])} <span className="font-medium tabular-nums text-white-fixed">{byStatus[st].length}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </section>
+          {allDone && (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded bg-emerald-500 px-6 py-6 text-ink">
+              <p className="font-display text-5xl font-extrabold uppercase leading-[0.9]">{t('station.readyForService')}</p>
+            </div>
           )}
 
           {loading ? (
-            <Panel><p className="text-white/55">{t('common.loading')}</p></Panel>
+            <p className="sb-label py-10 text-center text-white/60">{t('common.loading')}</p>
           ) : filteredTasks.length === 0 ? (
             <EmptyState
               icon={ClipboardList}
@@ -590,7 +568,7 @@ export default function Prep() {
               action={<PillButton icon={Plus} variant="primary" onClick={openCreate}>{t('prep.empty.cta')}</PillButton>}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               {(['pending', 'in_progress', 'done'] as PrepTaskStatus[]).map((status) => (
                 <KanbanColumn
                   key={status}
@@ -599,7 +577,8 @@ export default function Prep() {
                   recipesById={recipesById as Map<string, Recipe>}
                   membersById={membersById}
                   stepsByTaskId={stepsByTaskId}
-                  onCycle={cycleStatus}
+                  patternFor={patternFor}
+                  onCycle={cycle}
                   onEdit={openEdit}
                   onDelete={onDelete}
                   onToggleStep={toggleStep}

@@ -1,6 +1,7 @@
-// Building blocks of the "Bento & Lime" page design: one header per page, a
-// row of KPI tiles, soft panels, pill filters and a single overflow menu
-// instead of rows of secondary buttons.
+// Building blocks of the "Station Board" page design: one header per page, a
+// row of KPI tiles, ruled panels, square filters and a single overflow menu
+// instead of rows of secondary buttons. Labels are condensed caps, numbers
+// are monospaced so live values don't jitter.
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, Search, X, type LucideIcon } from 'lucide-react'
@@ -9,26 +10,33 @@ import { cn } from '../../lib/cn'
 // ── Page header ──────────────────────────────────────────────────────────────
 
 export function PageHeader({
-  eyebrow, title, subtitle, actions,
+  eyebrow, title, subtitle, actions, no,
 }: {
   eyebrow?: ReactNode
   title: ReactNode
   subtitle?: ReactNode
   actions?: ReactNode
+  /** Optional section number shown before the eyebrow, e.g. "01". */
+  no?: string
 }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4 pt-1">
       <div className="min-w-0">
-        {eyebrow && <p className="text-sm text-white/55">{eyebrow}</p>}
-        <h1 className="mt-0.5 text-3xl sm:text-4xl font-medium tracking-[-0.03em]">{title}</h1>
-        {subtitle && <p className="mt-1.5 text-sm text-white/55 max-w-2xl">{subtitle}</p>}
+        {(eyebrow || no) && (
+          <p className="flex items-baseline gap-3">
+            {no && <span className="font-mono text-[15px] font-bold text-signal">{no}</span>}
+            {eyebrow && <span className="sb-label text-white/60">{eyebrow}</span>}
+          </p>
+        )}
+        <h1 className="mt-1.5 font-display text-5xl sm:text-6xl font-extrabold uppercase leading-[0.9] tracking-[0.005em]">{title}</h1>
+        {subtitle && <p className="mt-2 text-base text-white/60 max-w-2xl">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>
   )
 }
 
-// ── Buttons (pill) ───────────────────────────────────────────────────────────
+// ── Buttons ──────────────────────────────────────────────────────────────────
 
 type PillButtonProps = {
   children: ReactNode
@@ -43,24 +51,22 @@ type PillButtonProps = {
 
 const PILL: Record<NonNullable<PillButtonProps['variant']>, string> = {
   primary:   'bg-brand-orange text-on-accent hover:bg-brand-orange/85',
-  secondary: 'bg-bg-card text-white shadow-card hover:bg-white/[0.04]',
-  lime:      'bg-lime text-ink hover:brightness-95',
-  ai:        'bg-violet-500/10 text-violet-500 hover:bg-violet-500/15',
+  secondary: 'bg-bg-card text-white shadow-card hover:bg-white/[0.05]',
+  lime:      'bg-signal text-ink hover:brightness-95',
+  ai:        'bg-bg-card text-white shadow-card hover:bg-white/[0.05]',
   danger:    'bg-red-600 text-white-fixed hover:bg-red-500',
 }
 
+const BTN = 'inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded px-5 font-display text-[17px] font-bold uppercase tracking-[0.04em] transition'
+
 export function PillButton({ children, icon: Icon, onClick, to, variant = 'secondary', disabled, className, type = 'button' }: PillButtonProps) {
-  const cls = cn(
-    'inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition',
-    'disabled:opacity-40 disabled:pointer-events-none',
-    PILL[variant], className,
-  )
-  const inner = <>{Icon && <Icon className="h-4 w-4" strokeWidth={1.9} />}{children}</>
+  const cls = cn(BTN, 'disabled:opacity-40 disabled:pointer-events-none', PILL[variant], className)
+  const inner = <>{Icon && <Icon className="h-5 w-5" strokeWidth={2.2} />}{children}</>
   if (to) return <Link to={to} className={cls}>{inner}</Link>
   return <button type={type} onClick={onClick} disabled={disabled} className={cls}>{inner}</button>
 }
 
-// ── Overflow menu: groups secondary actions behind one pill ─────────────────
+// ── Overflow menu: groups secondary actions behind one button ───────────────
 
 export interface MenuAction {
   label: ReactNode
@@ -96,14 +102,14 @@ export function ActionMenu({ label, icon, actions, variant = 'secondary' }: {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={cn('inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-medium transition', PILL[variant])}
+        className={cn(BTN, PILL[variant])}
       >
-        {Icon && <Icon className="h-4 w-4" strokeWidth={1.9} />}
+        {Icon && <Icon className="h-5 w-5" strokeWidth={2.2} />}
         {label}
         <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-40 mt-2 w-72 rounded-3xl bg-bg-card p-2 shadow-[0_20px_60px_rgba(15,18,16,0.18)]">
+        <div role="menu" className="absolute right-0 top-full z-40 mt-2 w-72 rounded bg-bg-card p-1.5 shadow-card">
           {visible.map((a, i) => {
             const AIcon = a.icon
             return (
@@ -112,12 +118,12 @@ export function ActionMenu({ label, icon, actions, variant = 'secondary' }: {
                 type="button"
                 role="menuitem"
                 onClick={() => { setOpen(false); a.onClick() }}
-                className="flex w-full items-start gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-white/[0.05]"
+                className="flex w-full items-start gap-3 rounded px-3 py-2.5 text-left hover:bg-signal hover:text-ink"
               >
-                {AIcon && <AIcon className="mt-0.5 h-4 w-4 shrink-0 text-white/60" />}
+                {AIcon && <AIcon className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2.2} />}
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium">{a.label}</span>
-                  {a.hint && <span className="block text-xs text-white/50">{a.hint}</span>}
+                  <span className="block font-display text-lg font-bold leading-tight">{a.label}</span>
+                  {a.hint && <span className="block text-[13px] opacity-75">{a.hint}</span>}
                 </span>
               </button>
             )
@@ -143,21 +149,23 @@ export function StatTile({
   className?: string
 }) {
   const shell = cn(
-    'rounded-3xl p-5 flex flex-col gap-2 text-left transition-transform',
-    (to || onClick) && 'hover:-translate-y-0.5',
-    tone === 'ink' ? 'bg-ink text-white-fixed' : tone === 'lime' ? 'bg-lime text-ink' : 'bg-bg-card shadow-card',
+    'rounded p-5 flex flex-col gap-2 text-left transition-colors min-h-[148px]',
+    tone === 'ink' ? 'bg-ink text-white-fixed'
+      : tone === 'lime' ? 'bg-signal text-ink'
+      : 'bg-bg-card shadow-card',
+    (to || onClick) && (tone === 'ink' || tone === 'lime' ? 'hover:brightness-110' : 'hover:bg-white/[0.04]'),
     className,
   )
-  const muted = tone === 'ink' ? 'text-[#C9CEC8]' : tone === 'lime' ? 'text-ink/70' : 'text-white/55'
+  const muted = tone === 'ink' ? 'text-white-fixed/70' : tone === 'lime' ? 'text-ink/80' : 'text-white/60'
   const valueTone =
-    tone === 'ink' ? 'text-lime' : tone === 'warn' ? 'text-amber-500' : tone === 'bad' ? 'text-red-500' : tone === 'good' ? 'text-emerald-500' : ''
+    tone === 'ink' ? 'text-signal' : tone === 'warn' ? 'text-amber-500' : tone === 'bad' ? 'text-red-500' : tone === 'good' ? 'text-emerald-500' : ''
   const inner = (
     <>
-      <span className={cn('flex items-center justify-between gap-2 text-sm', muted)}>
-        {label}{Icon && <Icon className="h-4 w-4" />}
+      <span className={cn('flex items-center justify-between gap-2 sb-label', muted)}>
+        {label}{Icon && <Icon className="h-5 w-5" strokeWidth={2.2} />}
       </span>
-      <span className={cn('text-3xl sm:text-4xl font-medium tracking-[-0.03em] tabular-nums leading-none', valueTone)}>{value}</span>
-      {hint && <span className={cn('text-xs', muted)}>{hint}</span>}
+      <span className={cn('font-mono text-4xl sm:text-5xl font-bold tabular-nums leading-none tracking-[-0.04em]', valueTone)}>{value}</span>
+      {hint && <span className={cn('mt-auto text-[13px] font-medium', muted)}>{hint}</span>}
     </>
   )
   if (to) return <Link to={to} className={shell}>{inner}</Link>
@@ -166,7 +174,7 @@ export function StatTile({
 }
 
 export function StatRow({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={cn('grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4', className)}>{children}</section>
+  return <section className={cn('grid grid-cols-2 lg:grid-cols-4 gap-3', className)}>{children}</section>
 }
 
 // ── Panel ────────────────────────────────────────────────────────────────────
@@ -179,10 +187,10 @@ export function Panel({ title, actions, children, className, padded = true }: {
   padded?: boolean
 }) {
   return (
-    <section className={cn('rounded-3xl bg-bg-card shadow-card flex flex-col', padded && 'p-5 sm:p-6 gap-4', className)}>
+    <section className={cn('rounded bg-bg-card shadow-card flex flex-col', padded && 'p-5 sm:p-6 gap-4', className)}>
       {(title || actions) && (
         <div className={cn('flex flex-wrap items-center justify-between gap-3', !padded && 'px-5 sm:px-6 pt-5')}>
-          {title && <h2 className="text-lg font-medium">{title}</h2>}
+          {title && <h2 className="font-display text-2xl font-extrabold uppercase leading-none tracking-[0.01em]">{title}</h2>}
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
@@ -206,14 +214,14 @@ export function Chip({ active, onClick, children, count, tone }: {
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition',
+        'inline-flex h-11 shrink-0 items-center gap-2 rounded px-4 font-display text-[16px] font-bold uppercase tracking-[0.03em] transition',
         active
           ? tone === 'good' ? 'bg-emerald-600 text-white-fixed' : 'bg-brand-orange text-on-accent'
-          : 'bg-bg-card text-white/70 shadow-card hover:text-white',
+          : 'bg-bg-card text-white shadow-card hover:bg-white/[0.05]',
       )}
     >
       {children}
-      {count != null && <span className={cn('tabular-nums', active ? 'opacity-70' : 'text-white/40')}>{count}</span>}
+      {count != null && <span className={cn('font-mono text-[14px] tabular-nums', active ? 'opacity-75' : 'text-white/60')}>{count}</span>}
     </button>
   )
 }
@@ -228,7 +236,7 @@ export function Segmented<T extends string>({ value, onChange, options }: {
   options: { value: T; label: ReactNode; icon?: LucideIcon }[]
 }) {
   return (
-    <div className="inline-flex shrink-0 rounded-full bg-white/[0.06] p-1">
+    <div className="inline-flex shrink-0 overflow-hidden rounded shadow-card">
       {options.map((o) => {
         const Icon = o.icon
         return (
@@ -238,11 +246,11 @@ export function Segmented<T extends string>({ value, onChange, options }: {
             aria-pressed={value === o.value}
             onClick={() => onChange(o.value)}
             className={cn(
-              'inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition',
-              value === o.value ? 'bg-bg-card text-white shadow-card' : 'text-white/60 hover:text-white',
+              'inline-flex h-11 items-center gap-2 px-4 font-display text-[16px] font-bold uppercase tracking-[0.03em] transition',
+              value === o.value ? 'bg-brand-orange text-on-accent' : 'text-white/70 hover:text-white',
             )}
           >
-            {Icon && <Icon className="h-4 w-4" />}{o.label}
+            {Icon && <Icon className="h-4 w-4" strokeWidth={2.2} />}{o.label}
           </button>
         )
       })}
@@ -257,16 +265,16 @@ export function SearchField({ value, onChange, placeholder, className }: {
   className?: string
 }) {
   return (
-    <label className={cn('flex h-11 min-w-[220px] items-center gap-2 rounded-full bg-bg-card px-4 shadow-card focus-within:ring-2 focus-within:ring-brand-orange/40', className)}>
-      <Search className="h-4 w-4 shrink-0 text-white/45" />
+    <label className={cn('flex h-12 min-w-[220px] items-center gap-3 rounded bg-bg-card px-4 shadow-card focus-within:ring-4 focus-within:ring-signal/60', className)}>
+      <Search className="h-5 w-5 shrink-0" strokeWidth={2.2} />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/40"
+        className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-white/50"
       />
       {value && (
-        <button type="button" aria-label="Clear" onClick={() => onChange('')} className="text-white/45 hover:text-white">
+        <button type="button" aria-label="Clear" onClick={() => onChange('')} className="text-white/60 hover:text-white">
           <X className="h-4 w-4" />
         </button>
       )}
@@ -283,14 +291,14 @@ export function EmptyState({ icon: Icon, title, body, action }: {
   action?: ReactNode
 }) {
   return (
-    <div className="rounded-3xl bg-bg-card shadow-card flex flex-col items-center text-center gap-3 px-6 py-14">
+    <div className="rounded bg-bg-card shadow-card flex flex-col items-center text-center gap-3 px-6 py-14">
       {Icon && (
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lime text-ink">
-          <Icon className="h-6 w-6" />
+        <span className="flex h-16 w-16 items-center justify-center rounded border-[3px] border-signal">
+          <Icon className="h-7 w-7" strokeWidth={2.2} />
         </span>
       )}
-      <h2 className="text-xl font-medium">{title}</h2>
-      {body && <p className="max-w-sm text-sm text-white/55">{body}</p>}
+      <h2 className="font-display text-3xl font-extrabold uppercase leading-none">{title}</h2>
+      {body && <p className="max-w-sm text-base text-white/60">{body}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   )
@@ -299,8 +307,10 @@ export function EmptyState({ icon: Icon, title, body, action }: {
 export function Notice({ tone = 'bad', children }: { tone?: 'bad' | 'warn' | 'info'; children: ReactNode }) {
   return (
     <div className={cn(
-      'rounded-2xl px-4 py-3 text-sm',
-      tone === 'bad' ? 'bg-red-500/10 text-red-500' : tone === 'warn' ? 'bg-amber-500/12 text-amber-500' : 'bg-sky-500/10 text-sky-500',
+      'rounded border-2 px-4 py-3 text-[15px] font-medium',
+      tone === 'bad' ? 'border-red-500 bg-red-500/10 text-red-500'
+        : tone === 'warn' ? 'border-amber-500 bg-amber-500/12 text-amber-500'
+        : 'border-sky-500 bg-sky-500/10 text-sky-500',
     )}>
       {children}
     </div>
@@ -308,5 +318,5 @@ export function Notice({ tone = 'bad', children }: { tone?: 'bad' | 'warn' | 'in
 }
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('mx-auto w-full max-w-[1360px] flex flex-col gap-6', className)}>{children}</div>
+  return <div className={cn('mx-auto w-full max-w-[1400px] flex flex-col gap-6', className)}>{children}</div>
 }

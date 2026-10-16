@@ -1,47 +1,44 @@
-import type { ReactNode } from 'react'
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChefHat, Package, Flame, Users } from 'lucide-react'
 import { useLightTheme } from '../../lib/useLightTheme'
+import { BrandMark } from './BrandMark'
 
-/** Split layout for sign-in, sign-up and onboarding: brand panel + form. */
+/** Split layout for sign-in, sign-up and onboarding: black brand panel + form. */
 export function AuthShell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   useLightTheme()
   const { t } = useTranslation()
   const features = [
-    { icon: ChefHat, label: t('auth.v2.f1') },
-    { icon: Package, label: t('auth.v2.f2') },
-    { icon: Flame, label: t('auth.v2.f3') },
-    { icon: Users, label: t('auth.v2.f4') },
+    { title: t('station.loginF1Title'), body: t('station.loginF1') },
+    { title: t('station.loginF2Title'), body: t('station.loginF2') },
+    { title: t('station.loginF3Title'), body: t('station.loginF3') },
   ]
 
   return (
-    <div className="flex min-h-screen bg-bg-surface p-3 sm:p-4">
-      <aside className="hidden w-[44%] max-w-[620px] flex-col justify-between rounded-[2rem] bg-ink p-10 text-white-fixed lg:flex">
-        <Link to="/" className="flex items-center gap-3 self-start">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-lime text-sm font-bold text-ink">CS</span>
-          <span className="text-lg font-medium">ChefSuite</span>
-        </Link>
-        <div className="flex flex-col gap-8">
-          <h1 className="text-5xl font-medium leading-[1.05] tracking-[-0.03em]">{t('auth.v2.headline')}</h1>
-          <ul className="grid grid-cols-2 gap-3">
-            {features.map(({ icon: Icon, label }) => (
-              <li key={label} className="flex flex-col gap-3 rounded-3xl bg-white-fixed/[0.06] p-4">
-                <Icon className="h-5 w-5 text-lime" />
-                <span className="text-sm leading-snug text-white-fixed/80">{label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <p className="text-xs text-white-fixed/45">{t('auth.v2.footer')}</p>
+    <div className="flex min-h-screen bg-bg-surface text-white">
+      <aside className="relative hidden w-[46%] max-w-[680px] flex-col justify-between gap-10 overflow-hidden bg-ink p-12 text-white-fixed lg:flex">
+        <span aria-hidden="true" className="pointer-events-none absolute -bottom-32 -right-8 font-display text-[520px] font-extrabold leading-none text-transparent [-webkit-text-stroke:2px_#1F1F1F]">
+          C
+        </span>
+        <Link to="/" className="relative self-start"><BrandMark size="lg" /></Link>
+        <h1 className="relative font-display text-[clamp(72px,7.5vw,112px)] font-extrabold uppercase leading-[0.85]">
+          {t('station.loginHead1')}<br />
+          <span className="text-signal">{t('station.loginHead2')}</span>
+        </h1>
+        <ul className="relative grid grid-cols-3 border-t-2 border-white-fixed">
+          {features.map((f, i) => (
+            <li key={f.title} className={i < 2 ? 'border-r-2 border-[#3A3A3A] pr-4 pt-4' : 'pt-4'} style={i > 0 ? { paddingLeft: 16 } : undefined}>
+              <span className="font-mono text-[15px] font-bold text-signal">{String(i + 1).padStart(2, '0')}</span>
+              <span className="block font-display text-[30px] font-extrabold uppercase leading-tight">{f.title}</span>
+              <span className="text-[14px] text-[#D4D4D4]">{f.body}</span>
+            </li>
+          ))}
+        </ul>
       </aside>
 
-      <main className="flex flex-1 items-center justify-center px-4 py-10">
-        <div className={wide ? 'w-full max-w-2xl' : 'w-full max-w-md'}>
-          <Link to="/" className="mb-8 flex items-center gap-3 lg:hidden">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-lime text-sm font-bold text-ink">CS</span>
-            <span className="text-lg font-medium">ChefSuite</span>
-          </Link>
+      <main className="flex flex-1 items-center justify-center px-5 py-10">
+        <div className={wide ? 'w-full max-w-2xl' : 'w-full max-w-[440px]'}>
+          <Link to="/" className="mb-8 inline-flex rounded bg-ink p-2.5 lg:hidden"><BrandMark size="sm" /></Link>
           {children}
         </div>
       </main>
@@ -49,14 +46,17 @@ export function AuthShell({ children, wide = false }: { children: ReactNode; wid
   )
 }
 
-export function AuthField({ label, ...rest }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-white/65">{label}</span>
-      <input
-        {...rest}
-        className="h-12 rounded-2xl bg-bg-card px-4 text-[15px] shadow-card outline-none placeholder:text-white/35 focus:ring-2 focus:ring-brand-orange/40"
-      />
-    </label>
-  )
-}
+export const AuthField = forwardRef<HTMLInputElement, { label: string } & InputHTMLAttributes<HTMLInputElement>>(
+  function AuthField({ label, ...rest }, ref) {
+    return (
+      <label className="flex flex-col gap-2">
+        <span className="sb-label">{label}</span>
+        <input
+          ref={ref}
+          {...rest}
+          className="h-[60px] rounded border-2 border-inv-border bg-bg-input px-4 text-[18px] outline-none placeholder:text-white/50 focus:ring-4 focus:ring-signal/60"
+        />
+      </label>
+    )
+  },
+)

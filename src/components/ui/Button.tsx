@@ -13,7 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-full font-sans font-medium ' +
+  'inline-flex items-center justify-center gap-2 rounded font-display font-bold uppercase tracking-[0.04em] ' +
   'transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 ' +
   'focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface ' +
   'disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]'
@@ -22,7 +22,7 @@ const variants: Record<ButtonVariant, string> = {
   primary:
     'bg-brand-orange text-on-accent hover:bg-brand-orange/85',
   secondary:
-    'bg-bg-card border border-white/15 text-white/80 hover:bg-white/[0.06] hover:text-white',
+    'bg-bg-card border-2 border-inv-border text-white hover:bg-white/[0.06]',
   ghost:
     'text-white/60 hover:text-white hover:bg-white/[0.06]',
   danger:
@@ -30,9 +30,9 @@ const variants: Record<ButtonVariant, string> = {
 }
 
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-9  px-4  text-[13px]',
-  md: 'h-11 px-5  text-sm',
-  lg: 'h-12 px-7  text-[15px]',
+  sm: 'h-10 px-4  text-[15px]',
+  md: 'h-12 px-5  text-base',
+  lg: 'h-14 px-7  text-lg',
 }
 
 export function Button({

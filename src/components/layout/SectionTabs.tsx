@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 import { usePermissions } from '../../hooks/usePermissions'
 import { findSection, isItemActive } from './navigation'
 
-/** Pill tabs for the sub-pages of the section the current route belongs to. */
+/** Underlined tabs for the sub-pages of the section the current route belongs to. */
 export function SectionTabs() {
   const { pathname } = useLocation()
   const { t } = useTranslation()
@@ -16,11 +16,8 @@ export function SectionTabs() {
   return (
     <nav
       aria-label={t(section.titleKey)}
-      className="flex items-center gap-2 overflow-x-auto scrollbar-none px-4 sm:px-6 pb-1"
+      className="flex min-h-[60px] items-stretch gap-1 overflow-x-auto scrollbar-none border-b-2 border-inv-border px-4 sm:px-6"
     >
-      <span className="hidden lg:block shrink-0 pr-2 text-[13px] font-medium text-white/50">
-        {t(section.titleKey)}
-      </span>
       {items.map((item) => {
         const Icon = item.icon
         const active = isItemActive(item, pathname)
@@ -29,14 +26,13 @@ export function SectionTabs() {
             key={item.to}
             to={item.to}
             end={item.end}
+            aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex shrink-0 items-center gap-2 h-10 px-4 rounded-full text-sm font-medium transition-colors',
-              active
-                ? 'bg-brand-orange text-on-accent'
-                : 'bg-bg-card text-white/70 shadow-card hover:text-white',
+              'flex shrink-0 items-center gap-2 border-b-4 px-3.5 font-display text-[17px] font-bold uppercase tracking-[0.03em] transition-colors',
+              active ? 'border-signal text-white' : 'border-transparent text-white/60 hover:text-white',
             )}
           >
-            <Icon className="h-4 w-4" strokeWidth={1.8} />
+            <Icon className="h-4 w-4" strokeWidth={2.2} />
             {t(item.labelKey)}
           </NavLink>
         )

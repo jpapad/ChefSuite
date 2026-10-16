@@ -17,4 +17,12 @@ i18n
     interpolation: { escapeValue: false },
   })
 
+// Keep <html lang> in sync: screen readers need it, and the browser only
+// drops Greek accents in CSS-uppercased text (all our labels) when lang="el".
+function syncLang(lng: string) {
+  document.documentElement.lang = lng
+}
+syncLang(i18n.language)
+i18n.on('languageChanged', syncLang)
+
 export default i18n

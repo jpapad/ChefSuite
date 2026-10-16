@@ -34,12 +34,21 @@ export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
+    // "Station Board": square-ish corners everywhere. The old rounded-xl…3xl
+    // classes collapse onto the same 4px so every card, input and panel
+    // matches without touching each page; rounded-full stays for dots/avatars.
+    borderRadius: {
+      none: '0', sm: '2px', DEFAULT: '3px', md: '3px', lg: '4px',
+      xl: '4px', '2xl': '4px', '3xl': '4px', full: '9999px',
+    },
     extend: {
       fontFamily: {
-        sans:  ['Geologica', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
-        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
-        mono:  ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        sans:    ['"Fira Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Fira Sans Extra Condensed"', '"Arial Narrow"', 'ui-sans-serif', 'sans-serif'],
+        mono:    ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
+      // Opacity steps the pages already use but Tailwind 3 doesn't ship.
+      opacity: { 1: '0.01', 2: '0.02', 3: '0.03', 4: '0.04', 6: '0.06', 8: '0.08', 12: '0.12' },
       colors: {
         ...statusColors,
 
@@ -47,14 +56,18 @@ export default {
         white: 'rgb(var(--app-white) / <alpha-value>)',
         'white-fixed': '#ffffff',
 
-        // Brand accent — ink in the light theme, lime on dark kitchen screens.
+        // Primary action colour — ink by day, white on the dark kitchen screens.
         // (name kept for backwards compat with all existing classes)
         'brand-orange': 'rgb(var(--c-accent) / <alpha-value>)',
         'accent':       'rgb(var(--c-accent) / <alpha-value>)',
         'accent-bg':    'rgb(var(--c-accent) / 0.12)',
         'on-accent':    'rgb(var(--c-on-accent) / <alpha-value>)',
-        'lime':         { ...colors.lime, DEFAULT: '#C8F03C' },
-        'ink':          '#0F1210',
+        // Signal orange: "needs action". `lime` keeps its name so the existing
+        // bg-lime / text-lime highlights pick up the new signal colour.
+        'signal':       'rgb(var(--c-signal) / <alpha-value>)',
+        'lime':         { ...colors.lime, DEFAULT: 'rgb(var(--c-signal) / <alpha-value>)' },
+        'ink':          '#0A0A0A',
+        'paper':        '#FAF7F0',
 
         // Legacy copper tokens (used in Login page only)
         'copper':       '#C5A059',

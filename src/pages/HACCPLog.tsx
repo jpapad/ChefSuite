@@ -11,6 +11,7 @@ import { HACCPBlankFormDrawer } from '../components/haccp/HACCPBlankFormDrawer'
 import { HACCPRemindersDrawer } from '../components/haccp/HACCPRemindersDrawer'
 import { useHACCP, isPass } from '../hooks/useHACCP'
 import { useHACCPReminders } from '../hooks/useHACCPReminders'
+import { play } from '../lib/sounds'
 import type { TempUnit } from '../types/database.types'
 
 function todayIso() {
@@ -49,6 +50,8 @@ export default function HACCPLog() {
     setSubmitting(true)
     try {
       await logCheck(values)
+      // Out of range sounds the alarm; in range is a quiet check.
+      play(values.temperature >= values.min_temp && values.temperature <= values.max_temp ? 'check' : 'alarm')
       setLogDrawerOpen(false)
     } finally {
       setSubmitting(false)
@@ -192,22 +195,23 @@ export default function HACCPLog() {
       <div className="no-print">
       <Page>
         <PageHeader
+          no="07"
+          eyebrow={t('haccp.subtitle')}
           title={t('haccp.title')}
-          subtitle={t('haccp.subtitle')}
           actions={
             <>
-              <label className="flex h-11 items-center gap-2 rounded-full bg-bg-card px-4 shadow-card">
-                <CalendarDays className="h-4 w-4 text-white/50" />
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t('haccp.tableHeaders.time')} className="bg-transparent text-sm outline-none" />
+              <label className="flex h-12 items-center gap-2 rounded px-4 shadow-card">
+                <CalendarDays className="h-5 w-5" strokeWidth={2.2} />
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t('haccp.tableHeaders.time')} className="bg-transparent font-mono text-base outline-none [color-scheme:inherit]" />
               </label>
               <button
                 type="button"
                 onClick={() => setRemindersOpen(true)}
-                className={cn('relative inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-medium transition', overdueCount > 0 ? 'bg-red-600 text-white-fixed' : 'bg-bg-card shadow-card hover:bg-white/[0.04]')}
+                className={cn('relative inline-flex h-12 items-center gap-2 rounded px-5 font-display text-[17px] font-bold uppercase tracking-[0.04em] transition', overdueCount > 0 ? 'bg-[#FF3B30] text-white-fixed' : 'shadow-card hover:bg-white/[0.05]')}
               >
-                {overdueCount > 0 ? <BellRing className="h-4 w-4 animate-pulse" /> : <Bell className="h-4 w-4" />}
+                {overdueCount > 0 ? <BellRing className="h-5 w-5 animate-pulse" /> : <Bell className="h-5 w-5" />}
                 {t('haccp.reminders.title')}
-                {overdueCount > 0 && <span className="rounded-full bg-white-fixed px-2 text-xs font-semibold text-red-700">{overdueCount}</span>}
+                {overdueCount > 0 && <span className="rounded-sm bg-white-fixed px-2 font-mono text-sm font-bold text-red-700">{overdueCount}</span>}
               </button>
               <ActionMenu
                 label={t('haccp.v2.more')}
@@ -247,42 +251,51 @@ export default function HACCPLog() {
             action={<PillButton icon={Plus} variant="primary" onClick={() => setLogDrawerOpen(true)}>{t('haccp.logCheck')}</PillButton>}
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {checks.map((c) => {
               const pass = isPass(c)
+              // Where the reading sits inside a band 1.5× the allowed range.
+              const span = Math.max(c.max_temp - c.min_temp, 1)
+              const lo = c.min_temp - span * 0.25
+              const pos = Math.min(100, Math.max(0, ((c.temperature - lo) / (span * 1.5)) * 100))
               return (
-                <article key={c.id} className="group flex flex-col overflow-hidden rounded-3xl bg-bg-card shadow-card">
-                  <div className={cn('flex items-center justify-between gap-2 px-5 py-3 text-sm font-medium', pass ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500')}>
-                    <span className="flex items-center gap-1.5">
-                      {pass ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                      {pass ? t('haccp.v2.inRange') : t('haccp.v2.outOfRange')}
-                    </span>
-                    <span className="tabular-nums text-white/55">
-                      {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div className="flex flex-1 flex-col gap-2 p-5">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-lg font-medium leading-snug">{c.location}</h3>
+                <article
+                  key={c.id}
+                  className={cn('group flex flex-col gap-2 rounded p-5', pass ? 'bg-bg-card' : 'bg-[#DC2626] text-white-fixed')}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="sb-label pt-1">{c.location}</h3>
+                    <span className="flex items-center gap-2">
+                      <span className={cn('sb-label flex items-center gap-1.5', pass && 'text-emerald-500')}>
+                        {pass ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                        {pass ? t('haccp.v2.inRange') : t('haccp.v2.outOfRange')}
+                      </span>
                       <button
                         type="button"
                         onClick={() => onDelete(c.id)}
                         aria-label={t('haccp.deleteCheckLabel')}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40 opacity-0 transition hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded opacity-0 transition hover:bg-black/20 group-hover:opacity-100 focus:opacity-100"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    </div>
-                    <p className={cn('text-5xl font-medium tracking-[-0.04em] tabular-nums', !pass && 'text-red-500')}>
-                      {c.temperature}°<span className="text-2xl">{c.unit}</span>
-                    </p>
-                    <p className="text-sm text-white/55 tabular-nums">{t('haccp.tableHeaders.range')}: {c.min_temp}–{c.max_temp}°{c.unit}</p>
-                    {!pass && c.corrective_action && (
-                      <p className="rounded-2xl bg-amber-500/10 px-3 py-2 text-sm text-amber-500">{c.corrective_action}</p>
-                    )}
-                    {c.notes && <p className="text-sm text-white/55">{c.notes}</p>}
-                    <p className="mt-auto pt-1 text-xs text-white/45">{c.checked_by_name ?? '—'}</p>
+                    </span>
                   </div>
+                  <p className="font-mono text-[76px] font-bold leading-[0.9] tracking-[-0.05em] tabular-nums">
+                    {String(c.temperature).replace('.', ',')}°<span className="text-[0.4em]">{c.unit}</span>
+                  </p>
+                  <p className={cn('font-mono text-[14px] tabular-nums', pass ? 'text-white/60' : 'text-white-fixed/85')}>
+                    {c.min_temp}–{c.max_temp}°{c.unit} · {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {c.checked_by_name ?? '—'}
+                  </p>
+                  {pass && (
+                    <span className="relative mt-1 h-2 bg-white/15" aria-hidden="true">
+                      <i className="absolute inset-y-0 bg-white/30" style={{ left: '16.7%', width: '66.6%' }} />
+                      <b className="absolute -top-1 h-4 w-1 bg-white" style={{ left: `${pos}%` }} />
+                    </span>
+                  )}
+                  {!pass && c.corrective_action && (
+                    <p className="rounded-sm bg-black/25 px-3 py-2 text-[15px] font-medium">{c.corrective_action}</p>
+                  )}
+                  {c.notes && <p className={cn('text-[15px]', pass ? 'text-white/60' : 'text-white-fixed/85')}>{c.notes}</p>}
                 </article>
               )
             })}

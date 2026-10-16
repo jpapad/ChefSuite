@@ -1,5 +1,5 @@
 import {
-  Home, LayoutDashboard, HelpCircle, ChefHat, UtensilsCrossed, Star, Tag, MapPin,
+  Home, HelpCircle, ChefHat, UtensilsCrossed, Star, Tag, MapPin,
   Building2, Package, ClipboardCheck, Truck, ShoppingCart, TrendingUp, Calculator,
   BarChart3, CreditCard, Flame, Monitor, ClipboardList, Thermometer, BookLock,
   Trash2, Heart, Activity, Map, Users, CalendarDays, TimerIcon, Award, CalendarCheck,
@@ -32,7 +32,6 @@ export const NAV_SECTIONS: NavSection[] = [
     id: 'home', icon: Home, shortKey: 'nav.sections.homeShort', titleKey: 'nav.sections.home',
     items: [
       { to: '/',          labelKey: 'nav.home',      icon: Home,            module: 'dashboard', end: true },
-      { to: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard, module: 'dashboard' },
       { to: '/help',      labelKey: 'nav.help',      icon: HelpCircle,      module: 'help' },
     ],
   },

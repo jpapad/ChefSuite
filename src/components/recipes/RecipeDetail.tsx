@@ -1,4 +1,6 @@
-import { Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, Mic, MicOff, ChevronLeft, ChevronRight, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus, MessageSquare, Trash2, Sparkles, Loader2, Activity, GitBranch, Check, Layers, Pencil, Play, MoreHorizontal, Timer, Send, AlertTriangle, Volume2 } from 'lucide-react'
+import { Euro, Minus, Package, PackageCheck, PackageX, Plus, UtensilsCrossed, ChevronLeft, X, Tag, TrendingUp, Clock, Flame, Users, Share2, Printer, CheckCheck, UserPlus, MessageSquare, Trash2, Sparkles, Loader2, Activity, GitBranch, Check, Layers, Pencil, Play, MoreHorizontal, Timer, Send, AlertTriangle } from 'lucide-react'
+import { CookMode } from './CookMode'
+import { useDuotone } from '../../lib/useDuotone'
 import { createPortal } from 'react-dom'
 import { ActionMenu, PillButton, StatTile } from '../ui/page'
 import { AllergenBadge } from '../ui/AllergenIcon'
@@ -13,17 +15,6 @@ import { useRecipeComments } from '../../hooks/useRecipeComments'
 import { useRecipes } from '../../hooks/useRecipes'
 import { estimateNutrition } from '../../lib/gemini'
 
-interface SRResult { readonly [i: number]: { transcript: string }; readonly length: number }
-interface SRResultList { readonly [i: number]: SRResult; readonly length: number }
-interface SREvent { readonly results: SRResultList }
-interface SRInstance {
-  lang: string; continuous: boolean; interimResults: boolean
-  onresult: ((e: SREvent) => void) | null
-  onerror: (() => void) | null
-  onend: (() => void) | null
-  start(): void; stop(): void
-}
-type SRCtor = new () => SRInstance
 import { useTranslation } from 'react-i18next'
 import type { InventoryItem, Recipe, RecipeIngredient, RecipeSubRecipe } from '../../types/database.types'
 import { expandedNeeds, inheritedAllergens, recipePortionCost } from '../../lib/recipeTree'
@@ -35,113 +26,6 @@ function splitSteps(text: string): string[] {
     .split(/\n+/)
     .map((s) => s.replace(/^\d+[\.\)]\s*/, '').trim())
     .filter(Boolean)
-}
-
-function HandsFreeMode({ steps, onClose }: { steps: string[]; onClose: () => void }) {
-  const { t } = useTranslation()
-  const [idx, setIdx] = useState(0)
-  const [listening, setListening] = useState(false)
-  const recogRef = useRef<SRInstance | null>(null)
-
-  const current = steps[idx]
-  const progress = ((idx + 1) / steps.length) * 100
-
-  function speak(text: string) {
-    if (!('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
-    const utt = new SpeechSynthesisUtterance(text)
-    window.speechSynthesis.speak(utt)
-  }
-
-  function goNext() { if (idx < steps.length - 1) { setIdx(idx + 1); speak(steps[idx + 1]) } }
-  function goPrev() { if (idx > 0) { setIdx(idx - 1); speak(steps[idx - 1]) } }
-  function reread() { speak(current) }
-
-  function toggleVoice() {
-    const w = window as unknown as Record<string, SRCtor | undefined>
-    const SR: SRCtor | undefined = w['SpeechRecognition'] ?? w['webkitSpeechRecognition']
-    if (!SR) { alert('Speech recognition not supported in this browser'); return }
-    if (listening) {
-      recogRef.current?.stop(); setListening(false); return
-    }
-    const r = new SR()
-    r.lang = 'en-US'; r.continuous = true; r.interimResults = false
-    r.onresult = (e) => {
-      const cmd = e.results[e.results.length - 1][0].transcript.toLowerCase().trim()
-      if (cmd.includes('next')) goNext()
-      else if (cmd.includes('back') || cmd.includes('previous')) goPrev()
-      else if (cmd.includes('repeat') || cmd.includes('again')) reread()
-      else if (cmd.includes('stop') || cmd.includes('exit') || cmd.includes('close')) onClose()
-    }
-    r.onerror = () => setListening(false)
-    r.onend = () => { if (listening) r.start() }
-    r.start()
-    recogRef.current = r
-    setListening(true)
-  }
-
-  useEffect(() => { speak(current) }, [])
-  useEffect(() => () => { recogRef.current?.stop(); window.speechSynthesis.cancel() }, [])
-
-  const next = steps[idx + 1]
-
-  return (
-    <div className="theme-dark fixed inset-0 z-[60] flex flex-col bg-ink text-white" style={{ touchAction: 'manipulation' }}>
-      <div className="flex items-center gap-4 px-5 pt-5 sm:px-8">
-        <span className="rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink tabular-nums">
-          {t('recipes.detail.stepOf', { current: idx + 1, total: steps.length })}
-        </span>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-lime transition-all" style={{ width: `${progress}%` }} />
-        </div>
-        <button type="button" onClick={toggleVoice}
-          className={`flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition ${listening ? 'bg-lime text-ink' : 'bg-white/10 text-white/70 hover:text-white'}`}>
-          {listening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-          <span className="hidden sm:inline">{listening ? t('recipes.detail.listening') : t('recipes.detail.voiceControl')}</span>
-        </button>
-        <button type="button" onClick={onClose} aria-label="Close"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white/70 hover:text-white">
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div className="flex flex-1 flex-col justify-center gap-8 px-6 sm:px-12 lg:px-24">
-        <span className="text-[7rem] font-medium leading-none tracking-[-0.06em] text-lime tabular-nums sm:text-[10rem]">{idx + 1}</span>
-        <p className="max-w-4xl text-3xl font-medium leading-snug tracking-[-0.02em] md:text-5xl">{current}</p>
-        {next && (
-          <p className="max-w-3xl text-base text-white/45 md:text-lg">
-            <span className="mr-2 text-xs font-semibold uppercase tracking-wider text-white/35">{t('recipes.v3.upNext')}</span>
-            {next}
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 pb-8 sm:px-8">
-        <button type="button" onClick={goPrev} disabled={idx === 0}
-          className="flex h-16 items-center justify-center gap-2 rounded-full bg-white/10 text-lg font-medium text-white/80 transition hover:bg-white/15 disabled:opacity-30">
-          <ChevronLeft className="h-6 w-6" /> {t('common.back')}
-        </button>
-        <button type="button" onClick={reread} aria-label={t('recipes.detail.repeatStep')}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.06] text-white/60 hover:text-white">
-          <Volume2 className="h-6 w-6" />
-        </button>
-        {idx < steps.length - 1 ? (
-          <button type="button" onClick={goNext}
-            className="flex h-16 items-center justify-center gap-2 rounded-full bg-lime text-lg font-medium text-ink transition hover:brightness-95">
-            {t('common.next')} <ChevronRight className="h-6 w-6" />
-          </button>
-        ) : (
-          <button type="button" onClick={onClose}
-            className="flex h-16 items-center justify-center gap-2 rounded-full bg-lime text-lg font-medium text-ink transition hover:brightness-95">
-            <CheckCheck className="h-6 w-6" /> {t('common.done')}
-          </button>
-        )}
-      </div>
-      {listening && (
-        <p className="absolute bottom-28 left-1/2 -translate-x-1/2 text-xs text-white/40">{t('recipes.v3.sayCommands')}</p>
-      )}
-    </div>
-  )
 }
 
 interface RecipeDetailProps {
@@ -186,6 +70,7 @@ export function RecipeDetail({
   const [consuming, setConsuming] = useState(false)
   const [consumeError, setConsumeError] = useState<string | null>(null)
   const [handsFree, setHandsFree] = useState(false)
+  const [duotone] = useDuotone()
   const [portions, setPortions] = useState(1)
   const [copied, setCopied] = useState(false)
   const [showMemberPicker, setShowMemberPicker] = useState(false)
@@ -372,19 +257,19 @@ export function RecipeDetail({
   return createPortal(
     <>
       {handsFree && steps.length > 0 && (
-        <HandsFreeMode steps={trSteps.map((x, i) => x ?? steps[i])} onClose={() => setHandsFree(false)} />
+        <CookMode steps={trSteps.map((x, i) => x ?? steps[i])} title={trTitle ?? recipe.title} onClose={() => setHandsFree(false)} />
       )}
 
       <div role="dialog" aria-modal="true" aria-label={title}
         className="fixed inset-0 z-50 overflow-y-auto bg-bg-surface">
         {/* ── Top bar ── */}
-        <div className="sticky top-0 z-20 bg-bg-surface/85 px-3 py-3 backdrop-blur-md sm:px-6">
+        <div className="sticky top-0 z-20 border-b-2 border-inv-border bg-bg-surface px-3 py-3 sm:px-6">
           <div className="mx-auto flex max-w-7xl items-center gap-2">
             <button type="button" onClick={onClose} aria-label={t('recipes.v3.back')}
-              className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-bg-card pl-3 pr-4 text-sm font-medium shadow-card hover:bg-white/[0.04]">
-              <ChevronLeft className="h-4 w-4" /><span className="hidden sm:inline">{t('recipes.v3.back')}</span>
+              className="flex h-12 shrink-0 items-center gap-1.5 rounded pl-3 pr-4 font-display text-[17px] font-bold uppercase tracking-[0.04em] shadow-card hover:bg-white/[0.05]">
+              <ChevronLeft className="h-5 w-5" strokeWidth={2.4} /><span className="hidden sm:inline">{t('recipes.v3.back')}</span>
             </button>
-            <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-white/60">{title}</span>
+            <span className="sb-label min-w-0 flex-1 truncate px-2 text-white/60">{title}</span>
             <ActionMenu label={t('recipes.v3.more')} icon={MoreHorizontal} actions={[
               { label: copied ? t('recipes.detail.copied') : t('recipes.detail.share'), icon: copied ? CheckCheck : Share2, onClick: () => void handleShare() },
               { label: t('recipes.detail.print'), icon: Printer, onClick: handlePrint },
@@ -401,48 +286,44 @@ export function RecipeDetail({
 
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-3 pb-28 sm:gap-4 sm:px-6">
           {/* ── Hero ── */}
-          <section className={`grid gap-3 sm:gap-4 ${recipe.image_url ? 'lg:grid-cols-[1.15fr_1fr]' : ''}`}>
-            <div className="flex flex-col justify-between gap-8 rounded-[2rem] bg-ink p-6 text-white-fixed sm:p-8">
-              <div className="flex flex-wrap items-center gap-2">
-                {recipe.category && (
-                  <span className="rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink">{t(`recipes.categories.${recipe.category}`)}</span>
-                )}
+          <section className={`-mx-3 grid border-b-2 border-inv-border sm:-mx-6 ${recipe.image_url ? 'lg:grid-cols-[1.15fr_1fr]' : ''}`}>
+            {recipe.image_url && (
+              <div className={`relative min-h-[18rem] overflow-hidden border-inv-border lg:border-r-2 ${duotone ? 'sb-duo' : 'bg-bg-card-2'}`}>
+                <img src={recipe.image_url} alt={recipe.title} className="absolute inset-0 h-full w-full object-cover" />
+              </div>
+            )}
+            <div className="flex flex-col justify-between gap-6 px-5 py-6 sm:px-8 sm:py-8">
+              <div className="sb-label flex flex-wrap items-center gap-x-4 gap-y-2 text-white/60">
+                {recipe.category && <span className="rounded-sm bg-signal px-2 py-1 text-ink">{t(`recipes.categories.${recipe.category}`)}</span>}
                 {recipe.difficulty && (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white-fixed/10 px-3 py-1 text-xs">
-                    <span className="flex gap-0.5">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="flex gap-1">
                       {[1, 2, 3].map((d) => (
-                        <span key={d} className={`h-1.5 w-1.5 rounded-full ${d <= DIFFICULTY_DOTS[recipe.difficulty!] ? 'bg-lime' : 'bg-white-fixed/25'}`} />
+                        <span key={d} className={`h-2.5 w-2.5 ${d <= DIFFICULTY_DOTS[recipe.difficulty!] ? 'bg-white' : 'bg-white/20'}`} />
                       ))}
                     </span>
                     {t(`recipes.form.difficulty${recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1)}`)}
                   </span>
                 )}
-                {recipe.variation_label && (
-                  <span className="rounded-full bg-white-fixed/10 px-3 py-1 text-xs">{recipe.variation_label}</span>
-                )}
+                {recipe.variation_label && <span>{recipe.variation_label}</span>}
               </div>
               <div>
-                <h1 className="text-4xl font-medium leading-[1.02] tracking-[-0.04em] sm:text-5xl lg:text-6xl">{title}</h1>
+                <h1 className="font-display text-[clamp(56px,7vw,104px)] font-extrabold uppercase leading-[0.85] [overflow-wrap:anywhere]">{title}</h1>
                 {recipe.description && (
-                  <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-white-fixed/65 sm:text-base">{trDescription ?? recipe.description}</p>
+                  <p className="mt-4 max-w-2xl text-[17px] leading-relaxed text-white/70">{trDescription ?? recipe.description}</p>
                 )}
               </div>
               {facts.length > 0 && (
-                <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {facts.map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="rounded-2xl bg-white-fixed/[0.06] px-4 py-3">
-                      <dt className="flex items-center gap-1.5 text-xs text-white-fixed/50"><Icon className="h-3.5 w-3.5" />{label}</dt>
-                      <dd className="mt-1 text-2xl font-medium tabular-nums text-lime">{value}</dd>
+                <dl className="grid grid-cols-2 border-y-2 border-inv-border sm:grid-cols-4">
+                  {facts.map(({ icon: Icon, label, value }, i) => (
+                    <div key={label} className={`py-3 ${i > 0 ? 'sm:border-l-2 sm:border-inv-border sm:pl-4' : ''} ${i % 2 === 1 ? 'border-l-2 border-inv-border pl-4 sm:pl-4' : ''}`}>
+                      <dt className="sb-label flex items-center gap-1.5 text-white/60"><Icon className="h-4 w-4" />{label}</dt>
+                      <dd className="mt-1 font-mono text-[32px] font-bold leading-none tracking-[-0.03em] tabular-nums">{value}</dd>
                     </div>
                   ))}
                 </dl>
               )}
             </div>
-            {recipe.image_url && (
-              <div className="relative min-h-[16rem] overflow-hidden rounded-[2rem] bg-bg-card-2">
-                <img src={recipe.image_url} alt={recipe.title} className="absolute inset-0 h-full w-full object-cover" />
-              </div>
-            )}
           </section>
 
           {/* ── Numbers ── */}
@@ -474,20 +355,20 @@ export function RecipeDetail({
           {/* ── Ingredients + method ── */}
           <section className="grid items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(320px,400px)_1fr]">
             {hasComponents && (
-              <div className="flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6 lg:sticky lg:top-20">
+              <div className="flex flex-col gap-4 rounded bg-bg-card p-5 shadow-card sm:p-6 lg:sticky lg:top-24">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-medium">{t('recipes.detail.ingredients')}</h2>
-                    <p className="text-xs text-white/50">{t('recipes.v3.checked', { done: checkedIng.size, total: ingredients.length + subRecipes.length })}</p>
+                    <h2 className="font-display text-[32px] font-extrabold uppercase leading-none">{t('recipes.detail.ingredients')}</h2>
+                    <p className="sb-label mt-1 text-white/60">{t('recipes.v3.checked', { done: checkedIng.size, total: ingredients.length + subRecipes.length })}</p>
                   </div>
-                  <div className="flex items-center rounded-full bg-bg-input p-1">
+                  <div className="flex items-center rounded shadow-card">
                     <button type="button" onClick={() => setPortions((p) => Math.max(1, p - 1))} aria-label="−"
-                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-bg-card"><Minus className="h-3.5 w-3.5" /></button>
+                      className="flex h-12 w-12 items-center justify-center hover:bg-white/[0.08]"><Minus className="h-5 w-5" strokeWidth={2.4} /></button>
                     <input type="number" min={1} value={portions}
                       onChange={(e) => setPortions(Math.max(1, Math.round(Number(e.target.value) || 1)))}
-                      className="w-10 bg-transparent text-center text-sm font-semibold tabular-nums outline-none" aria-label={t('recipes.detail.portions')} />
+                      className="w-12 bg-transparent text-center font-mono text-[22px] font-bold tabular-nums outline-none" aria-label={t('recipes.detail.portions')} />
                     <button type="button" onClick={() => setPortions((p) => p + 1)} aria-label="+"
-                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-bg-card"><Plus className="h-3.5 w-3.5" /></button>
+                      className="flex h-12 w-12 items-center justify-center hover:bg-white/[0.08]"><Plus className="h-5 w-5" strokeWidth={2.4} /></button>
                   </div>
                 </div>
 
@@ -506,8 +387,8 @@ export function RecipeDetail({
                             {done && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                           </span>
                           <span className={`min-w-0 flex-1 truncate text-[15px] ${done ? 'text-white/35 line-through' : item ? '' : 'italic text-white/50'}`}>{displayName}</span>
-                          <span className={`shrink-0 text-sm font-medium tabular-nums ${done ? 'text-white/30' : ''}`}>
-                            {scaledQty % 1 === 0 ? scaledQty : scaledQty.toFixed(2)} <span className="font-normal text-white/50">{item?.unit ?? ''}</span>
+                          <span className={`shrink-0 font-mono text-[18px] font-bold tabular-nums ${done ? 'text-white/30' : ''}`}>
+                            {scaledQty % 1 === 0 ? scaledQty : scaledQty.toFixed(2)} <span className="text-[13px] font-medium text-white/60">{item?.unit ?? ''}</span>
                           </span>
                           <span title={enough ? t('recipes.detail.inStock') : t('recipes.detail.missingIngredients')}
                             className={`h-2 w-2 shrink-0 rounded-full ${enough ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -563,27 +444,27 @@ export function RecipeDetail({
 
             <div className="flex flex-col gap-3 sm:gap-4">
               {steps.length > 0 && (
-                <div className="flex flex-col gap-4 rounded-3xl bg-bg-card p-5 shadow-card sm:p-6">
+                <div className="flex flex-col gap-2 rounded bg-bg-card p-5 shadow-card sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <h2 className="text-lg font-medium">{t('recipes.detail.instructions')}</h2>
-                      <p className="text-xs text-white/50">{t('recipes.v3.stepsDone', { done: doneSteps.size, total: steps.length })}</p>
+                      <h2 className="font-display text-[32px] font-extrabold uppercase leading-none">{t('recipes.detail.instructions')}</h2>
+                      <p className="sb-label mt-1 text-white/60">{t('recipes.v3.stepsDone', { done: doneSteps.size, total: steps.length })}</p>
                     </div>
-                    <div className="h-1.5 w-28 overflow-hidden rounded-full bg-bg-input">
-                      <div className="h-full rounded-full bg-ink transition-all" style={{ width: `${(doneSteps.size / steps.length) * 100}%` }} />
+                    <div className="flex w-32 gap-[3px]" aria-hidden="true">
+                      {steps.map((_, i) => <i key={i} className={`h-2.5 flex-1 ${doneSteps.has(i) ? 'bg-signal' : 'bg-white/15'}`} />)}
                     </div>
                   </div>
-                  <ol className="flex flex-col gap-2">
+                  <ol className="flex flex-col">
                     {steps.map((step, i) => {
                       const done = doneSteps.has(i)
                       return (
-                        <li key={i}>
+                        <li key={i} className="border-b-2 border-inv-border last:border-b-0">
                           <button type="button" onClick={() => setDoneSteps((s) => toggleIn(s, i))}
-                            className={`flex w-full gap-4 rounded-2xl p-4 text-left transition ${done ? 'bg-bg-input/60' : 'bg-bg-input hover:bg-white/[0.07]'}`}>
-                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-semibold tabular-nums ${done ? 'bg-ink text-lime' : 'bg-bg-card shadow-card'}`}>
-                              {done ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}
+                            className="flex w-full gap-5 py-4 text-left transition hover:bg-white/[0.03]">
+                            <span className={`w-12 shrink-0 font-display text-[60px] font-extrabold leading-[0.8] ${done ? 'text-white/30' : 'text-signal'}`}>
+                              {done ? <Check className="h-10 w-10" strokeWidth={3.2} /> : i + 1}
                             </span>
-                            <p className={`pt-2 text-[15px] leading-relaxed sm:text-base ${done ? 'text-white/40' : 'text-white/85'}`}>{trSteps[i] ?? step}</p>
+                            <p className={`pt-1 text-[18px] leading-relaxed ${done ? 'text-white/50 line-through' : 'text-white'}`}>{trSteps[i] ?? step}</p>
                           </button>
                         </li>
                       )
