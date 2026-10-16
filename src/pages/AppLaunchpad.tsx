@@ -1,12 +1,9 @@
 import { Link } from 'react-router-dom'
-import {
-  AlertTriangle, ArrowUpRight, Bot, ClipboardList, Monitor, Package, ShoppingBag, Activity,
-} from 'lucide-react'
+import { Activity, ArrowUpRight, Monitor } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 import { useAuth } from '../contexts/AuthContext'
 import { usePermissions } from '../hooks/usePermissions'
-import { useRecipes } from '../hooks/useRecipes'
 import { useInventory, isLowStock } from '../hooks/useInventory'
 import { usePrepTasks } from '../hooks/usePrepTasks'
 import { useOnlineOrders } from '../hooks/useOnlineOrders'
@@ -15,10 +12,14 @@ import { useTeam } from '../hooks/useTeam'
 import { certStatus, daysLeft, useStaffCertificates } from '../hooks/useStaffCertificates'
 import { lotDaysLeft, useLots } from '../hooks/useLots'
 import { useEquipment } from '../hooks/useEquipment'
-import { NAV_SECTIONS } from '../components/layout/navigation'
+import { countdown as formatCountdown, useNow } from '../lib/useNow'
+import { shiftKey } from '../lib/useClock'
+import { FlipNumber, SectionHead, Ticker, Ticket } from '../components/station/Station'
+import { ticketFor } from '../components/station/orderTicket'
 
-// Home — "Bento & Lime": what needs the chef's attention right now, today's
-// numbers as a bento grid, and every section of the app one click away.
+// Today — "Station Board": the service countdown, today's four numbers, the
+// tickets on the pass, tonight's tables and what needs attention, with the
+// same alerts scrolling along the bottom.
 
 function todayIso() {
   const d = new Date()
@@ -31,22 +32,21 @@ function greetingFor(t: (k: string) => string, name: string) {
   return `${t(key)}, ${name}`
 }
 
-const card = 'rounded-3xl bg-bg-card p-5 sm:p-6 shadow-card flex flex-col gap-3'
-const tile = cn(card, 'transition-transform hover:-translate-y-0.5')
-
 type Tone = 'bad' | 'warn' | 'info'
-const TONE: Record<Tone, string> = {
-  bad:  'bg-red-500/10 text-red-500',
-  warn: 'bg-amber-500/12 text-amber-500',
-  info: 'bg-sky-500/10 text-sky-500',
+const TAG: Record<Tone, string> = {
+  bad:  'bg-[#FF3B30] text-white-fixed',
+  warn: 'bg-signal text-ink',
+  info: 'bg-white/10 text-white',
 }
+
+const tileBase = 'relative flex min-h-[200px] flex-col gap-2 overflow-hidden p-5 sm:p-6 text-white transition-colors hover:bg-white/[0.04]'
 
 export default function AppLaunchpad() {
   const { t, i18n } = useTranslation()
-  const { profile } = useAuth()
+  const { profile, myTeams } = useAuth()
   const { can } = usePermissions()
+  const now = useNow(1000)
 
-  const { recipes, loading: recipesLoading } = useRecipes()
   const { items, loading: invLoading } = useInventory()
   const { tasks, loading: prepLoading } = usePrepTasks(todayIso())
   const { orders } = useOnlineOrders()
@@ -57,7 +57,8 @@ export default function AppLaunchpad() {
   const { equipment, logs: equipLogs } = useEquipment()
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Chef'
-  const dateStr = new Date().toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })
+  const kitchen = myTeams.find((x) => x.id === profile?.team_id)?.name
+  const dateStr = new Date(now).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })
 
   const lowStock = items.filter(isLowStock)
   const done = tasks.filter((x) => x.done_at).length
@@ -68,6 +69,16 @@ export default function AppLaunchpad() {
     .filter((r) => r.status !== 'cancelled' && r.status !== 'completed')
     .sort((a, b) => a.reservation_time.localeCompare(b.reservation_time))
   const guests = activeRes.reduce((s, r) => s + r.party_size, 0)
+
+  // Countdown to the next table still to arrive today.
+  const nowDate = new Date(now)
+  const nowSecs = nowDate.getHours() * 3600 + nowDate.getMinutes() * 60 + nowDate.getSeconds()
+  const toSecs = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 3600 + m * 60 }
+  const nextRes = activeRes.find((r) => toSecs(r.reservation_time) > nowSecs)
+  const countdown = nextRes ? formatCountdown(toSecs(nextRes.reservation_time) - nowSecs) : null
+
+  const tickets = orders.map((o) => ({ id: o.id, ...ticketFor(o, now, t) }))
+  const lateCount = tickets.filter((x) => x.late).length
 
   const certAlerts = can('certificates')
     ? certs.filter((c) => ['expired', 'expiring'].includes(certStatus(c)))
@@ -80,7 +91,7 @@ export default function AppLaunchpad() {
     : []
   const lotItem = (id: string) => items.find((i) => i.id === id)?.name ?? '—'
 
-  // The "rail": things that need action, most urgent first
+  // What needs action, most urgent first.
   const attention: { tone: Tone; label: string; detail: string; to: string }[] = [
     ...lowStock
       .filter((i) => i.quantity <= 0)
@@ -114,167 +125,165 @@ export default function AppLaunchpad() {
     ...(pendingPrep > 0
       ? [{ tone: 'info' as Tone, label: t('nav.prep'), detail: t('home.prepPending', { count: pendingPrep }), to: '/prep' }]
       : []),
-  ].slice(0, 5)
+  ].slice(0, 6)
 
-  const sections = NAV_SECTIONS.filter((s) => s.id !== 'home')
-    .map((s) => ({ ...s, first: s.items.find((i) => can(i.module)) }))
-    .filter((s) => s.first)
+  const tickerItems = [
+    ...tickets.filter((x) => x.late).map((x) => `${x.title} · ${x.tag} ${x.timer}`),
+    ...attention.map((a) => a.detail),
+    ...(nextRes ? [`${nextRes.reservation_time.slice(0, 5)} ${nextRes.guest_name} × ${nextRes.party_size}`] : []),
+  ]
 
   return (
-    <div className="mx-auto max-w-[1360px] flex flex-col gap-6">
-
-      {/* ── Header ── */}
-      <header className="flex flex-wrap items-end justify-between gap-4 pt-2">
-        <div>
-          <p className="text-sm text-white/55 first-letter:uppercase">{dateStr}</p>
-          <h1 className="mt-1 text-4xl sm:text-5xl font-medium tracking-[-0.03em]">{greetingFor(t, firstName)}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {can('buffet-pulse') && (
-            <Link to="/buffet-monitor" className="inline-flex h-11 items-center gap-2 rounded-full bg-bg-card px-5 text-sm font-medium shadow-card hover:bg-white/5">
-              <Activity className="h-4 w-4" /> {t('home.buffetMonitor')}
-            </Link>
-          )}
-          {can('kds') && (
-            <Link to="/kds" className="inline-flex h-11 items-center gap-2 rounded-full bg-brand-orange px-5 text-sm font-medium text-on-accent hover:bg-brand-orange/85">
-              <Monitor className="h-4 w-4" /> {t('home.openKds')}
-            </Link>
-          )}
-        </div>
-      </header>
-
-      {/* ── Bento: today's numbers ── */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link to="/prep" className="sm:col-span-2 lg:row-span-2 rounded-3xl bg-ink p-6 sm:p-7 flex flex-col justify-between gap-6 text-white-fixed transition-transform hover:-translate-y-0.5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-[#C9CEC8]">{t('home.prepToday')}</p>
-              <p className="mt-1 text-6xl sm:text-7xl font-medium tracking-[-0.04em] text-lime tabular-nums">
-                {prepLoading ? '…' : tasks.length ? `${prepPct}%` : '—'}
-              </p>
-            </div>
-            <ClipboardList className="h-6 w-6 text-[#C9CEC8]" />
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="h-2.5 rounded-full bg-white-fixed/10 overflow-hidden">
-              <div className="h-full rounded-full bg-lime transition-all duration-700" style={{ width: `${prepPct}%` }} />
-            </div>
-            <p className="text-sm text-[#C9CEC8]">
-              {tasks.length ? t('home.prepDone', { done, total: tasks.length }) : t('home.prepEmpty')}
-            </p>
-          </div>
-        </Link>
-
-        <Link to="/inventory" className={tile}>
-          <div className="flex items-center justify-between text-sm text-white/55">
-            {t('home.lowStock')} <Package className="h-4 w-4" />
-          </div>
-          <p className={cn('text-4xl font-medium tracking-[-0.03em] tabular-nums', lowStock.length > 0 && 'text-amber-500')}>
-            {invLoading ? '…' : lowStock.length}
+    <div className="-mx-4 -mt-4 flex min-h-[calc(100vh-130px)] flex-col sm:-mx-6 sm:-mt-6 md:-mb-8">
+      {/* ── 01 Header + service countdown ── */}
+      <section className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-inv-border px-4 pb-6 pt-6 sm:px-6">
+        <div className="min-w-0">
+          <p className="flex items-baseline gap-3">
+            <span className="font-mono text-[15px] font-bold text-signal">01</span>
+            <span className="sb-label text-white/60 first-letter:uppercase">
+              {[kitchen, t(`station.${shiftKey(nowDate)}`), dateStr].filter(Boolean).join(' · ')}
+            </span>
           </p>
-          <p className="text-xs text-white/55">
-            {lowStock.length ? lowStock.slice(0, 2).map((i) => i.name).join(', ') : t('home.lowStockNone')}
-          </p>
-        </Link>
-
-        <Link to="/reservations" className={tile}>
-          <div className="flex items-center justify-between text-sm text-white/55">
-            {t('home.reservations')} <span className="text-xs">{t('home.guests', { count: guests })}</span>
-          </div>
-          <p className="text-4xl font-medium tracking-[-0.03em] tabular-nums">{resLoading ? '…' : activeRes.length}</p>
-          <p className="text-xs text-white/55">
-            {activeRes[0] ? `${activeRes[0].reservation_time.slice(0, 5)} · ${activeRes[0].guest_name}` : t('home.noReservations')}
-          </p>
-        </Link>
-
-        <Link to="/kds" className={tile}>
-          <div className="flex items-center justify-between text-sm text-white/55">
-            {t('home.orders')} <ShoppingBag className="h-4 w-4" />
-          </div>
-          <p className="text-4xl font-medium tracking-[-0.03em] tabular-nums">{ordersBy('pending') + ordersBy('preparing')}</p>
-          <p className="text-xs text-white/55">
-            {t('home.ordersBreakdown', { pending: ordersBy('pending'), preparing: ordersBy('preparing'), ready: ordersBy('ready') })}
-          </p>
-        </Link>
-
-        <Link to="/recipes" className={cn(tile, 'bg-lime text-ink')}>
-          <div className="flex items-center justify-between text-sm text-ink/70">
-            {t('home.recipes')} <ArrowUpRight className="h-4 w-4" />
-          </div>
-          <p className="text-4xl font-medium tracking-[-0.03em] tabular-nums">{recipesLoading ? '…' : recipes.length}</p>
-          <p className="text-xs text-ink/70">{members.length} {t('home.teamMembers')}</p>
-        </Link>
-      </section>
-
-      {/* ── Attention + next reservations ── */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className={cn(card, 'lg:col-span-2')}>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">{t('home.needsAttention')}</h2>
-            {attention.length > 0 && <AlertTriangle className="h-4 w-4 text-amber-500" />}
-          </div>
-          {attention.length === 0 ? (
-            <p className="py-6 text-sm text-white/55">{t('home.allClear')}</p>
-          ) : (
-            <ul className="divide-y divide-white/[0.06]">
-              {attention.map((a, i) => (
-                <li key={i}>
-                  <Link to={a.to} className="flex items-center gap-3 py-3 hover:opacity-80">
-                    <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-medium', TONE[a.tone])}>{a.label}</span>
-                    <span className="flex-1 min-w-0 truncate text-sm">{a.detail}</span>
-                    <ArrowUpRight className="h-4 w-4 shrink-0 text-white/35" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className={card}>
-          <h2 className="text-lg font-medium">{t('home.nextUp')}</h2>
-          {activeRes.length === 0 ? (
-            <p className="py-6 text-sm text-white/55">{t('home.noReservations')}</p>
-          ) : (
-            <ul className="divide-y divide-white/[0.06]">
-              {activeRes.slice(0, 4).map((r) => (
-                <li key={r.id} className="flex items-center gap-3 py-2.5 text-sm">
-                  <span className="font-mono tabular-nums text-white/55">{r.reservation_time.slice(0, 5)}</span>
-                  <span className="flex-1 min-w-0 truncate">{r.guest_name}</span>
-                  <span className="rounded-full bg-white/[0.06] px-2.5 py-0.5 text-xs tabular-nums">{r.party_size}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      {/* ── Every section, one click away ── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t('home.everything')}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-          {sections.map((s) => {
-            const Icon = s.icon
-            return (
-              <Link key={s.id} to={s.first!.to} className={cn(tile, 'gap-2')}>
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/[0.06]">
-                  <Icon className="h-5 w-5" strokeWidth={1.8} />
-                </span>
-                <span className="mt-1 font-medium">{t(s.titleKey)}</span>
-                <span className="text-xs text-white/55 leading-relaxed">{t(`home.sectionDesc.${s.id}`)}</span>
+          <h1 className="mt-2 font-display text-5xl font-extrabold uppercase leading-[0.9] sm:text-6xl">{greetingFor(t, firstName)}</h1>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {can('kds') && (
+              <Link to="/kds" className="inline-flex h-12 items-center gap-2 rounded bg-brand-orange px-5 font-display text-[17px] font-bold uppercase tracking-[0.04em] text-on-accent hover:bg-brand-orange/85">
+                <Monitor className="h-5 w-5" strokeWidth={2.2} /> {t('home.openKds')}
               </Link>
-            )
-          })}
-          {can('copilot') && (
-            <Link to="/copilot" className={cn(tile, 'gap-2 bg-violet-500/10')}>
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-card">
-                <Bot className="h-5 w-5 text-violet-500" strokeWidth={1.8} />
-              </span>
-              <span className="mt-1 font-medium">{t('home.copilotTitle')}</span>
-              <span className="text-xs text-white/55 leading-relaxed">{t('home.copilotBody')}</span>
-            </Link>
-          )}
+            )}
+            {can('buffet-pulse') && (
+              <Link to="/buffet-monitor" className="inline-flex h-12 items-center gap-2 rounded px-5 font-display text-[17px] font-bold uppercase tracking-[0.04em] shadow-card hover:bg-white/[0.05]">
+                <Activity className="h-5 w-5" strokeWidth={2.2} /> {t('home.buffetMonitor')}
+              </Link>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="sb-label text-white/60">{countdown ? t('station.serviceIn') : t('station.serviceNow')}</span>
+          <div className="font-mono text-[clamp(56px,8vw,104px)] font-bold leading-[0.9] tracking-[-0.04em] text-signal tabular-nums">
+            {countdown ?? `${String(nowDate.getHours()).padStart(2, '0')}:${String(nowDate.getMinutes()).padStart(2, '0')}`}
+          </div>
         </div>
       </section>
+
+      {/* ── KPI strip ── */}
+      <section className="grid grid-cols-2 border-b-2 border-inv-border lg:grid-cols-4">
+        <Link to="/prep" className={cn(tileBase, 'border-b-2 border-r-2 border-inv-border lg:border-b-0')}>
+          <span aria-hidden="true" className="sb-ghost -bottom-16 -right-2 text-[300px]">{tasks.length ? prepPct : ''}</span>
+          <span className="sb-label relative">{t('home.prepToday')}</span>
+          <span className="relative font-mono text-[clamp(56px,7vw,88px)] font-bold leading-[0.85] tracking-[-0.04em] tabular-nums">
+            {prepLoading ? '…' : tasks.length ? <>{prepPct}<span className="text-[0.55em]">%</span></> : '—'}
+          </span>
+          <span className="relative mt-auto grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${Math.max(tasks.length, 1)}, minmax(0, 1fr))` }} aria-hidden="true">
+            {(tasks.length ? tasks : [null]).map((_, i) => (
+              <i key={i} className={cn('h-2.5', i < done ? 'bg-signal' : 'bg-white/15')} />
+            ))}
+          </span>
+          <span className="relative text-[14px] font-medium text-white/60">
+            {tasks.length ? t('home.prepDone', { done, total: tasks.length }) : t('home.prepEmpty')}
+          </span>
+        </Link>
+
+        <Link to="/kds" className={cn(tileBase, 'border-b-2 border-inv-border lg:border-b-0 lg:border-r-2')}>
+          <span className="sb-label">{t('home.orders')}</span>
+          <span className="font-mono text-[clamp(56px,7vw,88px)] font-bold leading-[0.85] tracking-[-0.04em] tabular-nums">
+            <FlipNumber value={ordersBy('pending') + ordersBy('preparing')} />
+          </span>
+          <span className="mt-auto text-[14px] font-medium">
+            {t('home.ordersBreakdown', { pending: ordersBy('pending'), preparing: ordersBy('preparing'), ready: ordersBy('ready') })}
+          </span>
+        </Link>
+
+        <Link to="/reservations" className={cn(tileBase, 'border-r-2 border-inv-border')}>
+          <span className="sb-label">{t('station.firstTable')}</span>
+          <span className="font-mono text-[clamp(56px,7vw,88px)] font-bold leading-[0.85] tracking-[-0.04em] tabular-nums">
+            {resLoading ? '…' : nextRes ? nextRes.reservation_time.slice(0, 5) : '—'}
+          </span>
+          <span className="mt-auto text-[14px] font-medium">
+            {nextRes ? `${nextRes.guest_name} · ` : ''}{t('home.guests', { count: guests })}
+          </span>
+        </Link>
+
+        <Link to="/inventory" className={cn(tileBase, lowStock.length > 0 ? 'bg-signal text-ink hover:bg-signal hover:brightness-105' : '')}>
+          <span className="sb-label">{t('station.missing')}</span>
+          <span className="font-mono text-[clamp(56px,7vw,88px)] font-bold leading-[0.85] tracking-[-0.04em] tabular-nums">
+            {invLoading ? '…' : lowStock.length}
+          </span>
+          <span className="mt-auto text-[14px] font-semibold">
+            {lowStock.length ? `${lowStock.slice(0, 3).map((i) => i.name).join(', ')}${lowStock.length > 3 ? ` +${lowStock.length - 3}` : ''} →` : t('home.lowStockNone')}
+          </span>
+        </Link>
+      </section>
+
+      <div className="flex flex-1 flex-col gap-8 px-4 py-7 sm:px-6">
+        {/* ── 02 On the pass ── */}
+        {can('kds') && (
+          <section>
+            <SectionHead
+              no="02"
+              title={t('station.onThePass')}
+              meta={lateCount > 0 ? `${t('station.ticketsCount', { count: tickets.length })} · ${lateCount} ${t('station.ticketLate').toLowerCase()}` : t('station.ticketsCount', { count: tickets.length })}
+              action={<Link to="/kds" className="sb-label hover:text-signal">{t('station.allKds')}</Link>}
+            />
+            {tickets.length === 0 ? (
+              <p className="rounded bg-emerald-500 px-6 py-8 font-display text-4xl font-extrabold uppercase leading-none text-ink">{t('station.clearPass')}</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-x-3 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {tickets.slice(0, 8).map((x) => (
+                  <Link key={x.id} to="/kds" className="block">
+                    <Ticket tone={x.tone} tag={x.tag} timer={x.timer} title={x.title} meta={x.meta} lines={x.lines} />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+          {/* ── 03 Tonight ── */}
+          <section className="lg:col-span-2">
+            <SectionHead no="03" title={t('station.tonight')} meta={t('home.guests', { count: guests })} />
+            {activeRes.length === 0 ? (
+              <p className="border-t-2 border-inv-border py-5 text-base text-white/60">{t('home.noReservations')}</p>
+            ) : (
+              <ul className="border-t-2 border-inv-border">
+                {activeRes.slice(0, 6).map((r) => (
+                  <li key={r.id} className="flex items-center gap-4 border-b border-glass-border py-3">
+                    <span className={cn('w-[92px] font-mono text-[28px] font-bold tracking-[-0.03em] tabular-nums', r.id === nextRes?.id && 'text-signal')}>
+                      {r.reservation_time.slice(0, 5)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[17px] font-medium">{r.guest_name}</span>
+                    <span className="font-display text-[28px] font-extrabold">{r.party_size}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* ── 04 Needs attention ── */}
+          <section className="lg:col-span-3">
+            <SectionHead no="04" title={t('home.needsAttention')} />
+            {attention.length === 0 ? (
+              <p className="border-t-2 border-inv-border py-5 text-base text-white/60">{t('home.allClear')}</p>
+            ) : (
+              <ul className="border-t-2 border-inv-border">
+                {attention.map((a, i) => (
+                  <li key={i}>
+                    <Link to={a.to} className="flex items-center gap-3 border-b border-glass-border py-3 hover:bg-white/[0.04]">
+                      <span className={cn('sb-label shrink-0 rounded-sm px-2 py-1.5', TAG[a.tone])}>{a.label}</span>
+                      <span className="min-w-0 flex-1 truncate text-[16px]">{a.detail}</span>
+                      <ArrowUpRight className="h-5 w-5 shrink-0" strokeWidth={2.2} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link to="/sections" className="sb-label mt-4 inline-block hover:text-signal">{t('station.allSectionsLink')}</Link>
+          </section>
+        </div>
+      </div>
+
+      <Ticker items={tickerItems} label={t('station.alerts')} />
     </div>
   )
 }

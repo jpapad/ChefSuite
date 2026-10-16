@@ -14,15 +14,13 @@ import { useTeam } from '../hooks/useTeam'
 import { cn } from '../lib/cn'
 import type { Shift } from '../types/database.types'
 
-// ── Colour palette per member index ───────────────────────────────────────────
-const MEMBER_COLORS = [
-  'bg-white/[0.06] border-white/15 text-white',
-  'bg-sky-500/10 border-sky-500/30 text-sky-500',
-  'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
-  'bg-rose-500/10 border-rose-500/30 text-rose-500',
-  'bg-amber-500/12 border-amber-500/30 text-amber-500',
-  'bg-violet-500/10 border-violet-500/30 text-violet-500',
-]
+// ── Shift blocks read by time of day: morning white, midday grey, evening ink ──
+function shiftTone(start: string) {
+  const h = Number(start.slice(0, 2))
+  if (h < 11) return 'bg-bg-card border-inv-border text-white'
+  if (h < 15) return 'bg-white/10 border-transparent text-white'
+  return 'bg-ink border-ink text-white-fixed'
+}
 
 const PRINT_COLORS = ['#ea580c', '#3b82f6', '#10b981', '#f43f5e', '#f59e0b', '#ec4899']
 
@@ -76,12 +74,6 @@ export default function Shifts() {
     Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   )
-
-  const memberColorMap = useMemo(() => {
-    const map = new Map<string, string>()
-    members.forEach((m, i) => map.set(m.id, MEMBER_COLORS[i % MEMBER_COLORS.length]))
-    return map
-  }, [members])
 
   const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members])
 
@@ -168,18 +160,19 @@ export default function Shifts() {
   return (
     <Page>
       <PageHeader
+        no="11"
+        eyebrow={t('shifts.subtitle')}
         title={t('shifts.title')}
-        subtitle={t('shifts.subtitle')}
         actions={
           <>
-            <div className="flex items-center gap-1 rounded-full bg-bg-card p-1 shadow-card">
+            <div className="flex items-center rounded shadow-card">
               <button type="button" aria-label="−7" onClick={() => setWeekStart((w) => addDays(w, -7))}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white"><ChevronLeft className="h-4 w-4" /></button>
-              <button type="button" onClick={() => setWeekStart(getWeekStart())} className="min-w-[150px] px-2 text-sm font-medium" title={t('common.today')}>
+                className="flex h-12 w-12 items-center justify-center hover:bg-white/[0.08]"><ChevronLeft className="h-5 w-5" strokeWidth={2.4} /></button>
+              <button type="button" onClick={() => setWeekStart(getWeekStart())} className="min-w-[170px] px-2 font-mono text-[15px] font-bold" title={t('common.today')}>
                 {weekLabel(weekStart)}
               </button>
               <button type="button" aria-label="+7" onClick={() => setWeekStart((w) => addDays(w, 7))}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/[0.06] hover:text-white"><ChevronRight className="h-4 w-4" /></button>
+                className="flex h-12 w-12 items-center justify-center hover:bg-white/[0.08]"><ChevronRight className="h-5 w-5" strokeWidth={2.4} /></button>
             </div>
             <ActionMenu
               label={t('shifts.v2.export')}
@@ -217,57 +210,58 @@ export default function Shifts() {
       ) : (
         /* ── Roster: people × days ── */
         <Panel padded={false}>
-          <div className="overflow-x-auto p-3">
-            <div className="grid min-w-[900px] gap-2" style={{ gridTemplateColumns: '200px repeat(7, minmax(0, 1fr)) 64px' }}>
-              <span />
+          <div className="overflow-x-auto">
+            <div className="grid min-w-[960px]" style={{ gridTemplateColumns: '220px repeat(7, minmax(0, 1fr)) 72px' }}>
+              <span className="border-b-2 border-inv-border" />
               {weekDays.map((day) => {
                 const { weekday, date, isToday } = dayLabel(day)
                 return (
-                  <div key={day} className={cn('rounded-2xl px-2 py-2 text-center text-xs', isToday ? 'bg-ink text-white-fixed' : 'text-white/55')}>
-                    <div className={cn('font-medium', isToday && 'text-lime')}>{weekday}</div>
-                    <div className="opacity-75">{date}</div>
+                  <div key={day} className={cn('border-b-2 border-inv-border px-2 py-2.5 text-center', isToday ? 'bg-ink text-white-fixed' : '')}>
+                    <div className="sb-label">{weekday}</div>
+                    <div className="font-mono text-[15px] font-bold">{date}</div>
                   </div>
                 )
               })}
-              <span className="self-end pb-2 text-center text-xs text-white/45">{t('shifts.v2.hoursShort')}</span>
+              <span className="sb-label flex items-end justify-center border-b-2 border-inv-border pb-2.5 text-white/60">{t('shifts.v2.hoursShort')}</span>
 
               {rows.map((m) => {
                 const mine = shifts.filter((sh) => sh.member_id === m.id)
                 const hrs = mine.reduce((sum, sh) => sum + hoursOf(sh), 0)
                 return (
                   <div key={m.id} className="contents">
-                    <div className="flex items-center gap-2 border-t border-white/[0.06] py-2 pr-2">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs font-semibold">
+                    <div className="flex items-center gap-2.5 border-b border-glass-border px-3 py-2">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-ink font-display text-[15px] font-extrabold text-white-fixed">
                         {(m.full_name ?? '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
                       </span>
-                      <span className="truncate text-sm font-medium">{m.full_name ?? t('common.unnamed')}</span>
+                      <span className="truncate font-display text-[19px] font-bold">{m.full_name ?? t('common.unnamed')}</span>
                     </div>
                     {weekDays.map((day) => {
                       const cell = mine.filter((sh) => sh.shift_date === day)
+                      const today = dayLabel(day).isToday
                       return (
-                        <div key={day} className="flex flex-col gap-1 border-t border-white/[0.06] py-2">
+                        <div key={day} className={cn('flex flex-col gap-1 border-b border-glass-border p-1.5', today && 'bg-white/[0.04]')}>
                           {cell.map((sh) => (
-                            <div key={sh.id} className={cn('group relative rounded-xl border px-2 py-1.5 text-xs', memberColorMap.get(sh.member_id) ?? MEMBER_COLORS[0])}>
-                              <div className="flex items-center gap-1 font-medium tabular-nums">
-                                <Clock className="h-3 w-3 shrink-0 opacity-70" />{sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
+                            <div key={sh.id} className={cn('group relative rounded-sm border-2 px-2 py-1.5', shiftTone(sh.start_time))}>
+                              <div className="flex items-center gap-1 font-mono text-[14px] font-bold tabular-nums">
+                                <Clock className="h-3.5 w-3.5 shrink-0 opacity-70" />{sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
                               </div>
-                              {sh.role && <div className="truncate opacity-70">{sh.role}</div>}
-                              <div className="absolute right-1 top-1 flex gap-0.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                                <button type="button" onClick={() => openEdit(sh)} aria-label={t('common.edit')} className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-card text-white shadow-card"><Pencil className="h-3 w-3" /></button>
-                                <button type="button" onClick={() => handleDelete(sh)} aria-label={t('common.delete')} className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-card text-red-500 shadow-card"><Trash2 className="h-3 w-3" /></button>
+                              {sh.role && <div className="sb-label truncate opacity-75">{sh.role}</div>}
+                              <div className="absolute right-1 top-1 flex gap-0.5 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100">
+                                <button type="button" onClick={() => openEdit(sh)} aria-label={t('common.edit')} className="flex h-7 w-7 items-center justify-center rounded-sm bg-white-fixed text-ink"><Pencil className="h-3.5 w-3.5" /></button>
+                                <button type="button" onClick={() => handleDelete(sh)} aria-label={t('common.delete')} className="flex h-7 w-7 items-center justify-center rounded-sm bg-[#FF3B30] text-white-fixed"><Trash2 className="h-3.5 w-3.5" /></button>
                               </div>
                             </div>
                           ))}
                           {cell.length === 0 && (
                             <button type="button" onClick={() => openCreate(day)} aria-label={`${t('shifts.addShift')} ${day}`}
-                              className="flex h-full min-h-[40px] items-center justify-center rounded-xl text-white/20 transition hover:bg-white/[0.04] hover:text-white/60">
-                              <Plus className="h-4 w-4" />
+                              className="flex h-full min-h-[48px] items-center justify-center rounded-sm text-white/30 transition hover:bg-white/[0.06] hover:text-white">
+                              <Plus className="h-5 w-5" />
                             </button>
                           )}
                         </div>
                       )
                     })}
-                    <div className="flex items-center justify-center border-t border-white/[0.06] py-2 text-sm font-medium tabular-nums">
+                    <div className="flex items-center justify-center border-b border-glass-border py-2 font-mono text-[20px] font-bold tabular-nums">
                       {hrs ? hrs.toFixed(0) : <span className="text-white/30">—</span>}
                     </div>
                   </div>

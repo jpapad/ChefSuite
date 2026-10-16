@@ -24,6 +24,7 @@ import { useRecipeSubRecipes } from '../hooks/useRecipeSubRecipes'
 import { useMenus } from '../hooks/useMenus'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useDuotone } from '../lib/useDuotone'
 import { RECIPE_CATEGORIES } from '../components/recipes/RecipeForm'
 import type { ImportedRecipe } from '../lib/gemini'
 import type { ExcelMenuRow } from '../lib/excelMenu'
@@ -64,6 +65,7 @@ export default function Recipes() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [groupedView, setGroupedView] = useState(false)
+  const [duotone, setDuotone] = useDuotone()
   const [filterUncategorized, setFilterUncategorized] = useState(false)
 
   useEffect(() => {
@@ -400,6 +402,7 @@ export default function Recipes() {
             onDelete={selectionMode ? () => {} : onDelete}
             onConsume={selectionMode ? async () => {} : (recipe, portions) => consumeRecipe(recipe.id, portions)}
             onHistory={selectionMode ? () => {} : setVersionRecipe}
+            duotone={duotone}
           />
         </div>
       </div>
@@ -409,8 +412,9 @@ export default function Recipes() {
   return (
     <Page>
       <PageHeader
+        no="08"
+        eyebrow={t('recipes.subtitle')}
         title={t('recipes.title')}
-        subtitle={t('recipes.subtitle')}
         actions={selectionMode ? (
           <PillButton icon={X} onClick={toggleSelectionMode}>{t('common.cancel')}</PillButton>
         ) : (
@@ -476,6 +480,15 @@ export default function Recipes() {
               options={[
                 { value: 'grid', label: t('recipes.v2.grid'), icon: LayoutGrid },
                 { value: 'groups', label: t('recipes.v2.groups'), icon: Layers },
+              ]}
+            />
+            <span className="sb-label ml-auto text-white/60">{t('station.photos')}</span>
+            <Segmented
+              value={duotone ? 'duo' : 'orig'}
+              onChange={(v) => setDuotone(v === 'duo')}
+              options={[
+                { value: 'duo', label: t('station.duotone') },
+                { value: 'orig', label: t('station.original') },
               ]}
             />
             {hasFilters && (
@@ -549,18 +562,18 @@ export default function Recipes() {
             <div className="flex flex-col gap-8">
               {groupedRecipes.map((group) => (
                 <section key={group.category ?? '_none'} className="flex flex-col gap-3">
-                  <div className="flex items-baseline gap-3">
-                    <h2 className="text-xl font-medium">{group.label}</h2>
-                    <span className="text-sm text-white/45 tabular-nums">{group.items.length}</span>
+                  <div className="flex items-baseline gap-3 border-b-2 border-inv-border pb-2">
+                    <h2 className="font-display text-[30px] font-extrabold uppercase leading-none">{group.label}</h2>
+                    <span className="font-mono text-[18px] font-bold text-white/60 tabular-nums">{group.items.length}</span>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {group.items.map(renderCard)}
                   </div>
                 </section>
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {filtered.map(renderCard)}
             </div>
           )}

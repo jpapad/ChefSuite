@@ -278,8 +278,9 @@ export default function Inventory() {
   return (
     <Page>
       <PageHeader
+        no="10"
+        eyebrow={t('inventory.subtitle')}
         title={t('inventory.title')}
-        subtitle={t('inventory.subtitle')}
         actions={
           <>
             <ActionMenu

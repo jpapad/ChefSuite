@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { RequireTeam } from './components/auth/RequireTeam'
@@ -9,7 +9,6 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { PageLoader } from './components/ui/PageLoader'
 
 const AppLaunchpad       = lazy(() => import('./pages/AppLaunchpad'))
-const Dashboard          = lazy(() => import('./pages/Dashboard'))
 const Recipes            = lazy(() => import('./pages/Recipes'))
 const RegionalRecipes    = lazy(() => import('./pages/RegionalRecipes'))
 const Inventory          = lazy(() => import('./pages/Inventory'))
@@ -120,7 +119,8 @@ export default function App() {
                 }
               >
                 <Route index element={<AppLaunchpad />} />
-                <Route path="dashboard" element={<Dashboard />} />
+                {/* The old dashboard duplicated Home; Home ("Today") now shows it all. */}
+                <Route path="dashboard" element={<Navigate to="/" replace />} />
                 <Route path="recipes" element={<PermissionGuard module="recipes"><Recipes /></PermissionGuard>} />
                 <Route path="regional-recipes" element={<PermissionGuard module="regional-recipes"><RegionalRecipes /></PermissionGuard>} />
                 <Route path="inventory" element={<PermissionGuard module="inventory"><Inventory /></PermissionGuard>} />
